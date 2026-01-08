@@ -1,0 +1,21 @@
+body {
+  background: #f8f9fa;
+}
+
+.status-pedido {
+  background-color: #fff3cd;
+}
+
+.status-finalizado {
+  background-color: #d1e7dd;
+}
+
+.status-balanco {
+  background-color: #d63384;
+  color: #fff;
+}
+
+.table td,
+.table th {
+  vertical-align: middle;
+}
