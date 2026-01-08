@@ -3,6 +3,9 @@
         <div class="modal-content">
 
             <form action="actions/finalizar_pedido.php" method="POST">
+                <?php require_once __DIR__ . '/../helpers/csrf.php'; ?>
+                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token('finalizar_pedido')) ?>">
+
 
                 <!-- ID do pedido -->
                 <input type="hidden" name="id" value="<?= $r['id'] ?>">

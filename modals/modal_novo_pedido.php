@@ -3,6 +3,9 @@
         <div class="modal-content">
 
             <form action="actions/novo_pedido.php" method="POST">
+                <?php require_once __DIR__ . '/../helpers/csrf.php'; ?>
+                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token('novo_pedido')) ?>">
+
 
                 <div class="modal-header">
                     <h5 class="modal-title">📦 Novo Pedido de Retirada</h5>

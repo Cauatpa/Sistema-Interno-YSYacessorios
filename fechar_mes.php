@@ -1,27 +1,42 @@
 <?php
-// ajuste o include da sua conexão:
-require_once __DIR__ . '/config/database.php'; // <-- MUDE AQUI se seu arquivo tiver outro nome/caminho
-
-require_once __DIR__ . '/services/fechamento.php';
+require_once __DIR__ . '/config/database.php';
 require_once __DIR__ . '/helpers/competencia.php';
+require_once __DIR__ . '/services/fechamento.php';
+require_once __DIR__ . '/helpers/csrf.php';
+require_once __DIR__ . '/helpers/validation.php';
 
-$competencia = $_POST['competencia'] ?? '';
-$usuario = $_POST['usuario'] ?? 'Admin'; // ideal: usuário logado
-$confirm = $_POST['confirm'] ?? '';
-$observacao = $_POST['observacao'] ?? null;
+post_only();
 
-if ($confirm !== "FECHAR $competencia") {
+// CSRF
+if (!csrf_validate($_POST['csrf_token'] ?? null, 'fechar_mes')) {
+    http_response_code(403);
+    exit('CSRF inválido.');
+}
+csrf_rotate('fechar_mes');
+
+$competencia = trim((string)($_POST['competencia'] ?? ''));
+$usuario = trim((string)($_POST['usuario'] ?? 'Admin'));
+$confirm = trim((string)($_POST['confirm'] ?? ''));
+$observacao = isset($_POST['observacao']) ? trim((string)$_POST['observacao']) : null;
+
+if (!competencia_valida($competencia)) {
     http_response_code(400);
-    echo "Confirmação inválida. Digite exatamente: FECHAR $competencia";
-    exit;
+    exit('Competência inválida.');
 }
 
+if ($confirm !== "FECHAR {$competencia}") {
+    http_response_code(400);
+    exit("Confirmação inválida. Digite exatamente: FECHAR {$competencia}");
+}
+
+// Fecha mês (seu service)
 $result = fechar_mes($pdo, $competencia, $usuario, $observacao);
 
-if (!$result['ok']) {
+if (!is_array($result) || empty($result['ok'])) {
     http_response_code(400);
-    echo $result['error'];
-    exit;
+    $msg = is_array($result) && !empty($result['error']) ? $result['error'] : 'Erro ao fechar mês.';
+    exit($msg);
 }
 
-echo "Mês {$result['competencia']} fechado com sucesso. Total de registros: {$result['total_registros']}";
+// volta pra tela do mês fechado
+redirect_with_query('index.php', ['competencia' => $competencia]);

@@ -1,54 +1,75 @@
 <?php
-require '../config/database.php';
-
+require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../helpers/competencia.php';
 require_once __DIR__ . '/../services/fechamento.php';
+require_once __DIR__ . '/../helpers/csrf.php';
+require_once __DIR__ . '/../helpers/validation.php';
 
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    header('Location: ../index.php');
-    exit;
+post_only();
+
+// CSRF
+if (!csrf_validate($_POST['csrf_token'] ?? null, 'finalizar_pedido')) {
+    http_response_code(403);
+    exit('CSRF inválido.');
 }
+csrf_rotate('finalizar_pedido');
 
-// 🔹 Dados vindos do modal
-$id = (int) ($_POST['id'] ?? 0);
-$quantidade_retirada = (int) ($_POST['quantidade_retirada'] ?? 0);
-$responsavel_estoque = trim($_POST['responsavel_estoque'] ?? '');
+// Dados do modal
+$id = int_pos($_POST['id'] ?? 0);
+$quantidade_retirada = int_nonneg($_POST['quantidade_retirada'] ?? -1);
+$responsavel_estoque = trim((string)($_POST['responsavel_estoque'] ?? ''));
 $precisa_balanco = (int)($_POST['precisa_balanco'] ?? 0);
-$sem_estoque     = (int)($_POST['sem_estoque'] ?? 0);
+$sem_estoque = (int)($_POST['sem_estoque'] ?? 0);
 
-if ($id <= 0 || $quantidade_retirada < 0 || $responsavel_estoque === '') {
-    die('Dados inválidos');
+if ($id <= 0) {
+    http_response_code(400);
+    exit('ID inválido.');
+}
+if ($quantidade_retirada < 0) {
+    http_response_code(400);
+    exit('Quantidade retirada inválida.');
+}
+if ($responsavel_estoque === '') {
+    http_response_code(400);
+    exit('Responsável do estoque é obrigatório.');
 }
 
-// 1️⃣ Buscar quantidade solicitada + competência
+// Buscar dados do pedido (inclui competência e quantidade solicitada)
 $stmt = $pdo->prepare("
     SELECT quantidade_solicitada, competencia
     FROM retiradas
-    WHERE id = ?
+    WHERE id = ? AND deleted_at IS NULL
+    LIMIT 1
 ");
 $stmt->execute([$id]);
 $retirada = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$retirada) {
-    die('Retirada não encontrada');
+    http_response_code(404);
+    exit('Retirada não encontrada.');
 }
 
-$competencia = $retirada['competencia'] ?? null;
-$qtd_solicitada = (int) $retirada['quantidade_solicitada'];
+$competencia = (string)$retirada['competencia'];
+$qtd_solicitada = (int)$retirada['quantidade_solicitada'];
 
-// 🔒 Bloquear edição se o mês estiver fechado
-if ($competencia && mes_esta_fechado($pdo, $competencia)) {
-    die("Esse mês ($competencia) está fechado. Não é possível finalizar/alterar registros.");
+if (!competencia_valida($competencia)) {
+    http_response_code(500);
+    exit('Competência inválida no registro.');
 }
 
-// 2️⃣ Regras automáticas
-// Se retirou menos do que pediu, precisa balanço e está sem estoque
+// Bloqueio mês fechado
+if (mes_esta_fechado($pdo, $competencia)) {
+    http_response_code(403);
+    exit("Não é possível finalizar em mês fechado ({$competencia}).");
+}
+
+// Regras automáticas
 if ($quantidade_retirada < $qtd_solicitada) {
     $precisa_balanco = 1;
     $sem_estoque = 1;
 }
 
-// 3️⃣ Atualizar retirada
+// Atualizar
 $update = $pdo->prepare("
     UPDATE retiradas
     SET
@@ -58,17 +79,19 @@ $update = $pdo->prepare("
         sem_estoque = ?,
         status = 'finalizado',
         data_finalizacao = NOW()
-    WHERE id = ?
+    WHERE id = ? AND deleted_at IS NULL
 ");
+
 $update->execute([
     $quantidade_retirada,
     $responsavel_estoque,
-    $precisa_balanco,
-    $sem_estoque,
+    $precisa_balanco ? 1 : 0,
+    $sem_estoque ? 1 : 0,
     $id
 ]);
 
-// ✅ volta mantendo o mês na tela + mostra toast + destaca linha
-$redirComp = $competencia && competencia_valida($competencia) ? $competencia : competencia_atual();
-header('Location: ../index.php?competencia=' . urlencode($redirComp) . '&toast=finalizado&highlight_id=' . urlencode((string)$id));
-exit;
+redirect_with_query('../index.php', [
+    'competencia' => $competencia,
+    'toast' => 'finalizado',
+    'highlight_id' => $id
+]);

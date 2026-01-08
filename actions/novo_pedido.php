@@ -1,55 +1,72 @@
 <?php
-require_once '../config/database.php';
-
+require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../helpers/competencia.php';
 require_once __DIR__ . '/../services/fechamento.php';
+require_once __DIR__ . '/../helpers/csrf.php';
+require_once __DIR__ . '/../helpers/validation.php';
 
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    header('Location: ../index.php');
-    exit;
+post_only();
+
+// CSRF
+if (!csrf_validate($_POST['csrf_token'] ?? null, 'novo_pedido')) {
+    http_response_code(403);
+    exit('CSRF inválido.');
+}
+csrf_rotate('novo_pedido');
+
+// Campos obrigatórios
+require_fields($_POST, ['produto', 'quantidade_solicitada', 'tipo', 'solicitante']);
+
+$produto = trim((string)$_POST['produto']);
+$quantidade = int_pos($_POST['quantidade_solicitada'] ?? 0);
+$tipo = one_of(trim((string)$_POST['tipo']), ['prata', 'ouro'], '');
+$solicitante = trim((string)$_POST['solicitante']);
+
+if ($produto === '') {
+    http_response_code(400);
+    exit('Produto inválido.');
+}
+if ($quantidade <= 0) {
+    http_response_code(400);
+    exit('Quantidade inválida.');
+}
+if ($tipo === '') {
+    http_response_code(400);
+    exit('Tipo inválido.');
+}
+if ($solicitante === '') {
+    http_response_code(400);
+    exit('Solicitante inválido.');
 }
 
-$produto     = trim($_POST['produto'] ?? '');
-$quantidade  = (int)($_POST['quantidade_solicitada'] ?? 0);
-$tipo        = trim($_POST['tipo'] ?? '');
-$solicitante = trim($_POST['solicitante'] ?? '');
-
-if ($produto === '' || $quantidade <= 0 || $tipo === '' || $solicitante === '') {
-    die('Preencha todos os campos corretamente');
-}
-
-// Define data do pedido e competência
+// Competência pela data atual
 $data_pedido = date('Y-m-d H:i:s');
 $competencia = competencia_from_datetime($data_pedido);
 
-// Bloquear criar em mês fechado
-if (mes_esta_fechado($pdo, $competencia)) {
-    die("Não é possível criar retirada em mês fechado ($competencia).");
+if (!competencia_valida($competencia)) {
+    http_response_code(500);
+    exit('Competência inválida gerada.');
 }
 
-// Inserir (com placeholders corretos)
+// Bloqueio mês fechado
+if (mes_esta_fechado($pdo, $competencia)) {
+    http_response_code(403);
+    exit("Não é possível criar retirada em mês fechado ({$competencia}).");
+}
+
 $sql = "
-    INSERT INTO retiradas 
-        (produto, quantidade_solicitada, tipo, solicitante, status, data_pedido, competencia, status_mes)
-    VALUES 
-        (?, ?, ?, ?, 'pedido', ?, ?, 'ABERTO')
+    INSERT INTO retiradas
+        (produto, quantidade_solicitada, tipo, solicitante, status, data_pedido, competencia)
+    VALUES
+        (?, ?, ?, ?, 'pedido', NOW(), ?)
 ";
 
 $stmt = $pdo->prepare($sql);
-
-$ok = $stmt->execute([
-    $produto,
-    $quantidade,
-    $tipo,
-    $solicitante,
-    $data_pedido,
-    $competencia
-]);
+$ok = $stmt->execute([$produto, $quantidade, $tipo, $solicitante, $competencia]);
 
 if ($ok) {
-    // volta já no mês criado
-    header('Location: ../index.php?competencia=' . urlencode($competencia));
-    exit;
+    redirect_with_query('../index.php', ['competencia' => $competencia]);
 }
 
-die('Erro ao salvar pedido');
+http_response_code(500);
+exit('Erro ao salvar pedido.');
