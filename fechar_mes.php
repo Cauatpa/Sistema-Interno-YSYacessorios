@@ -29,7 +29,7 @@ if ($confirm !== "FECHAR {$competencia}") {
     exit("Confirmação inválida. Digite exatamente: FECHAR {$competencia}");
 }
 
-// Fecha mês (seu service)
+// Fecha mês
 $result = fechar_mes($pdo, $competencia, $usuario, $observacao);
 
 if (!is_array($result) || empty($result['ok'])) {

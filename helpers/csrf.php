@@ -3,7 +3,7 @@
 function csrf_session_start(): void
 {
     if (session_status() === PHP_SESSION_NONE) {
-        // Ajuste conforme seu ambiente:
+        // Ajuste conforme o ambiente:
         // Em localhost sem https, secure=false
         // Em produção com https, secure=true
         $secure = false;

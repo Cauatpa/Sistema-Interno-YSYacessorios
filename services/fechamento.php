@@ -33,7 +33,7 @@ function fechar_mes(PDO $pdo, string $competencia, string $usuario, ?string $obs
     ");
         $stmtUpdate->execute([$usuario, $competencia]);
 
-        // Loga fechamento (mesmo que não tenha registros)
+        // Loga fechamento
         $stmtLog = $pdo->prepare("
       INSERT INTO fechamentos (competencia, fechado_por, fechado_em, total_registros, observacao)
       VALUES (?, ?, NOW(), ?, ?)

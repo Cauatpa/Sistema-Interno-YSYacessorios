@@ -211,7 +211,7 @@ $retiradas = $stmt->fetchAll(PDO::FETCH_ASSOC);
         </form>
     </div>
 
-    <!-- Barra superior: Mês + Fechar mês (aparece em tudo) -->
+    <!-- Barra superior: Mês + Fechar mês -->
     <div class="d-flex flex-column flex-md-row gap-2 justify-content-between align-items-stretch mb-3">
         <form method="GET" class="d-flex gap-2 align-items-center">
 
@@ -294,6 +294,7 @@ $retiradas = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 </tr>
             </thead>
 
+            <!-- Tabela de Retiradas -->
             <tbody>
                 <?php foreach ($retiradas as $r):
                     $info = retirada_status_info($r);
@@ -362,6 +363,7 @@ $retiradas = $stmt->fetchAll(PDO::FETCH_ASSOC);
         </div>
     </div>
 
+    <!-- Toast -->
     <script>
         (function() {
             const toastType = "<?= htmlspecialchars($toast) ?>";
