@@ -68,7 +68,7 @@ $update->execute([
     $id
 ]);
 
-// ✅ volta mantendo o mês na tela
+// ✅ volta mantendo o mês na tela + mostra toast + destaca linha
 $redirComp = $competencia && competencia_valida($competencia) ? $competencia : competencia_atual();
-header('Location: ../index.php?competencia=' . urlencode($redirComp));
+header('Location: ../index.php?competencia=' . urlencode($redirComp) . '&toast=finalizado&highlight_id=' . urlencode((string)$id));
 exit;

@@ -1,6 +1,6 @@
 <?php
 // ajuste o include da sua conexão:
-require_once __DIR__ . '/config/conexao.php'; // <-- MUDE AQUI se seu arquivo tiver outro nome/caminho
+require_once __DIR__ . '/config/database.php'; // <-- MUDE AQUI se seu arquivo tiver outro nome/caminho
 
 require_once __DIR__ . '/services/fechamento.php';
 require_once __DIR__ . '/helpers/competencia.php';
