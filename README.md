@@ -54,7 +54,7 @@ As tecnologias podem variar conforme o projeto, mas geralmente incluem:
 * ✔️ Git
 * ✔️ Python 3.10+
 * ✔️ PHP 8+
-* ✔️ MySQL ou MariaDB
+* ✔️ MySQL ou MongoDB
 * ✔️ Editor de código (VS Code recomendado)
 
 ---
