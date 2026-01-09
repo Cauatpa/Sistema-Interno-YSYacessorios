@@ -41,7 +41,7 @@ if (!is_array($result) || empty($result['ok'])) {
     exit($msg);
 }
 
-require_once __DIR__ . '/../helpers/audit.php';
+require_once __DIR__ . '/helpers/audit.php';
 
 audit_log($pdo, 'delete', 'retirada', $id, [
     'competencia' => $competencia

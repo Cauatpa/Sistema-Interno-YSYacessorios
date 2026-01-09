@@ -356,7 +356,7 @@ $dataFim = (string)($f['dataFim'] ?? $f['data_fim'] ?? '');
                                 <?php endif; ?>
 
                                 <!-- Excluir: somente operador+ e mês aberto -->
-                                <?php if ($canOperate && !$mesFechado): ?>
+                                <?php if ($canAdmin && !$mesFechado): ?>
                                     <button type="button"
                                         class="btn btn-outline-danger w-100"
                                         data-bs-toggle="modal"
