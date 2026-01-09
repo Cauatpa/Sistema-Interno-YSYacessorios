@@ -1,23 +1,50 @@
 <?php
 
+declare(strict_types=1);
+
+/**
+ * Normaliza data no formato YYYY-MM-DD (input type="date").
+ */
+function normaliza_data_ymd($v): string
+{
+    $v = trim((string)$v);
+    if ($v === '') return '';
+
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $v)) return '';
+
+    [$y, $m, $d] = array_map('intval', explode('-', $v));
+    if (!checkdate($m, $d, $y)) return '';
+
+    return $v;
+}
+
 function normaliza_filtros(array $get): array
 {
-    $filtro = $get['filtro'] ?? 'todos';
+    $filtro = (string)($get['filtro'] ?? 'todos');
     $permitidos = ['todos', 'pendentes', 'finalizados', 'balanco', 'sem_estoque'];
     if (!in_array($filtro, $permitidos, true)) $filtro = 'todos';
 
-    $busca = trim($get['q'] ?? '');
+    $busca = trim((string)($get['q'] ?? ''));
 
-    $tipo = $get['tipo'] ?? 'todos';
+    $tipo = (string)($get['tipo'] ?? 'todos');
     $tipoPermitidos = ['todos', 'prata', 'ouro'];
     if (!in_array($tipo, $tipoPermitidos, true)) $tipo = 'todos';
 
-    $statusFiltro = $get['status'] ?? 'todos';
+    $statusFiltro = (string)($get['status'] ?? 'todos');
     $statusPermitidos = ['todos', 'pendentes', 'finalizados'];
     if (!in_array($statusFiltro, $statusPermitidos, true)) $statusFiltro = 'todos';
 
     $soBalanco = (int)($get['balanco'] ?? 0);
     $soSemEstoque = (int)($get['sem_estoque'] ?? 0);
+
+    // Datas (YYYY-MM-DD)
+    $dataIni = normaliza_data_ymd($get['data_ini'] ?? '');
+    $dataFim = normaliza_data_ymd($get['data_fim'] ?? '');
+
+    // Se inverter, troca automaticamente
+    if ($dataIni !== '' && $dataFim !== '' && $dataFim < $dataIni) {
+        [$dataIni, $dataFim] = [$dataFim, $dataIni];
+    }
 
     return [
         'filtro' => $filtro,
@@ -26,60 +53,82 @@ function normaliza_filtros(array $get): array
         'statusFiltro' => $statusFiltro,
         'soBalanco' => $soBalanco,
         'soSemEstoque' => $soSemEstoque,
+        'dataIni' => $dataIni,
+        'dataFim' => $dataFim,
     ];
 }
 
 /**
  * Monta WHERE + params da listagem.
- * Regras:
  * - sempre filtra por competencia
  * - sempre filtra deleted_at IS NULL
  * - balanço NÃO inclui sem_estoque
+ * - datas filtram por data_pedido
  */
 function montar_where_retiradas(string $competencia, array $f): array
 {
     $where = " WHERE competencia = ? AND deleted_at IS NULL ";
     $params = [$competencia];
 
-    // Filtro do dashboard
-    if ($f['filtro'] === 'pendentes') {
+    // Dashboard
+    $dash = (string)($f['filtro'] ?? 'todos');
+    if ($dash === 'pendentes') {
         $where .= " AND status <> 'finalizado' ";
-    } elseif ($f['filtro'] === 'finalizados') {
+    } elseif ($dash === 'finalizados') {
         $where .= " AND status = 'finalizado' ";
-    } elseif ($f['filtro'] === 'balanco') {
+    } elseif ($dash === 'balanco') {
         $where .= " AND precisa_balanco = 1 AND sem_estoque = 0 ";
-    } elseif ($f['filtro'] === 'sem_estoque') {
+    } elseif ($dash === 'sem_estoque') {
         $where .= " AND sem_estoque = 1 ";
     }
 
     // Busca
-    if ($f['busca'] !== '') {
+    $busca = (string)($f['busca'] ?? '');
+    if ($busca !== '') {
         $where .= " AND (produto LIKE ? OR solicitante LIKE ? OR responsavel_estoque LIKE ?) ";
-        $like = "%{$f['busca']}%";
+        $like = "%{$busca}%";
         $params[] = $like;
         $params[] = $like;
         $params[] = $like;
     }
 
     // Tipo
-    if ($f['tipo'] !== 'todos') {
+    $tipo = (string)($f['tipo'] ?? 'todos');
+    if ($tipo !== 'todos') {
         $where .= " AND tipo = ? ";
-        $params[] = $f['tipo'];
+        $params[] = $tipo;
     }
 
     // Status dropdown
-    if ($f['statusFiltro'] === 'pendentes') {
+    $statusFiltro = (string)($f['statusFiltro'] ?? 'todos');
+    if ($statusFiltro === 'pendentes') {
         $where .= " AND status <> 'finalizado' ";
-    } elseif ($f['statusFiltro'] === 'finalizados') {
+    } elseif ($statusFiltro === 'finalizados') {
         $where .= " AND status = 'finalizado' ";
     }
 
     // Flags
-    if ((int)$f['soBalanco'] === 1) {
+    if ((int)($f['soBalanco'] ?? 0) === 1) {
         $where .= " AND precisa_balanco = 1 AND sem_estoque = 0 ";
     }
-    if ((int)$f['soSemEstoque'] === 1) {
+    if ((int)($f['soSemEstoque'] ?? 0) === 1) {
         $where .= " AND sem_estoque = 1 ";
+    }
+
+    // Datas
+    $dataIni = (string)($f['dataIni'] ?? '');
+    $dataFim = (string)($f['dataFim'] ?? '');
+
+    if ($dataIni !== '' && $dataFim !== '') {
+        $where .= " AND data_pedido >= ? AND data_pedido < DATE_ADD(?, INTERVAL 1 DAY) ";
+        $params[] = $dataIni . " 00:00:00";
+        $params[] = $dataFim . " 00:00:00";
+    } elseif ($dataIni !== '') {
+        $where .= " AND data_pedido >= ? ";
+        $params[] = $dataIni . " 00:00:00";
+    } elseif ($dataFim !== '') {
+        $where .= " AND data_pedido < DATE_ADD(?, INTERVAL 1 DAY) ";
+        $params[] = $dataFim . " 00:00:00";
     }
 
     return [$where, $params];

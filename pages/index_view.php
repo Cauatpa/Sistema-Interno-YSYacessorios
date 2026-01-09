@@ -3,9 +3,14 @@
 $canOperate = auth_has_role('operador'); // operador ou admin
 $canAdmin   = auth_has_role('admin');    // somente admin
 
-// Nome do usuário logado (se existir)
-$nomeUsuario = isset($u['nome']) ? (string)$u['nome'] : '—';
+// Usuário logado (o controller deve fornecer $u; aqui deixo seguro)
+$u = $u ?? [];
+$nomeUsuario = trim((string)($u['nome'] ?? $u['usuario'] ?? ''));
+if ($nomeUsuario === '') $nomeUsuario = '—';
 
+// Datas (compatível com chaves diferentes, caso seu normalizador use outro padrão)
+$dataIni = (string)($f['dataIni'] ?? $f['data_ini'] ?? '');
+$dataFim = (string)($f['dataFim'] ?? $f['data_fim'] ?? '');
 ?>
 
 <!DOCTYPE html>
@@ -27,37 +32,36 @@ $nomeUsuario = isset($u['nome']) ? (string)$u['nome'] : '—';
 
 <body class="p-3">
 
+    <!-- Topo: título + usuário + ações -->
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-center gap-2 mb-3">
         <h2 class="text-center mb-0">📦 Controle de Retirada do Estoque</h2>
 
-        <!-- Badge usuário -->
-        <div class="small text-muted">
+        <div class="d-flex flex-wrap align-items-center gap-2">
+            <div class="small text-muted">
+                👤 <?= htmlspecialchars($nomeUsuario) ?>
+                <?php if ($canAdmin): ?>
+                    <span class="badge text-bg-dark ms-1">admin</span>
+                <?php elseif ($canOperate): ?>
+                    <span class="badge text-bg-primary ms-1">operador</span>
+                <?php else: ?>
+                    <span class="badge text-bg-secondary ms-1">visualizador</span>
+                <?php endif; ?>
+            </div>
 
-
-            👤 <?= htmlspecialchars($nomeUsuario) ?> |
             <?php if ($canAdmin): ?>
-                <span class="badge text-bg-dark">admin</span>
-            <?php elseif ($canOperate): ?>
-                <span class="badge text-bg-primary">operador</span>
-            <?php else: ?>
-                <span class="badge text-bg-secondary">visualizador</span>
-            <?php endif; ?>
-            <form method="POST" action="logout.php" class="d-inline">
-                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token('logout')) ?>">
-                <button type="submit" class="btn btn-outline-secondary btn-sm">
-                    Sair
-                </button>
-            </form>
-            <?php if (!empty($canAdmin)): ?>
                 <a href="usuarios.php" class="btn btn-outline-primary btn-sm">Usuários</a>
             <?php endif; ?>
+
+            <form method="POST" action="logout.php" class="d-inline">
+                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token('logout')) ?>">
+                <button type="submit" class="btn btn-outline-secondary btn-sm">Sair</button>
+            </form>
         </div>
     </div>
 
-
     <!-- ======================
-     DASHBOARD (somente PC)
-     ====================== -->
+         DASHBOARD (somente PC)
+         ====================== -->
     <div class="d-none d-md-block">
         <div class="row g-2 mb-3 dashboard-cards">
 
@@ -112,13 +116,14 @@ $nomeUsuario = isset($u['nome']) ? (string)$u['nome'] : '—';
         </div>
 
         <!-- ======================
-         Pesquisa + Filtros (somente PC)
-         ====================== -->
+             Pesquisa + Filtros (somente PC)
+             ====================== -->
         <form method="GET" class="card p-2 mb-3">
             <input type="hidden" name="competencia" value="<?= htmlspecialchars($competencia) ?>">
             <input type="hidden" name="filtro" value="<?= htmlspecialchars($filtro) ?>">
 
             <div class="row g-2 align-items-end">
+                <!-- Linha 1 -->
                 <div class="col-12 col-md-4">
                     <label class="form-label mb-1">Pesquisar</label>
                     <input type="text" name="q" class="form-control"
@@ -131,7 +136,7 @@ $nomeUsuario = isset($u['nome']) ? (string)$u['nome'] : '—';
                     <select name="tipo" class="form-select">
                         <option value="todos" <?= $tipo === 'todos' ? 'selected' : '' ?>>Todos</option>
                         <option value="prata" <?= $tipo === 'prata' ? 'selected' : '' ?>>Prata</option>
-                        <option value="ouro" <?= $tipo === 'ouro' ? 'selected' : '' ?>>Ouro</option>
+                        <option value="ouro" <?= $tipo === 'ouro'  ? 'selected' : '' ?>>Ouro</option>
                     </select>
                 </div>
 
@@ -145,19 +150,35 @@ $nomeUsuario = isset($u['nome']) ? (string)$u['nome'] : '—';
                 </div>
 
                 <div class="col-6 col-md-2">
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="balanco" value="1" id="fBalanco"
-                            <?= ((int)$soBalanco === 1) ? 'checked' : '' ?>>
-                        <label class="form-check-label" for="fBalanco">Só balanço</label>
-                    </div>
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="sem_estoque" value="1" id="fSemEstoque"
-                            <?= ((int)$soSemEstoque === 1) ? 'checked' : '' ?>>
-                        <label class="form-check-label" for="fSemEstoque">Só sem estoque</label>
+                    <label class="form-label mb-1">De</label>
+                    <input type="date" name="data_ini" class="form-control"
+                        value="<?= htmlspecialchars($dataIni) ?>">
+                </div>
+
+                <div class="col-6 col-md-2">
+                    <label class="form-label mb-1">Até</label>
+                    <input type="date" name="data_fim" class="form-control"
+                        value="<?= htmlspecialchars($dataFim) ?>">
+                </div>
+
+                <!-- Linha 2 -->
+                <div class="col-12 col-md-8">
+                    <div class="d-flex flex-wrap gap-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="balanco" value="1" id="fBalanco"
+                                <?= ((int)$soBalanco === 1) ? 'checked' : '' ?>>
+                            <label class="form-check-label" for="fBalanco">Só balanço</label>
+                        </div>
+
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="sem_estoque" value="1" id="fSemEstoque"
+                                <?= ((int)$soSemEstoque === 1) ? 'checked' : '' ?>>
+                            <label class="form-check-label" for="fSemEstoque">Só sem estoque</label>
+                        </div>
                     </div>
                 </div>
 
-                <div class="col-6 col-md-2 d-flex gap-2">
+                <div class="col-12 col-md-4 d-flex gap-2">
                     <button class="btn btn-primary w-100" type="submit">Filtrar</button>
 
                     <a class="btn btn-outline-secondary w-100"
@@ -167,27 +188,35 @@ $nomeUsuario = isset($u['nome']) ? (string)$u['nome'] : '—';
                                     'tipo' => null,
                                     'status' => null,
                                     'balanco' => null,
-                                    'sem_estoque' => null
+                                    'sem_estoque' => null,
+                                    'data_ini' => null,
+                                    'data_fim' => null,
                                 ])) ?>">
                         Limpar
                     </a>
                 </div>
             </div>
         </form>
+
     </div>
 
-    <!-- Barra superior: Mês + Fechar mês -->
+    <!-- Barra superior: Mês + Fechar/Reabrir mês -->
     <div class="d-flex flex-column flex-md-row gap-2 justify-content-between align-items-stretch mb-3">
+
+        <!-- Selecionar competência -->
         <form method="GET" class="d-flex gap-2 align-items-center">
             <label class="fw-bold">Mês:</label>
 
-            <!-- mantém filtros ao trocar mês -->
             <input type="hidden" name="filtro" value="<?= htmlspecialchars($filtro) ?>">
             <input type="hidden" name="q" value="<?= htmlspecialchars($busca) ?>">
             <input type="hidden" name="tipo" value="<?= htmlspecialchars($tipo) ?>">
             <input type="hidden" name="status" value="<?= htmlspecialchars($statusFiltro) ?>">
             <input type="hidden" name="balanco" value="<?= (int)$soBalanco ?>">
             <input type="hidden" name="sem_estoque" value="<?= (int)$soSemEstoque ?>">
+
+            <!-- ✅ preserva datas ao trocar mês -->
+            <input type="hidden" name="data_ini" value="<?= htmlspecialchars($dataIni) ?>">
+            <input type="hidden" name="data_fim" value="<?= htmlspecialchars($dataFim) ?>">
 
             <select name="competencia" class="form-select" onchange="this.form.submit()">
                 <?php if (!in_array($competencia, $mesesDisponiveis, true)): ?>
@@ -206,27 +235,32 @@ $nomeUsuario = isset($u['nome']) ? (string)$u['nome'] : '—';
             <noscript><button class="btn btn-secondary">Filtrar</button></noscript>
         </form>
 
-        <!-- Fechar mês (somente admin) -->
-        <form method="POST" action="fechar_mes.php" class="d-flex gap-2 align-items-center">
-            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token('fechar_mes')) ?>">
-            <input type="hidden" name="competencia" value="<?= htmlspecialchars($competencia) ?>">
-            <input type="hidden" name="usuario" value="<?= htmlspecialchars($nomeUsuario) ?>">
-
+        <!-- Fechar/Reabrir mês (somente admin) -->
+        <div class="d-flex gap-2 align-items-center">
             <?php if (!$canAdmin): ?>
-                <button type="button" class="btn btn-outline-secondary" disabled>
-                    🔒 Sem permissão
-                </button>
+                <button type="button" class="btn btn-outline-secondary" disabled>🔒 Sem permissão</button>
 
             <?php elseif ($mesFechado): ?>
-                <button type="button" class="btn btn-outline-secondary" disabled>
-                    🔒 Mês fechado
-                </button>
+                <button type="button" class="btn btn-outline-secondary" disabled>🔒 Mês fechado</button>
+
+                <form method="POST" action="actions/reabrir_mes.php" class="d-flex gap-2 align-items-center">
+                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token('reabrir_mes')) ?>">
+                    <input type="hidden" name="competencia" value="<?= htmlspecialchars($competencia) ?>">
+                    <input name="confirm" class="form-control" placeholder="REABRIR <?= htmlspecialchars($competencia) ?>" required>
+                    <button type="submit" class="btn btn-warning">🔓 Reabrir mês</button>
+                </form>
 
             <?php else: ?>
-                <input name="confirm" class="form-control" placeholder="FECHAR <?= htmlspecialchars($competencia) ?>" required>
-                <button type="submit" class="btn btn-danger">📅 Fechar mês</button>
+                <form method="POST" action="fechar_mes.php" class="d-flex gap-2 align-items-center">
+                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token('fechar_mes')) ?>">
+                    <input type="hidden" name="competencia" value="<?= htmlspecialchars($competencia) ?>">
+                    <input type="hidden" name="usuario" value="<?= htmlspecialchars($nomeUsuario) ?>">
+
+                    <input name="confirm" class="form-control" placeholder="FECHAR <?= htmlspecialchars($competencia) ?>" required>
+                    <button type="submit" class="btn btn-danger">📅 Fechar mês</button>
+                </form>
             <?php endif; ?>
-        </form>
+        </div>
     </div>
 
     <!-- Botão Novo Pedido -->
@@ -241,7 +275,9 @@ $nomeUsuario = isset($u['nome']) ? (string)$u['nome'] : '—';
 
     <?php if ($mesFechado): ?>
         <div class="alert alert-warning text-center">
-            🔒 Este mês (<?= htmlspecialchars($competencia) ?>) está <strong>FECHADO</strong>. Não é possível criar ou finalizar pedidos nele.
+            🔒 Este mês (<?= htmlspecialchars($competencia) ?>) está <strong>FECHADO</strong>.
+            Operadores não podem criar/finalizar/excluir.
+            <?php if ($canAdmin): ?> Admin pode editar e reabrir. <?php endif; ?>
         </div>
     <?php endif; ?>
 
@@ -276,49 +312,63 @@ $nomeUsuario = isset($u['nome']) ? (string)$u['nome'] : '—';
                 <?php foreach ($retiradas as $r):
                     $info = retirada_status_info($r);
                     $tipoLinha = htmlspecialchars(ucfirst((string)($r['tipo'] ?? '')));
+                    $id = (int)($r['id'] ?? 0);
+                    $isFinalizado = (($r['status'] ?? '') === 'finalizado');
                 ?>
-                    <tr class="<?= htmlspecialchars($info['classe']) ?>" data-id="<?= (int)$r['id'] ?>">
-                        <td><?= date('d/m H:i', strtotime($r['data_pedido'])) ?></td>
-                        <td><strong><?= htmlspecialchars($r['produto']) ?></strong></td>
-                        <td><?= (int)$r['quantidade_solicitada'] ?></td>
+                    <tr class="<?= htmlspecialchars($info['classe']) ?>" data-id="<?= $id ?>">
+                        <td><?= date('d/m H:i', strtotime((string)$r['data_pedido'])) ?></td>
+                        <td><strong><?= htmlspecialchars((string)$r['produto']) ?></strong></td>
+                        <td><?= (int)($r['quantidade_solicitada'] ?? 0) ?></td>
 
                         <td class="d-none d-md-table-cell"><?= $tipoLinha ?></td>
-                        <td class="d-none d-md-table-cell"><?= htmlspecialchars($r['solicitante']) ?></td>
+                        <td class="d-none d-md-table-cell"><?= htmlspecialchars((string)($r['solicitante'] ?? '')) ?></td>
 
                         <td class="d-none d-md-table-cell">
-                            <?= $r['data_finalizacao'] ? date('d/m H:i', strtotime($r['data_finalizacao'])) : '—' ?>
+                            <?= !empty($r['data_finalizacao']) ? date('d/m H:i', strtotime((string)$r['data_finalizacao'])) : '—' ?>
                         </td>
 
                         <td class="d-none d-md-table-cell">
                             <?= htmlspecialchars((string)($r['responsavel_estoque'] ?? '—')) ?>
                         </td>
 
-                        <td class="d-none d-md-table-cell"><strong><?= htmlspecialchars($info['texto']) ?></strong></td>
+                        <td class="d-none d-md-table-cell"><strong><?= htmlspecialchars((string)$info['texto']) ?></strong></td>
                         <td class="d-table-cell d-md-none"><strong><?= $tipoLinha ?></strong></td>
 
                         <td>
-                            <?php if ($mesFechado || !$canOperate): ?>
-                                —
-                            <?php else: ?>
-                                <div class="d-flex flex-column gap-2">
-                                    <?php if (($r['status'] ?? '') !== 'finalizado'): ?>
-                                        <button class="btn btn-success w-100"
-                                            data-bs-toggle="modal"
-                                            data-bs-target="#modalFinalizar<?= (int)$r['id'] ?>">
-                                            ✅ Finalizar
-                                        </button>
-                                    <?php endif; ?>
+                            <div class="d-flex flex-column gap-2">
+                                <!-- Finalizar: somente operador+, mês aberto, e se não finalizado -->
+                                <?php if ($canOperate && !$mesFechado && !$isFinalizado): ?>
+                                    <button class="btn btn-success w-100"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#modalFinalizar<?= $id ?>">
+                                        ✅ Finalizar
+                                    </button>
+                                <?php endif; ?>
 
-                                    <?php if ($canAdmin): ?>
-                                        <button type="button"
-                                            class="btn btn-outline-danger w-100"
-                                            data-bs-toggle="modal"
-                                            data-bs-target="#modalExcluir<?= (int)$r['id'] ?>">
-                                            🗑 Excluir
-                                        </button>
-                                    <?php endif; ?>
-                                </div>
-                            <?php endif; ?>
+                                <!-- Editar: somente admin (mesmo mês fechado) -->
+                                <?php if ($canAdmin): ?>
+                                    <button type="button"
+                                        class="btn btn-outline-primary w-100"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#modalEditar<?= $id ?>">
+                                        ✏ Editar
+                                    </button>
+                                <?php endif; ?>
+
+                                <!-- Excluir: somente operador+ e mês aberto -->
+                                <?php if ($canOperate && !$mesFechado): ?>
+                                    <button type="button"
+                                        class="btn btn-outline-danger w-100"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#modalExcluir<?= $id ?>">
+                                        🗑 Excluir
+                                    </button>
+                                <?php endif; ?>
+
+                                <?php if (!$canAdmin && !$canOperate): ?>
+                                    —
+                                <?php endif; ?>
+                            </div>
                         </td>
                     </tr>
                 <?php endforeach; ?>
@@ -338,7 +388,7 @@ $nomeUsuario = isset($u['nome']) ? (string)$u['nome'] : '—';
         <div id="appToast" class="toast align-items-center border-0" role="alert" aria-live="assertive" aria-atomic="true">
             <div class="d-flex">
                 <div id="appToastBody" class="toast-body"></div>
-                <button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast" aria-label="Fechar"></button>
+                <button type="button" class="btn btn-close me-2 m-auto" data-bs-dismiss="toast" aria-label="Fechar"></button>
             </div>
         </div>
     </div>

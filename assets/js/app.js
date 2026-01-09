@@ -4,7 +4,7 @@
   const toastType = (root.dataset.toast || "").trim();
   const highlightId = parseInt(root.dataset.highlightId || "0", 10);
 
-  // Toast (finalizado / excluido)
+  // Toast (finalizado / excluido / editado / mês reaberto)
   if (toastType) {
     const el = document.getElementById("appToast");
     const body = document.getElementById("appToastBody");
@@ -18,9 +18,12 @@
       } else if (toastType === "excluido") {
         el.classList.add("text-bg-danger");
         body.textContent = "🗑 Pedido excluído com sucesso!";
-      } else {
-        // desconhecido -> não mostra
-        return;
+      } else if (toastType === "editado") {
+        el.classList.add("text-bg-success");
+        body.textContent = "✏️ Pedido editado com sucesso!";
+      } else if (toastType === "mes_reaberto") {
+        el.classList.add("text-bg-success");
+        body.textContent = "🔁 Mês reaberto com sucesso!";
       }
 
       new bootstrap.Toast(el, { delay: 2500 }).show();

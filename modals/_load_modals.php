@@ -18,3 +18,10 @@ foreach ($retiradas as $r) {
         require __DIR__ . '/modal_excluir_pedido.php';
     }
 }
+foreach ($retiradas as $r) {
+
+    // Editar: só para operador/admin
+    if (!empty($canOperate)) {
+        require __DIR__ . '/modal_editar_pedido.php';
+    }
+}
