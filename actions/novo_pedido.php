@@ -70,8 +70,25 @@ $sql = "
 
 $stmt = $pdo->prepare($sql);
 $ok = $stmt->execute([$produto, $quantidade, $tipo, $solicitante, $competencia]);
-
 if ($ok) {
+    require_once __DIR__ . '/../helpers/audit.php';
+
+    $newId = (int)$pdo->lastInsertId();
+
+    audit_log(
+        $pdo,
+        'create',
+        'retirada',
+        $newId,
+        [
+            'produto' => $produto,
+            'quantidade_solicitada' => $quantidade,
+            'tipo' => $tipo,
+            'solicitante' => $solicitante,
+            'competencia' => $competencia
+        ]
+    );
+
     redirect_with_query('../index.php', ['competencia' => $competencia]);
 }
 

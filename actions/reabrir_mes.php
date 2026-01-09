@@ -32,6 +32,12 @@ if (mb_strtoupper($confirm, 'UTF-8') !== $expected) {
 $stmt = $pdo->prepare("DELETE FROM fechamentos WHERE competencia = ? LIMIT 1");
 $stmt->execute([$competencia]);
 
+require_once __DIR__ . '/../helpers/audit.php';
+
+audit_log($pdo, 'delete', 'retirada', $id, [
+    'competencia' => $competencia
+]);
+
 redirect_with_query('../index.php', [
     'competencia' => $competencia,
     'toast' => 'mes_reaberto'

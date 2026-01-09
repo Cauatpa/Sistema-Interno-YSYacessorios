@@ -103,6 +103,12 @@ if (!$ok) {
     exit('Erro ao salvar edição.');
 }
 
+require_once __DIR__ . '/../helpers/audit.php';
+
+audit_log($pdo, 'delete', 'retirada', $id, [
+    'competencia' => $competencia
+]);
+
 redirect_with_query('../index.php', [
     'competencia' => $competencia,
     'toast' => 'editado',

@@ -41,5 +41,11 @@ if (!is_array($result) || empty($result['ok'])) {
     exit($msg);
 }
 
+require_once __DIR__ . '/../helpers/audit.php';
+
+audit_log($pdo, 'delete', 'retirada', $id, [
+    'competencia' => $competencia
+]);
+
 // volta pra tela do mês fechado
 redirect_with_query('index.php', ['competencia' => $competencia]);
