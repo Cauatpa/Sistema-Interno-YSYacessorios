@@ -1,10 +1,14 @@
 <?php
 
-function post_only(): void
-{
-    if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
-        http_response_code(405);
-        exit('Método não permitido.');
+declare(strict_types=1);
+
+if (!function_exists('post_only')) {
+    function post_only(): void
+    {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            http_response_code(405);
+            exit('Método não permitido.');
+        }
     }
 }
 

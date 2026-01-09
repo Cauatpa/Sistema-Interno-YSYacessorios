@@ -4,6 +4,9 @@ require_once __DIR__ . '/../helpers/competencia.php';
 require_once __DIR__ . '/../services/fechamento.php';
 require_once __DIR__ . '/../helpers/csrf.php';
 require_once __DIR__ . '/../helpers/validation.php';
+require_once __DIR__ . '/../helpers/auth.php';
+
+auth_require_role('operador');
 
 post_only();
 
