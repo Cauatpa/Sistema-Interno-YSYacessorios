@@ -1,11 +1,12 @@
 <?php
 require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../helpers/auth.php';
 require_once __DIR__ . '/../helpers/competencia.php';
 require_once __DIR__ . '/../services/fechamento.php';
 require_once __DIR__ . '/../helpers/csrf.php';
 require_once __DIR__ . '/../helpers/validation.php';
-require_once __DIR__ . '/../helpers/auth.php';
 
+auth_session_start();
 auth_require_role('operador');
 
 post_only();
@@ -20,9 +21,10 @@ csrf_rotate('finalizar_pedido');
 // Dados do modal
 $id = int_pos($_POST['id'] ?? 0);
 $quantidade_retirada = int_nonneg($_POST['quantidade_retirada'] ?? -1);
-$responsavel_estoque = trim((string)($_POST['responsavel_estoque'] ?? ''));
-$precisa_balanco = (int)($_POST['precisa_balanco'] ?? 0);
-$sem_estoque = (int)($_POST['sem_estoque'] ?? 0);
+
+// checkboxes (normaliza)
+$precisa_balanco = !empty($_POST['precisa_balanco']) ? 1 : 0;
+$sem_estoque     = !empty($_POST['sem_estoque']) ? 1 : 0;
 
 if ($id <= 0) {
     http_response_code(400);
@@ -32,9 +34,13 @@ if ($quantidade_retirada < 0) {
     http_response_code(400);
     exit('Quantidade retirada inválida.');
 }
+
+// ✅ responsável vem do usuário logado
+$u = auth_user();
+$responsavel_estoque = trim((string)($u['nome'] ?? $u['usuario'] ?? ''));
 if ($responsavel_estoque === '') {
-    http_response_code(400);
-    exit('Responsável do estoque é obrigatório.');
+    http_response_code(401);
+    exit('Usuário não autenticado.');
 }
 
 // Buscar dados do pedido (inclui competência e quantidade solicitada)
@@ -67,6 +73,8 @@ if (mes_esta_fechado($pdo, $competencia)) {
 }
 
 // Regras automáticas
+// Obs: seu código diz: se retirou menos, marca precisa_balanco e sem_estoque.
+// Mantive igual ao que você já definiu.
 if ($quantidade_retirada < $qtd_solicitada) {
     $precisa_balanco = 1;
     $sem_estoque = 1;
@@ -88,8 +96,8 @@ $update = $pdo->prepare("
 $update->execute([
     $quantidade_retirada,
     $responsavel_estoque,
-    $precisa_balanco ? 1 : 0,
-    $sem_estoque ? 1 : 0,
+    (int)$precisa_balanco,
+    (int)$sem_estoque,
     $id
 ]);
 

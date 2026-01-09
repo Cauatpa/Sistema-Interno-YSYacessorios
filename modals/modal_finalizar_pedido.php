@@ -41,7 +41,7 @@
                             required>
                     </div>
 
-                    <!-- Responsável -->
+                    <!-- Responsável
                     <div class="mb-3">
                         <label class="form-label">Quem retirou do estoque</label>
                         <input
@@ -49,7 +49,7 @@
                             name="responsavel_estoque"
                             class="form-control form-control-lg"
                             required>
-                    </div>
+                    </div> -->
 
                     <!-- Balanço -->
                     <div class="form-check form-switch mb-2">

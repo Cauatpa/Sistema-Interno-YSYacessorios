@@ -1,12 +1,13 @@
 <?php
 require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../helpers/auth.php';
 require_once __DIR__ . '/../helpers/competencia.php';
 require_once __DIR__ . '/../services/fechamento.php';
 require_once __DIR__ . '/../helpers/csrf.php';
 require_once __DIR__ . '/../helpers/validation.php';
-require_once __DIR__ . '/../helpers/auth.php';
 
-auth_require_role('operador');
+auth_session_start();
+auth_require_role('operador'); // operador ou admin
 
 post_only();
 
@@ -17,13 +18,12 @@ if (!csrf_validate($_POST['csrf_token'] ?? null, 'novo_pedido')) {
 }
 csrf_rotate('novo_pedido');
 
-// Campos obrigatórios
-require_fields($_POST, ['produto', 'quantidade_solicitada', 'tipo', 'solicitante']);
+// Campos obrigatórios (sem solicitante agora)
+require_fields($_POST, ['produto', 'quantidade_solicitada', 'tipo']);
 
 $produto = trim((string)$_POST['produto']);
 $quantidade = int_pos($_POST['quantidade_solicitada'] ?? 0);
 $tipo = one_of(trim((string)$_POST['tipo']), ['prata', 'ouro'], '');
-$solicitante = trim((string)$_POST['solicitante']);
 
 if ($produto === '') {
     http_response_code(400);
@@ -37,12 +37,16 @@ if ($tipo === '') {
     http_response_code(400);
     exit('Tipo inválido.');
 }
+
+// ✅ solicitante vem do usuário logado
+$u = $_SESSION['user'] ?? null;
+$solicitante = trim((string)($u['nome'] ?? $u['usuario'] ?? ''));
 if ($solicitante === '') {
-    http_response_code(400);
-    exit('Solicitante inválido.');
+    http_response_code(401);
+    exit('Usuário não autenticado.');
 }
 
-// Competência pela data atual
+// Competência
 $data_pedido = date('Y-m-d H:i:s');
 $competencia = competencia_from_datetime($data_pedido);
 
