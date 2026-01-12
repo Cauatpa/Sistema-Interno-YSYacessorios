@@ -50,6 +50,7 @@ $dataFim = (string)($f['dataFim'] ?? $f['data_fim'] ?? '');
 
             <?php if ($canAdmin): ?>
                 <a href="usuarios.php" class="btn btn-outline-primary btn-sm">Usuários</a>
+                <a href="auditoria.php" class="btn btn-outline-dark btn-sm">Auditoria</a>
             <?php endif; ?>
 
             <form method="POST" action="logout.php" class="d-inline">
