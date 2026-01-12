@@ -7,7 +7,7 @@ require_once __DIR__ . '/helpers/csrf.php';
 auth_session_start();
 auth_require_role('admin');
 
-$limit = 50;
+$limit = 5;
 $page = max(1, (int)($_GET['p'] ?? 1));
 $offset = ($page - 1) * $limit;
 

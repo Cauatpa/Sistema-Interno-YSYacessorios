@@ -11,6 +11,21 @@ if ($nomeUsuario === '') $nomeUsuario = '—';
 // Datas (compatível com chaves diferentes, caso seu normalizador use outro padrão)
 $dataIni = (string)($f['dataIni'] ?? $f['data_ini'] ?? '');
 $dataFim = (string)($f['dataFim'] ?? $f['data_fim'] ?? '');
+
+// Paginação (garantia defensiva, caso controller não mande)
+$perPageOptions = $perPageOptions ?? [25, 50, 100];
+$perPage = isset($perPage) ? (int)$perPage : (int)($_GET['per_page'] ?? 5);
+$page = isset($page) ? (int)$page : (int)($_GET['p'] ?? 1);
+$totalPages = isset($totalPages) ? (int)$totalPages : 1;
+$total = isset($total) ? (int)$total : 0;
+
+// Helper de URL para paginação preservando filtros atuais
+function page_url(int $p): string
+{
+    $q = $_GET;
+    $q['p'] = $p;
+    return 'index.php?' . http_build_query($q);
+}
 ?>
 
 <!DOCTYPE html>
@@ -52,7 +67,7 @@ $dataFim = (string)($f['dataFim'] ?? $f['data_fim'] ?? '');
                 <a href="usuarios.php" class="btn btn-outline-primary btn-sm">Usuários</a>
                 <a href="auditoria.php" class="btn btn-outline-dark btn-sm">Auditoria</a>
             <?php endif; ?>
-
+            <a href="minha_senha.php" class="btn btn-outline-secondary btn-sm">Minha Senha</a>
             <form method="POST" action="logout.php" class="d-inline">
                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token('logout')) ?>">
                 <button type="submit" class="btn btn-outline-secondary btn-sm">Sair</button>
@@ -68,7 +83,7 @@ $dataFim = (string)($f['dataFim'] ?? $f['data_fim'] ?? '');
 
             <div class="col-6 col-md-3">
                 <a class="text-decoration-none"
-                    href="<?= htmlspecialchars(url_com_query('index.php', $_GET, ['competencia' => $competencia, 'filtro' => 'todos'])) ?>">
+                    href="<?= htmlspecialchars(url_com_query('index.php', $_GET, ['competencia' => $competencia, 'filtro' => 'todos', 'p' => 1])) ?>">
                     <div class="card <?= card_class($filtro, 'todos') ?>">
                         <div class="card-body text-center">
                             <div class="fw-bold">📊 Total</div>
@@ -80,7 +95,7 @@ $dataFim = (string)($f['dataFim'] ?? $f['data_fim'] ?? '');
 
             <div class="col-6 col-md-3">
                 <a class="text-decoration-none"
-                    href="<?= htmlspecialchars(url_com_query('index.php', $_GET, ['competencia' => $competencia, 'filtro' => 'pendentes'])) ?>">
+                    href="<?= htmlspecialchars(url_com_query('index.php', $_GET, ['competencia' => $competencia, 'filtro' => 'pendentes', 'p' => 1])) ?>">
                     <div class="card <?= card_class($filtro, 'pendentes') ?>">
                         <div class="card-body text-center">
                             <div class="fw-bold">⏳ Pendentes</div>
@@ -92,7 +107,7 @@ $dataFim = (string)($f['dataFim'] ?? $f['data_fim'] ?? '');
 
             <div class="col-6 col-md-3">
                 <a class="text-decoration-none"
-                    href="<?= htmlspecialchars(url_com_query('index.php', $_GET, ['competencia' => $competencia, 'filtro' => 'balanco'])) ?>">
+                    href="<?= htmlspecialchars(url_com_query('index.php', $_GET, ['competencia' => $competencia, 'filtro' => 'balanco', 'p' => 1])) ?>">
                     <div class="card <?= card_class($filtro, 'balanco') ?>">
                         <div class="card-body text-center">
                             <div class="fw-bold">🟡 Balanço</div>
@@ -104,7 +119,7 @@ $dataFim = (string)($f['dataFim'] ?? $f['data_fim'] ?? '');
 
             <div class="col-6 col-md-3">
                 <a class="text-decoration-none"
-                    href="<?= htmlspecialchars(url_com_query('index.php', $_GET, ['competencia' => $competencia, 'filtro' => 'sem_estoque'])) ?>">
+                    href="<?= htmlspecialchars(url_com_query('index.php', $_GET, ['competencia' => $competencia, 'filtro' => 'sem_estoque', 'p' => 1])) ?>">
                     <div class="card <?= card_class($filtro, 'sem_estoque') ?>">
                         <div class="card-body text-center">
                             <div class="fw-bold">🔴 Sem estoque</div>
@@ -120,11 +135,14 @@ $dataFim = (string)($f['dataFim'] ?? $f['data_fim'] ?? '');
              Pesquisa + Filtros (somente PC)
              ====================== -->
         <form method="GET" class="card p-2 mb-3">
+            <!-- sempre reseta pra página 1 ao filtrar -->
+            <input type="hidden" name="p" value="1">
+
             <input type="hidden" name="competencia" value="<?= htmlspecialchars($competencia) ?>">
             <input type="hidden" name="filtro" value="<?= htmlspecialchars($filtro) ?>">
 
             <div class="row g-2 align-items-end">
-                <!-- Linha 1 -->
+
                 <div class="col-12 col-md-4">
                     <label class="form-label mb-1">Pesquisar</label>
                     <input type="text" name="q" class="form-control"
@@ -151,6 +169,17 @@ $dataFim = (string)($f['dataFim'] ?? $f['data_fim'] ?? '');
                 </div>
 
                 <div class="col-6 col-md-2">
+                    <label class="form-label mb-1">Por página</label>
+                    <select name="per_page" class="form-select">
+                        <?php foreach ($perPageOptions as $opt): ?>
+                            <option value="<?= (int)$opt ?>" <?= ((int)$perPage === (int)$opt) ? 'selected' : '' ?>>
+                                <?= (int)$opt ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <div class="col-6 col-md-2">
                     <label class="form-label mb-1">De</label>
                     <input type="date" name="data_ini" class="form-control"
                         value="<?= htmlspecialchars($dataIni) ?>">
@@ -162,8 +191,7 @@ $dataFim = (string)($f['dataFim'] ?? $f['data_fim'] ?? '');
                         value="<?= htmlspecialchars($dataFim) ?>">
                 </div>
 
-                <!-- Linha 2 -->
-                <div class="col-12 col-md-8">
+                <div class="col-12 col-md-6">
                     <div class="d-flex flex-wrap gap-3">
                         <div class="form-check">
                             <input class="form-check-input" type="checkbox" name="balanco" value="1" id="fBalanco"
@@ -179,7 +207,7 @@ $dataFim = (string)($f['dataFim'] ?? $f['data_fim'] ?? '');
                     </div>
                 </div>
 
-                <div class="col-12 col-md-4 d-flex gap-2">
+                <div class="col-12 col-md-6 d-flex gap-2">
                     <button class="btn btn-primary w-100" type="submit">Filtrar</button>
 
                     <a class="btn btn-outline-secondary w-100"
@@ -192,6 +220,8 @@ $dataFim = (string)($f['dataFim'] ?? $f['data_fim'] ?? '');
                                     'sem_estoque' => null,
                                     'data_ini' => null,
                                     'data_fim' => null,
+                                    'p' => null,
+                                    'per_page' => null,
                                 ])) ?>">
                         Limpar
                     </a>
@@ -215,9 +245,11 @@ $dataFim = (string)($f['dataFim'] ?? $f['data_fim'] ?? '');
             <input type="hidden" name="balanco" value="<?= (int)$soBalanco ?>">
             <input type="hidden" name="sem_estoque" value="<?= (int)$soSemEstoque ?>">
 
-            <!-- ✅ preserva datas ao trocar mês -->
+            <!-- preserva datas + paginação ao trocar mês -->
             <input type="hidden" name="data_ini" value="<?= htmlspecialchars($dataIni) ?>">
             <input type="hidden" name="data_fim" value="<?= htmlspecialchars($dataFim) ?>">
+            <input type="hidden" name="per_page" value="<?= (int)$perPage ?>">
+            <input type="hidden" name="p" value="<?= (int)$page ?>">
 
             <select name="competencia" class="form-select" onchange="this.form.submit()">
                 <?php if (!in_array($competencia, $mesesDisponiveis, true)): ?>
@@ -277,7 +309,7 @@ $dataFim = (string)($f['dataFim'] ?? $f['data_fim'] ?? '');
     <?php if ($mesFechado): ?>
         <div class="alert alert-warning text-center">
             🔒 Este mês (<?= htmlspecialchars($competencia) ?>) está <strong>FECHADO</strong>.
-            Operadores não podem criar/finalizar/excluir.
+            Operadores não podem criar/finalizar.
             <?php if ($canAdmin): ?> Admin pode editar e reabrir. <?php endif; ?>
         </div>
     <?php endif; ?>
@@ -310,73 +342,126 @@ $dataFim = (string)($f['dataFim'] ?? $f['data_fim'] ?? '');
             </thead>
 
             <tbody>
-                <?php foreach ($retiradas as $r):
-                    $info = retirada_status_info($r);
-                    $tipoLinha = htmlspecialchars(ucfirst((string)($r['tipo'] ?? '')));
-                    $id = (int)($r['id'] ?? 0);
-                    $isFinalizado = (($r['status'] ?? '') === 'finalizado');
-                ?>
-                    <tr class="<?= htmlspecialchars($info['classe']) ?>" data-id="<?= $id ?>">
-                        <td><?= date('d/m H:i', strtotime((string)$r['data_pedido'])) ?></td>
-                        <td><strong><?= htmlspecialchars((string)$r['produto']) ?></strong></td>
-                        <td><?= (int)($r['quantidade_solicitada'] ?? 0) ?></td>
-
-                        <td class="d-none d-md-table-cell"><?= $tipoLinha ?></td>
-                        <td class="d-none d-md-table-cell"><?= htmlspecialchars((string)($r['solicitante'] ?? '')) ?></td>
-
-                        <td class="d-none d-md-table-cell">
-                            <?= !empty($r['data_finalizacao']) ? date('d/m H:i', strtotime((string)$r['data_finalizacao'])) : '—' ?>
-                        </td>
-
-                        <td class="d-none d-md-table-cell">
-                            <?= htmlspecialchars((string)($r['responsavel_estoque'] ?? '—')) ?>
-                        </td>
-
-                        <td class="d-none d-md-table-cell"><strong><?= htmlspecialchars((string)$info['texto']) ?></strong></td>
-                        <td class="d-table-cell d-md-none"><strong><?= $tipoLinha ?></strong></td>
-
-                        <td>
-                            <div class="d-flex flex-column gap-2">
-                                <!-- Finalizar: somente operador+, mês aberto, e se não finalizado -->
-                                <?php if ($canOperate && !$mesFechado && !$isFinalizado): ?>
-                                    <button class="btn btn-success w-100"
-                                        data-bs-toggle="modal"
-                                        data-bs-target="#modalFinalizar<?= $id ?>">
-                                        ✅ Finalizar
-                                    </button>
-                                <?php endif; ?>
-
-                                <!-- Editar: somente admin (mesmo mês fechado) -->
-                                <?php if ($canAdmin): ?>
-                                    <button type="button"
-                                        class="btn btn-outline-primary w-100"
-                                        data-bs-toggle="modal"
-                                        data-bs-target="#modalEditar<?= $id ?>">
-                                        ✏ Editar
-                                    </button>
-                                <?php endif; ?>
-
-                                <!-- Excluir: somente operador+ e mês aberto -->
-                                <?php if ($canAdmin && !$mesFechado): ?>
-                                    <button type="button"
-                                        class="btn btn-outline-danger w-100"
-                                        data-bs-toggle="modal"
-                                        data-bs-target="#modalExcluir<?= $id ?>">
-                                        🗑 Excluir
-                                    </button>
-                                <?php endif; ?>
-
-                                <?php if (!$canAdmin && !$canOperate): ?>
-                                    —
-                                <?php endif; ?>
-                            </div>
+                <?php if (empty($retiradas)): ?>
+                    <tr>
+                        <td colspan="10" class="text-muted py-4">
+                            Nenhum registro encontrado com os filtros atuais.
                         </td>
                     </tr>
-                <?php endforeach; ?>
+                <?php else: ?>
+                    <?php foreach ($retiradas as $r):
+                        $info = retirada_status_info($r);
+                        $tipoLinha = htmlspecialchars(ucfirst((string)($r['tipo'] ?? '')));
+                        $id = (int)($r['id'] ?? 0);
+                        $isFinalizado = (($r['status'] ?? '') === 'finalizado');
+                    ?>
+                        <tr class="<?= htmlspecialchars($info['classe']) ?>" data-id="<?= $id ?>">
+                            <td><?= date('d/m H:i', strtotime((string)$r['data_pedido'])) ?></td>
+                            <td><strong><?= htmlspecialchars((string)$r['produto']) ?></strong></td>
+                            <td><?= (int)($r['quantidade_solicitada'] ?? 0) ?></td>
+
+                            <td class="d-none d-md-table-cell"><?= $tipoLinha ?></td>
+                            <td class="d-none d-md-table-cell"><?= htmlspecialchars((string)($r['solicitante'] ?? '')) ?></td>
+
+                            <td class="d-none d-md-table-cell">
+                                <?= !empty($r['data_finalizacao']) ? date('d/m H:i', strtotime((string)$r['data_finalizacao'])) : '—' ?>
+                            </td>
+
+                            <td class="d-none d-md-table-cell">
+                                <?= htmlspecialchars((string)($r['responsavel_estoque'] ?? '—')) ?>
+                            </td>
+
+                            <td class="d-none d-md-table-cell">
+                                <strong><?= htmlspecialchars((string)$info['texto']) ?></strong>
+                            </td>
+                            <td class="d-table-cell d-md-none"><strong><?= $tipoLinha ?></strong></td>
+
+                            <td>
+                                <div class="d-flex flex-column gap-2">
+                                    <?php if ($canOperate && !$mesFechado && !$isFinalizado): ?>
+                                        <button class="btn btn-success w-100"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#modalFinalizar<?= $id ?>">
+                                            ✅ Finalizar
+                                        </button>
+                                    <?php endif; ?>
+
+                                    <?php if ($canAdmin): ?>
+                                        <button type="button"
+                                            class="btn btn-outline-primary w-100"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#modalEditar<?= $id ?>">
+                                            ✏ Editar
+                                        </button>
+                                    <?php endif; ?>
+
+                                    <?php if ($canAdmin && !$mesFechado): ?>
+                                        <button type="button"
+                                            class="btn btn-outline-danger w-100"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#modalExcluir<?= $id ?>">
+                                            🗑 Excluir
+                                        </button>
+                                    <?php endif; ?>
+
+                                    <?php if (!$canAdmin && !$canOperate): ?>
+                                        —
+                                    <?php endif; ?>
+                                </div>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                <?php endif; ?>
             </tbody>
 
         </table>
     </div>
+
+    <!-- Paginação -->
+    <?php if ($totalPages > 1): ?>
+        <?php
+        $start = max(1, $page - 2);
+        $end   = min($totalPages, $page + 2);
+        ?>
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-center gap-2 mt-3">
+            <div class="small text-muted">
+                Mostrando <?= count($retiradas) ?> de <?= (int)$total ?> |
+                Página <?= (int)$page ?> / <?= (int)$totalPages ?>
+            </div>
+
+            <nav>
+                <ul class="pagination mb-0">
+                    <li class="page-item <?= ($page <= 1) ? 'disabled' : '' ?>">
+                        <a class="page-link" href="<?= htmlspecialchars(page_url(max(1, $page - 1))) ?>">← Anterior</a>
+                    </li>
+
+                    <?php if ($start > 1): ?>
+                        <li class="page-item"><a class="page-link" href="<?= htmlspecialchars(page_url(1)) ?>">1</a></li>
+                        <?php if ($start > 2): ?>
+                            <li class="page-item disabled"><span class="page-link">…</span></li>
+                        <?php endif; ?>
+                    <?php endif; ?>
+
+                    <?php for ($i = $start; $i <= $end; $i++): ?>
+                        <li class="page-item <?= ($i === $page) ? 'active' : '' ?>">
+                            <a class="page-link" href="<?= htmlspecialchars(page_url($i)) ?>"><?= (int)$i ?></a>
+                        </li>
+                    <?php endfor; ?>
+
+                    <?php if ($end < $totalPages): ?>
+                        <?php if ($end < $totalPages - 1): ?>
+                            <li class="page-item disabled"><span class="page-link">…</span></li>
+                        <?php endif; ?>
+                        <li class="page-item"><a class="page-link" href="<?= htmlspecialchars(page_url($totalPages)) ?>"><?= (int)$totalPages ?></a></li>
+                    <?php endif; ?>
+
+                    <li class="page-item <?= ($page >= $totalPages) ? 'disabled' : '' ?>">
+                        <a class="page-link" href="<?= htmlspecialchars(page_url(min($totalPages, $page + 1))) ?>">Próxima →</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    <?php endif; ?>
 
     <!-- Modais -->
     <?php include 'modals/_load_modals.php'; ?>
@@ -389,12 +474,12 @@ $dataFim = (string)($f['dataFim'] ?? $f['data_fim'] ?? '');
         <div id="appToast" class="toast align-items-center border-0" role="alert" aria-live="assertive" aria-atomic="true">
             <div class="d-flex">
                 <div id="appToastBody" class="toast-body"></div>
-                <button type="button" class="btn btn-close me-2 m-auto" data-bs-dismiss="toast" aria-label="Fechar"></button>
+                <button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast" aria-label="Fechar"></button>
             </div>
         </div>
     </div>
 
-    <!-- Seu JS (toast/highlight) -->
+    <!-- JS (toast/highlight) -->
     <script src="assets/js/app.js" defer></script>
 
 </body>

@@ -72,6 +72,46 @@ $dash = $stmtDash->fetch(PDO::FETCH_ASSOC) ?: [
 // ---------------------
 list($where, $params) = montar_where_retiradas($competencia, $f);
 
-$stmt = $pdo->prepare("SELECT * FROM retiradas {$where} ORDER BY data_pedido DESC");
+// Paginação
+$perPage = 50; // escolha: 25, 50, 100
+$page = max(1, (int)($_GET['p'] ?? 1));
+$offset = ($page - 1) * $perPage;
+
+// Total
+$stmtTotal = $pdo->prepare("SELECT COUNT(*) FROM retiradas {$where}");
+$stmtTotal->execute($params);
+$total = (int)$stmtTotal->fetchColumn();
+
+$totalPages = max(1, (int)ceil($total / $perPage));
+if ($page > $totalPages) $page = $totalPages;
+$offset = ($page - 1) * $perPage;
+
+// Listagem paginada
+list($where, $params) = montar_where_retiradas($competencia, $f);
+
+// ---------------------
+// Paginação + per_page
+// ---------------------
+$perPageOptions = [25, 50, 100];
+$perPage = (int)($_GET['per_page'] ?? 5);
+if (!in_array($perPage, $perPageOptions, true)) {
+    $perPage = 5;
+}
+
+$page = max(1, (int)($_GET['p'] ?? 1));
+$offset = ($page - 1) * $perPage;
+
+// Total (com os mesmos filtros)
+$stmtTotal = $pdo->prepare("SELECT COUNT(*) FROM retiradas {$where}");
+$stmtTotal->execute($params);
+$total = (int)$stmtTotal->fetchColumn();
+
+$totalPages = max(1, (int)ceil($total / $perPage));
+if ($page > $totalPages) $page = $totalPages;
+$offset = ($page - 1) * $perPage;
+
+// Listagem paginada
+$sql = "SELECT * FROM retiradas {$where} ORDER BY data_pedido DESC LIMIT {$perPage} OFFSET {$offset}";
+$stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $retiradas = $stmt->fetchAll(PDO::FETCH_ASSOC);

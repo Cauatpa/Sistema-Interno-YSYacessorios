@@ -8,10 +8,8 @@ auth_session_start();
 auth_require_role('admin');
 
 $toast = $_GET['toast'] ?? '';
-$senhaGerada = $_GET['senha'] ?? ''; // mostrada apenas no redirect após criar/reset
+$senhaGerada = $_GET['senha'] ?? '';
 
-// ⚠️ last_login_at estava quebrando porque a coluna não existe no seu DB.
-// Se quiser esse campo no futuro, a gente cria no banco e reativa.
 $stmt = $pdo->query("
     SELECT id, nome, usuario, role, ativo, created_at
     FROM users
@@ -19,18 +17,40 @@ $stmt = $pdo->query("
 ");
 $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+/**
+ * Define classe do badge por role do banco.
+ */
 function badgeRole(string $role): string
 {
+    $role = trim($role);
+
     return match ($role) {
-        'admin'    => 'bg-danger',
-        'operador' => 'bg-primary',
-        'leitura'  => 'bg-secondary',
-        default    => 'bg-secondary',
+        'admin'        => 'bg-danger',
+        'operador'     => 'bg-primary',
+        'visualizador' => 'bg-secondary',
+        'leitura'      => 'bg-secondary', // compat retro
+        default        => 'bg-secondary',
+    };
+}
+
+/**
+ * Label amigável para UI (sem mudar o valor do banco).
+ */
+function labelRole(string $role): string
+{
+    $role = trim($role);
+
+    return match ($role) {
+        'admin'        => 'admin',
+        'operador'     => 'operador',
+        'visualizador' => 'leitor',
+        'leitura'      => 'leitor', // compat retro
+        default        => $role !== '' ? $role : '—', // mostra o que veio pra facilitar debug
     };
 }
 ?>
 <!DOCTYPE html>
-<html lang="pt-br" data-toast="<?= htmlspecialchars($toast) ?>">
+<html lang="pt-br" data-toast="<?= htmlspecialchars((string)$toast) ?>">
 
 <head>
     <meta charset="UTF-8">
@@ -59,7 +79,7 @@ function badgeRole(string $role): string
 
         <?php if ($senhaGerada !== ''): ?>
             <div class="alert alert-warning">
-                <strong>Senha temporária:</strong> <code><?= htmlspecialchars($senhaGerada) ?></code><br>
+                <strong>Senha temporária:</strong> <code><?= htmlspecialchars((string)$senhaGerada) ?></code><br>
                 <small class="text-muted">Copie e guarde agora (por segurança, não fica salva em nenhum lugar).</small>
             </div>
         <?php endif; ?>
@@ -85,7 +105,7 @@ function badgeRole(string $role): string
                     <label class="form-label mb-1">Permissão</label>
                     <select name="role" class="form-select" required>
                         <option value="operador">Operador</option>
-                        <option value="leitura">Leitura</option>
+                        <option value="visualizador">Leitor</option>
                         <option value="admin">Admin</option>
                     </select>
                 </div>
@@ -117,32 +137,36 @@ function badgeRole(string $role): string
 
                 <tbody>
                     <?php foreach ($users as $u): ?>
+                        <?php
+                        $id = (int)($u['id'] ?? 0);
+                        $role = (string)($u['role'] ?? '');
+                        ?>
                         <tr>
-                            <td><?= (int)$u['id'] ?></td>
-                            <td><?= htmlspecialchars((string)$u['nome']) ?></td>
-                            <td><code><?= htmlspecialchars((string)$u['usuario']) ?></code></td>
+                            <td><?= $id ?></td>
+                            <td><?= htmlspecialchars((string)($u['nome'] ?? '')) ?></td>
+                            <td><code><?= htmlspecialchars((string)($u['usuario'] ?? '')) ?></code></td>
 
                             <td>
-                                <span class="badge <?= badgeRole((string)$u['role']) ?>">
-                                    <?= htmlspecialchars((string)$u['role']) ?>
+                                <span class="badge <?= badgeRole($role) ?>">
+                                    <?= htmlspecialchars(labelRole($role)) ?>
                                 </span>
                             </td>
 
                             <td>
-                                <?php if ((int)$u['ativo'] === 1): ?>
+                                <?php if ((int)($u['ativo'] ?? 0) === 1): ?>
                                     <span class="badge bg-success">Ativo</span>
                                 <?php else: ?>
                                     <span class="badge bg-secondary">Inativo</span>
                                 <?php endif; ?>
                             </td>
 
-                            <td class="text-nowrap"><?= htmlspecialchars((string)$u['created_at']) ?></td>
+                            <td class="text-nowrap"><?= htmlspecialchars((string)($u['created_at'] ?? '')) ?></td>
 
                             <td class="text-nowrap">
                                 <!-- Reset senha (gera senha temporária) -->
                                 <form method="POST" action="actions/usuarios_reset_senha.php" class="d-inline">
                                     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token('usuarios_reset')) ?>">
-                                    <input type="hidden" name="id" value="<?= (int)$u['id'] ?>">
+                                    <input type="hidden" name="id" value="<?= $id ?>">
                                     <button class="btn btn-outline-warning btn-sm"
                                         onclick="return confirm('Resetar a senha deste usuário?');">
                                         🔁 Reset senha
@@ -154,17 +178,17 @@ function badgeRole(string $role): string
                                     type="button"
                                     class="btn btn-outline-primary btn-sm"
                                     data-bs-toggle="modal"
-                                    data-bs-target="#modalSenha<?= (int)$u['id'] ?>">
+                                    data-bs-target="#modalSenha<?= $id ?>">
                                     🔑 Trocar senha
                                 </button>
 
                                 <!-- Ativar/Desativar -->
                                 <form method="POST" action="actions/usuarios_toggle.php" class="d-inline">
                                     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token('usuarios_toggle')) ?>">
-                                    <input type="hidden" name="id" value="<?= (int)$u['id'] ?>">
+                                    <input type="hidden" name="id" value="<?= $id ?>">
                                     <button class="btn btn-outline-danger btn-sm"
                                         onclick="return confirm('Alterar status (ativar/desativar)?');">
-                                        <?= ((int)$u['ativo'] === 1) ? '⛔ Desativar' : '✅ Ativar' ?>
+                                        <?= ((int)($u['ativo'] ?? 0) === 1) ? '⛔ Desativar' : '✅ Ativar' ?>
                                     </button>
                                 </form>
                             </td>
