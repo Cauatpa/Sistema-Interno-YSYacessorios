@@ -67,7 +67,13 @@ function page_url(int $p): string
                 <a href="usuarios.php" class="btn btn-outline-primary btn-sm">Usuários</a>
                 <a href="auditoria.php" class="btn btn-outline-dark btn-sm">Auditoria</a>
             <?php endif; ?>
-            <a href="minha_senha.php" class="btn btn-outline-secondary btn-sm">Minha Senha</a>
+            <button
+                type="button"
+                class="btn btn-outline-primary btn-sm"
+                data-bs-toggle="modal"
+                data-bs-target="#modalMinhaSenha">
+                🔑 Minha senha
+            </button>
             <form method="POST" action="logout.php" class="d-inline">
                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token('logout')) ?>">
                 <button type="submit" class="btn btn-outline-secondary btn-sm">Sair</button>
@@ -482,6 +488,7 @@ function page_url(int $p): string
     <!-- JS (toast/highlight) -->
     <script src="assets/js/app.js" defer></script>
 
+    <?php require __DIR__ . '/../modals/modal_minha_senha.php'; ?>
 </body>
 
 </html>

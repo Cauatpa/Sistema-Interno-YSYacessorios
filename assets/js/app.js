@@ -24,6 +24,9 @@
       } else if (toastType === "mes_reaberto") {
         el.classList.add("text-bg-success");
         body.textContent = "🔁 Mês reaberto com sucesso!";
+      } else if (toastType === "senha_alterada") {
+        el.classList.add("text-bg-success");
+        body.textContent = "🔑 Senha alterada com sucesso!";
       }
 
       new bootstrap.Toast(el, { delay: 2500 }).show();
