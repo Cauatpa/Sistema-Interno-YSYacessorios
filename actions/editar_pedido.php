@@ -5,12 +5,14 @@ require_once __DIR__ . '/../helpers/csrf.php';
 require_once __DIR__ . '/../helpers/validation.php';
 require_once __DIR__ . '/../services/fechamento.php';
 require_once __DIR__ . '/../helpers/competencia.php';
+require_once __DIR__ . '/../helpers/audit.php';
 
 auth_session_start();
 auth_require_role('admin');
 post_only();
 
 if (!csrf_validate($_POST['csrf_token'] ?? null, 'editar_pedido')) {
+    audit_log($pdo, 'update', 'retirada', null, ['reason' => 'csrf_invalid'], null, null, false, 'csrf_invalid', 'CSRF inválido.', 'Falha ao editar retirada (CSRF inválido).');
     http_response_code(403);
     exit('CSRF inválido.');
 }
@@ -21,52 +23,45 @@ $produto = trim((string)($_POST['produto'] ?? ''));
 $tipo = one_of(trim((string)($_POST['tipo'] ?? '')), ['prata', 'ouro'], '');
 $qtdSolic = int_pos($_POST['quantidade_solicitada'] ?? 0);
 
-if ($id <= 0) {
+if ($id <= 0 || $produto === '' || $tipo === '' || $qtdSolic <= 0) {
+    audit_log($pdo, 'update', 'retirada', $id ?: null, [
+        'produto' => $produto,
+        'tipo' => $tipo,
+        'quantidade_solicitada' => $qtdSolic,
+        'reason' => 'validation_error'
+    ], null, null, false, 'validation_error', 'Campos inválidos.', "Falha ao editar retirada #{$id} (validação).");
+
     http_response_code(400);
-    exit('ID inválido.');
-}
-if ($produto === '') {
-    http_response_code(400);
-    exit('Produto inválido.');
-}
-if ($tipo === '') {
-    http_response_code(400);
-    exit('Tipo inválido.');
-}
-if ($qtdSolic <= 0) {
-    http_response_code(400);
-    exit('Quantidade inválida.');
+    exit('Dados inválidos.');
 }
 
-// Busca registro
+// Busca registro completo (before)
 $stmt = $pdo->prepare("
-    SELECT id, competencia, status, quantidade_retirada
+    SELECT *
     FROM retiradas
     WHERE id = ? AND deleted_at IS NULL
     LIMIT 1
 ");
 $stmt->execute([$id]);
-$row = $stmt->fetch(PDO::FETCH_ASSOC);
+$before = $stmt->fetch(PDO::FETCH_ASSOC);
 
-if (!$row) {
+if (!$before) {
+    audit_log($pdo, 'update', 'retirada', $id, ['reason' => 'not_found'], null, null, false, 'not_found', 'Pedido não encontrado.', "Falha ao editar retirada #{$id} (não encontrada).");
     http_response_code(404);
     exit('Pedido não encontrado.');
 }
 
-$competencia = (string)$row['competencia'];
-$status = (string)$row['status'];
-$qtdRetirada = isset($row['quantidade_retirada']) ? (int)$row['quantidade_retirada'] : null;
+$competencia = (string)($before['competencia'] ?? '');
+$status = (string)($before['status'] ?? '');
+$qtdRetirada = isset($before['quantidade_retirada']) ? (int)$before['quantidade_retirada'] : null;
 
 if (!competencia_valida($competencia)) {
+    audit_log($pdo, 'update', 'retirada', $id, ['competencia' => $competencia, 'reason' => 'invalid_competencia'], $before, null, false, 'invalid_competencia', 'Competência inválida.', "Falha ao editar retirada #{$id} (competência inválida).");
     http_response_code(500);
     exit('Competência inválida no registro.');
 }
 
-// ✅ Admin pode editar mesmo com mês fechado (conforme sua regra)
-// Se você quiser obrigar reabrir antes de editar, é só bloquear aqui:
-// if (mes_esta_fechado($pdo, $competencia)) { exit('...'); }
-
-// Recalcula flags se já estiver finalizado e existir quantidade_retirada
+// Regra: admin pode editar mesmo com mês fechado (mantido)
 $precisa_balanco = null;
 $sem_estoque = null;
 
@@ -75,7 +70,6 @@ if ($status === 'finalizado' && $qtdRetirada !== null) {
         $precisa_balanco = 1;
         $sem_estoque = 1;
     } else {
-        // se bateu a quantidade, zera flags “automáticas”
         $precisa_balanco = 0;
         $sem_estoque = 0;
     }
@@ -99,15 +93,32 @@ if ($precisa_balanco === null) {
 }
 
 if (!$ok) {
+    audit_log($pdo, 'update', 'retirada', $id, ['competencia' => $competencia, 'reason' => 'db_error'], $before, null, false, 'db_error', 'Erro ao salvar edição.', "Falha ao editar retirada #{$id} (erro banco).");
     http_response_code(500);
     exit('Erro ao salvar edição.');
 }
 
-require_once __DIR__ . '/../helpers/audit.php';
+// after
+$stmt2 = $pdo->prepare("SELECT * FROM retiradas WHERE id = ? LIMIT 1");
+$stmt2->execute([$id]);
+$after = $stmt2->fetch(PDO::FETCH_ASSOC) ?: null;
 
-audit_log($pdo, 'delete', 'retirada', $id, [
-    'competencia' => $competencia
-]);
+audit_log(
+    $pdo,
+    'update',
+    'retirada',
+    $id,
+    [
+        'competencia' => $competencia,
+        'fields' => ['produto', 'tipo', 'quantidade_solicitada', 'precisa_balanco', 'sem_estoque']
+    ],
+    $before,
+    $after,
+    true,
+    null,
+    null,
+    "Editou retirada #{$id} (mês {$competencia})."
+);
 
 redirect_with_query('../index.php', [
     'competencia' => $competencia,
