@@ -1,25 +1,24 @@
 <?php
-require_once __DIR__ . '/config/database.php';
 require_once __DIR__ . '/helpers/csrf.php';
 require_once __DIR__ . '/helpers/auth.php';
 
 auth_session_start();
 
-$erro = '';
+// Se já estiver logado, manda pra home
+if (auth_user()) {
+    header('Location: index.php');
+    exit;
+}
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (!csrf_validate($_POST['csrf_token'] ?? null, 'login')) {
-        $erro = 'CSRF inválido.';
-    } else {
-        $usuario = trim((string)($_POST['usuario'] ?? ''));
-        $senha = (string)($_POST['senha'] ?? '');
+// Erro genérico (não revela se user existe etc.)
+$err = (int)($_GET['err'] ?? 0);
+$wait = (int)($_GET['wait'] ?? 0);
 
-        if (auth_login($pdo, $usuario, $senha)) {
-            header('Location: index.php');
-            exit;
-        }
-        $erro = 'Usuário ou senha inválidos.';
-    }
+$erroMsg = '';
+if ($err === 1) {
+    $erroMsg = ($wait > 0)
+        ? "Muitas tentativas. Aguarde {$wait} min e tente novamente."
+        : "Usuário ou senha inválidos.";
 }
 ?>
 <!DOCTYPE html>
@@ -38,21 +37,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="card-body">
                 <h4 class="mb-3 text-center">🔐 Acessar sistema</h4>
 
-                <?php if ($erro): ?>
-                    <div class="alert alert-danger"><?= htmlspecialchars($erro) ?></div>
+                <?php if ($erroMsg !== ''): ?>
+                    <div class="alert alert-danger"><?= htmlspecialchars($erroMsg) ?></div>
                 <?php endif; ?>
 
-                <form method="POST">
+                <form method="POST" action="actions/login.php" autocomplete="off">
                     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token('login')) ?>">
 
                     <div class="mb-3">
                         <label class="form-label">Usuário</label>
-                        <input class="form-control" name="usuario" required>
+                        <input
+                            class="form-control"
+                            name="usuario"
+                            required
+                            maxlength="80"
+                            autocomplete="username">
                     </div>
 
                     <div class="mb-3">
                         <label class="form-label">Senha</label>
-                        <input class="form-control" type="password" name="senha" required>
+                        <input
+                            class="form-control"
+                            type="password"
+                            name="senha"
+                            required
+                            autocomplete="current-password">
                     </div>
 
                     <button class="btn btn-primary w-100">Entrar</button>

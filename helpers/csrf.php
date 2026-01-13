@@ -2,22 +2,30 @@
 
 function csrf_session_start(): void
 {
-    if (session_status() === PHP_SESSION_NONE) {
-        // Ajuste conforme o ambiente:
-        // Em localhost sem https, secure=false
-        // Em produção com https, secure=true
-        $secure = false;
+    if (session_status() === PHP_SESSION_ACTIVE) return;
 
-        session_set_cookie_params([
-            'lifetime' => 0,
-            'path' => '/',
-            'httponly' => true,
-            'secure' => $secure,
-            'samesite' => 'Lax',
-        ]);
+    // Detecta HTTPS (em produção, isso fica true)
+    $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+        || (isset($_SERVER['SERVER_PORT']) && (int)$_SERVER['SERVER_PORT'] === 443);
 
-        session_start();
-    }
+    // PHP >= 7.3 aceita SameSite aqui
+    session_set_cookie_params([
+        'lifetime' => 0,              // sessão até fechar o navegador
+        'path' => '/',
+        'domain' => '',               // deixe vazio se não precisar
+        'secure' => $isHttps,         // só true quando tiver HTTPS
+        'httponly' => true,           // impede JS de ler
+        'samesite' => 'Lax',          // bom default (pode ser 'Strict' se quiser mais travado)
+    ]);
+
+    // evita aceitar IDs de sessão “forçados” (session fixation)
+    ini_set('session.use_strict_mode', '1');
+
+    // recomendado: não expor id em URL
+    ini_set('session.use_only_cookies', '1');
+    ini_set('session.use_trans_sid', '0');
+
+    session_start();
 }
 
 function csrf_token(string $formId = 'default'): string

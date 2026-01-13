@@ -1,41 +1,46 @@
 <?php
-
-declare(strict_types=1);
-
 require_once __DIR__ . '/../config/database.php';
-require_once __DIR__ . '/../helpers/auth.php';
 require_once __DIR__ . '/../helpers/csrf.php';
+require_once __DIR__ . '/../helpers/auth.php';
+require_once __DIR__ . '/../helpers/rate_limit.php';
 
 auth_session_start();
 
-// só POST
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    header('Location: ../login.php');
-    exit;
-}
-
-// CSRF
+// CSRF do login
 if (!csrf_validate($_POST['csrf_token'] ?? null, 'login')) {
     http_response_code(403);
     exit('CSRF inválido.');
 }
+
+$usuario = trim((string)($_POST['usuario'] ?? ''));
+$usuario = mb_strtolower($usuario);
+$usuario = mb_substr($usuario, 0, 80);
+
+$senha = (string)($_POST['senha'] ?? '');
+
+$ip = rl_client_ip();
+
+// Rate limit antes de autenticar
+if (rl_is_blocked($pdo, $ip, $usuario, 6, 10)) {
+    $secs = rl_seconds_until_unblock($pdo, $ip, $usuario, 6, 10);
+    $min = (int)ceil($secs / 60);
+    header('Location: ../login.php?err=1&wait=' . $min);
+    exit;
+}
+
+// tenta login
+$ok = auth_login($pdo, $usuario, $senha);
+
+// registra tentativa (sucesso ou falha)
+rl_log_attempt($pdo, $ip, $usuario, $ok);
+
 csrf_rotate('login');
 
-// Campos
-$usuario = trim((string)($_POST['usuario'] ?? ''));
-$senha   = (string)($_POST['senha'] ?? '');
-
-if ($usuario === '' || $senha === '') {
-    http_response_code(400);
-    exit('Usuário e senha são obrigatórios.');
+if ($ok) {
+    header('Location: ../index.php');
+    exit;
 }
 
-// TENTA LOGIN USANDO O AUTH.PHP
-if (!auth_login($pdo, $usuario, $senha)) {
-    http_response_code(401);
-    exit('Usuário ou senha inválidos.');
-}
-
-// Sucesso
-header('Location: ../index.php');
+// erro sempre genérico
+header('Location: ../login.php?err=1');
 exit;
