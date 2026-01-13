@@ -21,38 +21,62 @@ post_only();
 
 // CSRF
 if (!csrf_validate($_POST['csrf_token'] ?? null, 'reabrir_mes')) {
-    audit_log($pdo, 'reopen_month', 'fechamento', null, [
-        'reason' => 'csrf_invalid'
-    ]);
+    audit_log(
+        $pdo,
+        'reopen_month',
+        'fechamento',
+        null,
+        ['reason' => 'csrf_invalid'],
+        null,
+        null,
+        false,
+        'csrf_invalid',
+        'Falha ao reabrir mês (CSRF inválido).'
+    );
     http_response_code(403);
     exit('CSRF inválido.');
 }
 csrf_rotate('reabrir_mes');
 
 $competencia = (string)($_POST['competencia'] ?? '');
-$confirm = trim((string)($_POST['confirm'] ?? ''));
+$confirm     = trim((string)($_POST['confirm'] ?? ''));
 
 if (!competencia_valida($competencia)) {
-    audit_log($pdo, 'reopen_month', 'fechamento', null, [
-        'competencia' => $competencia,
-        'reason' => 'invalid_competencia',
-    ]);
+    audit_log(
+        $pdo,
+        'reopen_month',
+        'fechamento',
+        null,
+        ['competencia' => $competencia, 'reason' => 'invalid_competencia'],
+        null,
+        null,
+        false,
+        'invalid_competencia',
+        'Falha ao reabrir mês (competência inválida).'
+    );
     http_response_code(400);
     exit('Competência inválida.');
 }
 
 $expected = "REABRIR {$competencia}";
 if (mb_strtoupper($confirm, 'UTF-8') !== $expected) {
-    audit_log($pdo, 'reopen_month', 'fechamento', null, [
-        'competencia' => $competencia,
-        'reason' => 'invalid_confirm',
-        'confirm' => $confirm,
-    ]);
+    audit_log(
+        $pdo,
+        'reopen_month',
+        'fechamento',
+        null,
+        ['competencia' => $competencia, 'reason' => 'invalid_confirm', 'confirm' => $confirm],
+        null,
+        null,
+        false,
+        'invalid_confirm',
+        "Falha ao reabrir mês {$competencia} (confirmação inválida)."
+    );
     http_response_code(400);
     exit("Confirmação inválida. Digite exatamente: {$expected}");
 }
 
-// Before: existe fechamento?
+// BEFORE: existe fechamento?
 $chk = $pdo->prepare("SELECT competencia FROM fechamentos WHERE competencia = ? LIMIT 1");
 $chk->execute([$competencia]);
 $before = $chk->fetch(PDO::FETCH_ASSOC) ?: null;
@@ -62,23 +86,43 @@ $stmt = $pdo->prepare("DELETE FROM fechamentos WHERE competencia = ? LIMIT 1");
 $ok = $stmt->execute([$competencia]);
 
 if (!$ok) {
-    audit_log($pdo, 'reopen_month', 'fechamento', null, [
-        'competencia' => $competencia,
-        'reason' => 'db_error_delete',
-    ]);
+    audit_log(
+        $pdo,
+        'reopen_month',
+        'fechamento',
+        null,
+        ['competencia' => $competencia, 'reason' => 'db_error_delete'],
+        $before,
+        null,
+        false,
+        'db_error_delete',
+        "Falha ao reabrir mês {$competencia} (erro banco)."
+    );
     http_response_code(500);
     exit('Erro ao reabrir mês.');
 }
 
-// ✅ Remove aba do Excel master (se existir)
+$after = ['competencia' => $competencia, 'status' => 'aberto'];
+
+// Remove aba do Excel master (se existir)
 $xlsxInfo = remove_month_sheet_from_master($competencia);
 
-// Audit
-audit_log($pdo, 'reopen_month', 'fechamento', null, [
-    'competencia' => $competencia,
-    'had_closure' => $before ? 1 : 0,
-    'xlsx' => $xlsxInfo,
-]);
+audit_log(
+    $pdo,
+    'reopen_month',
+    'fechamento',
+    null,
+    [
+        'competencia' => $competencia,
+        'had_closure' => $before ? 1 : 0,
+        'xlsx' => $xlsxInfo,
+    ],
+    $before ?: ['competencia' => $competencia, 'status' => 'fechado? (não encontrado no banco)'],
+    $after,
+    true,
+    null,
+    "Reabriu o mês {$competencia}."
+);
 
 redirect_with_query('../index.php', [
     'competencia' => $competencia,
@@ -111,18 +155,15 @@ function remove_month_sheet_from_master(string $competencia): array
             return ['status' => 'sheet_not_found', 'sheet' => $competencia];
         }
 
-        // Remove a aba
         $idx = $spreadsheet->getIndex($sheet);
         $spreadsheet->removeSheetByIndex($idx);
 
-        // Se ficou sem abas, mantém 1 aba "INFO" (Excel não gosta de arquivo sem sheet)
         if ($spreadsheet->getSheetCount() === 0) {
             $newSheet = $spreadsheet->createSheet();
             $newSheet->setTitle('INFO');
             $newSheet->setCellValue('A1', 'Planilha gerada pelo sistema (exports).');
         }
 
-        // Salva de volta
         $writer = new Xlsx($spreadsheet);
         $writer->setPreCalculateFormulas(false);
         $writer->save($file);

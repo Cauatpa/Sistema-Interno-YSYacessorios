@@ -290,7 +290,7 @@ function page_url(int $p): string
                 </form>
 
             <?php else: ?>
-                <form method="POST" action="fechar_mes.php" class="d-flex gap-2 align-items-center">
+                <form method="POST" action="actions/fechar_mes.php" class="d-flex gap-2 align-items-center">
                     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token('fechar_mes')) ?>">
                     <input type="hidden" name="competencia" value="<?= htmlspecialchars($competencia) ?>">
                     <input type="hidden" name="usuario" value="<?= htmlspecialchars($nomeUsuario) ?>">

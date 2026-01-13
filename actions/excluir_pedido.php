@@ -90,12 +90,11 @@ audit_log(
     'retirada',
     $id,
     ['competencia' => $competencia],
-    $before,
-    $after,
+    ['deleted_at' => null],
+    ['deleted_at' => date('Y-m-d H:i:s')],
     true,
     null,
-    null,
-    "Excluiu retirada #{$id} (mês {$competencia})."
+    "Excluiu o pedido #{$id} ({$competencia})."
 );
 
 redirect_with_query('../index.php', [

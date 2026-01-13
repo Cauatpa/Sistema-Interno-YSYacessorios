@@ -12,56 +12,107 @@ auth_require_role('admin');
 post_only();
 
 if (!csrf_validate($_POST['csrf_token'] ?? null, 'editar_pedido')) {
-    audit_log($pdo, 'update', 'retirada', null, ['reason' => 'csrf_invalid'], null, null, false, 'csrf_invalid', 'CSRF inválido.', 'Falha ao editar retirada (CSRF inválido).');
+    audit_log(
+        $pdo,
+        'edit',
+        'retirada',
+        null,
+        ['reason' => 'csrf_invalid'],
+        null,
+        null,
+        false,
+        'csrf_invalid',
+        'Falha ao editar pedido (CSRF inválido).'
+    );
     http_response_code(403);
     exit('CSRF inválido.');
 }
 csrf_rotate('editar_pedido');
 
-$id = int_pos($_POST['id'] ?? 0);
+$id      = int_pos($_POST['id'] ?? 0);
 $produto = trim((string)($_POST['produto'] ?? ''));
-$tipo = one_of(trim((string)($_POST['tipo'] ?? '')), ['prata', 'ouro'], '');
+$tipo    = one_of(trim((string)($_POST['tipo'] ?? '')), ['prata', 'ouro'], '');
 $qtdSolic = int_pos($_POST['quantidade_solicitada'] ?? 0);
 
 if ($id <= 0 || $produto === '' || $tipo === '' || $qtdSolic <= 0) {
-    audit_log($pdo, 'update', 'retirada', $id ?: null, [
-        'produto' => $produto,
-        'tipo' => $tipo,
-        'quantidade_solicitada' => $qtdSolic,
-        'reason' => 'validation_error'
-    ], null, null, false, 'validation_error', 'Campos inválidos.', "Falha ao editar retirada #{$id} (validação).");
-
+    audit_log(
+        $pdo,
+        'edit',
+        'retirada',
+        $id > 0 ? $id : null,
+        [
+            'reason' => 'validation_error',
+            'produto' => $produto,
+            'tipo' => $tipo,
+            'quantidade_solicitada' => $qtdSolic,
+        ],
+        null,
+        null,
+        false,
+        'validation_error',
+        "Falha ao editar pedido #{$id} (validação)."
+    );
     http_response_code(400);
     exit('Dados inválidos.');
 }
 
-// Busca registro completo (before)
+/**
+ * BEFORE (puxa só o necessário para diff e regras)
+ */
 $stmt = $pdo->prepare("
-    SELECT *
+    SELECT
+        id, competencia, status,
+        produto, tipo, quantidade_solicitada,
+        quantidade_retirada, precisa_balanco, sem_estoque
     FROM retiradas
     WHERE id = ? AND deleted_at IS NULL
     LIMIT 1
 ");
 $stmt->execute([$id]);
-$before = $stmt->fetch(PDO::FETCH_ASSOC);
+$beforeRow = $stmt->fetch(PDO::FETCH_ASSOC);
 
-if (!$before) {
-    audit_log($pdo, 'update', 'retirada', $id, ['reason' => 'not_found'], null, null, false, 'not_found', 'Pedido não encontrado.', "Falha ao editar retirada #{$id} (não encontrada).");
+if (!$beforeRow) {
+    audit_log(
+        $pdo,
+        'edit',
+        'retirada',
+        $id,
+        ['reason' => 'not_found'],
+        null,
+        null,
+        false,
+        'not_found',
+        "Falha ao editar pedido #{$id} (não encontrado)."
+    );
     http_response_code(404);
     exit('Pedido não encontrado.');
 }
 
-$competencia = (string)($before['competencia'] ?? '');
-$status = (string)($before['status'] ?? '');
-$qtdRetirada = isset($before['quantidade_retirada']) ? (int)$before['quantidade_retirada'] : null;
+$competencia = (string)($beforeRow['competencia'] ?? '');
+$status      = (string)($beforeRow['status'] ?? '');
+$qtdRetirada = isset($beforeRow['quantidade_retirada']) ? (int)$beforeRow['quantidade_retirada'] : null;
 
 if (!competencia_valida($competencia)) {
-    audit_log($pdo, 'update', 'retirada', $id, ['competencia' => $competencia, 'reason' => 'invalid_competencia'], $before, null, false, 'invalid_competencia', 'Competência inválida.', "Falha ao editar retirada #{$id} (competência inválida).");
+    audit_log(
+        $pdo,
+        'edit',
+        'retirada',
+        $id,
+        ['reason' => 'invalid_competencia', 'competencia' => $competencia],
+        ['competencia' => $competencia],
+        null,
+        false,
+        'invalid_competencia',
+        "Falha ao editar pedido #{$id} (competência inválida)."
+    );
     http_response_code(500);
     exit('Competência inválida no registro.');
 }
 
-// Regra: admin pode editar mesmo com mês fechado (mantido)
+/**
+ * Regras: admin edita mesmo mês fechado (mantido).
+ * Se estiver finalizado, recalcula flags com base no qtdRetirada vs qtdSolic.
+ */
 $precisa_balanco = null;
 $sem_estoque = null;
 
@@ -75,7 +126,9 @@ if ($status === 'finalizado' && $qtdRetirada !== null) {
     }
 }
 
-// Update
+/**
+ * UPDATE
+ */
 if ($precisa_balanco === null) {
     $upd = $pdo->prepare("
         UPDATE retiradas
@@ -93,31 +146,75 @@ if ($precisa_balanco === null) {
 }
 
 if (!$ok) {
-    audit_log($pdo, 'update', 'retirada', $id, ['competencia' => $competencia, 'reason' => 'db_error'], $before, null, false, 'db_error', 'Erro ao salvar edição.', "Falha ao editar retirada #{$id} (erro banco).");
+    audit_log(
+        $pdo,
+        'edit',
+        'retirada',
+        $id,
+        ['reason' => 'db_error', 'competencia' => $competencia],
+        ['id' => $id],
+        null,
+        false,
+        'db_error',
+        "Falha ao editar pedido #{$id} (erro banco)."
+    );
     http_response_code(500);
     exit('Erro ao salvar edição.');
 }
 
-// after
-$stmt2 = $pdo->prepare("SELECT * FROM retiradas WHERE id = ? LIMIT 1");
-$stmt2->execute([$id]);
-$after = $stmt2->fetch(PDO::FETCH_ASSOC) ?: null;
+/**
+ * AFTER (monta só o que importa; sem SELECT * gigante)
+ */
+$afterRow = [
+    'produto' => $produto,
+    'tipo' => $tipo,
+    'quantidade_solicitada' => $qtdSolic,
+];
+
+if ($precisa_balanco !== null) {
+    $afterRow['precisa_balanco'] = $precisa_balanco;
+    $afterRow['sem_estoque'] = $sem_estoque;
+}
+
+/**
+ * Diff só do que mudou
+ */
+$beforeForDiff = [
+    'produto' => (string)($beforeRow['produto'] ?? ''),
+    'tipo' => (string)($beforeRow['tipo'] ?? ''),
+    'quantidade_solicitada' => (int)($beforeRow['quantidade_solicitada'] ?? 0),
+    'precisa_balanco' => (int)($beforeRow['precisa_balanco'] ?? 0),
+    'sem_estoque' => (int)($beforeRow['sem_estoque'] ?? 0),
+];
+
+$afterForDiff = [
+    'produto' => $produto,
+    'tipo' => $tipo,
+    'quantidade_solicitada' => $qtdSolic,
+    'precisa_balanco' => $precisa_balanco !== null ? (int)$precisa_balanco : (int)($beforeRow['precisa_balanco'] ?? 0),
+    'sem_estoque' => $sem_estoque !== null ? (int)$sem_estoque : (int)($beforeRow['sem_estoque'] ?? 0),
+];
+
+[$beforeDiff, $afterDiff] = audit_diff(
+    $beforeForDiff,
+    $afterForDiff,
+    ['produto', 'tipo', 'quantidade_solicitada', 'precisa_balanco', 'sem_estoque']
+);
 
 audit_log(
     $pdo,
-    'update',
+    'edit',
     'retirada',
     $id,
     [
         'competencia' => $competencia,
-        'fields' => ['produto', 'tipo', 'quantidade_solicitada', 'precisa_balanco', 'sem_estoque']
+        'reason' => null,
     ],
-    $before,
-    $after,
+    $beforeDiff,
+    $afterDiff,
     true,
     null,
-    null,
-    "Editou retirada #{$id} (mês {$competencia})."
+    "Editou pedido #{$id} ({$competencia})."
 );
 
 redirect_with_query('../index.php', [

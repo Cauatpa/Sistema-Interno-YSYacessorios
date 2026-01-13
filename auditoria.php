@@ -7,33 +7,55 @@ require_once __DIR__ . '/helpers/csrf.php';
 auth_session_start();
 auth_require_role('admin');
 
-$limit = 5;
+$limit = 10;
 $page = max(1, (int)($_GET['p'] ?? 1));
 $offset = ($page - 1) * $limit;
 
-$q = trim((string)($_GET['q'] ?? '')); // busca simples
-$action = trim((string)($_GET['action'] ?? ''));
-$entity = trim((string)($_GET['entity'] ?? ''));
+$q        = trim((string)($_GET['q'] ?? ''));
+$action   = trim((string)($_GET['action'] ?? ''));
+$entity   = trim((string)($_GET['entity'] ?? ''));
+$success  = trim((string)($_GET['success'] ?? ''));   // '', '1', '0'
+$eventCode = trim((string)($_GET['event_code'] ?? ''));
 
 $where = " WHERE 1=1 ";
 $params = [];
 
-// busca por usuário/ação/entidade
 if ($q !== '') {
-    $where .= " AND (COALESCE(u.nome,'') LIKE ? OR COALESCE(u.usuario,'') LIKE ? OR a.action LIKE ? OR a.entity LIKE ?) ";
+    $where .= " AND (
+        COALESCE(u.nome,'') LIKE ?
+        OR COALESCE(u.usuario,'') LIKE ?
+        OR COALESCE(a.message,'') LIKE ?
+        OR COALESCE(a.event_code,'') LIKE ?
+        OR a.action LIKE ?
+        OR a.entity LIKE ?
+    ) ";
     $like = "%{$q}%";
     $params[] = $like;
     $params[] = $like;
     $params[] = $like;
     $params[] = $like;
+    $params[] = $like;
+    $params[] = $like;
 }
+
 if ($action !== '') {
     $where .= " AND a.action = ? ";
     $params[] = $action;
 }
+
 if ($entity !== '') {
     $where .= " AND a.entity = ? ";
     $params[] = $entity;
+}
+
+if ($success === '1' || $success === '0') {
+    $where .= " AND a.success = ? ";
+    $params[] = (int)$success;
+}
+
+if ($eventCode !== '') {
+    $where .= " AND a.event_code = ? ";
+    $params[] = $eventCode;
 }
 
 // total
@@ -64,90 +86,13 @@ function h($v): string
     return htmlspecialchars((string)$v);
 }
 
-function payload_array(?string $json): array
+function pretty_json(?string $json): string
 {
-    if (!$json) return [];
-    $arr = json_decode($json, true);
-    return is_array($arr) ? $arr : [];
+    if (!$json) return '';
+    $d = json_decode($json, true);
+    if (!is_array($d)) return (string)$json;
+    return json_encode($d, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
 }
-
-function resumo_log(array $l): string
-{
-    $action = (string)($l['action'] ?? '');
-    $entity = (string)($l['entity'] ?? '');
-    $entityId = (string)($l['entity_id'] ?? '—');
-
-    $p = payload_array($l['payload_json'] ?? null);
-
-    // se existe message, usa ela (normalmente é o melhor resumo)
-    if (!empty($p['message']) && is_string($p['message'])) {
-        return $p['message'];
-    }
-
-    // tenta ler dados padrão
-    $comp = $p['payload']['competencia'] ?? ($p['competencia'] ?? '');
-
-    if ($entity === 'retirada') {
-        if ($action === 'create') {
-            $prod = $p['payload']['produto'] ?? ($p['after']['produto'] ?? '');
-            $qtd  = $p['payload']['quantidade_solicitada'] ?? ($p['after']['quantidade_solicitada'] ?? '');
-            $tipo = $p['payload']['tipo'] ?? ($p['after']['tipo'] ?? '');
-            $sol  = $p['payload']['solicitante'] ?? ($p['after']['solicitante'] ?? '');
-            $txt = "Criou retirada #{$entityId}";
-            if ($prod !== '') $txt .= " | {$prod}";
-            if ($qtd !== '') $txt .= " | qtd {$qtd}";
-            if ($tipo !== '') $txt .= " | {$tipo}";
-            if ($sol !== '')  $txt .= " | {$sol}";
-            if ($comp !== '') $txt .= " | {$comp}";
-            return $txt;
-        }
-
-        if ($action === 'finalize' || $action === 'finalizado' || $action === 'finish') {
-            $prod = $p['payload']['produto'] ?? ($p['after']['produto'] ?? '');
-            $qtdR = $p['payload']['quantidade_retirada'] ?? ($p['after']['quantidade_retirada'] ?? '');
-            $resp = $p['payload']['responsavel_estoque'] ?? ($p['after']['responsavel_estoque'] ?? '');
-            $txt = "Finalizou retirada #{$entityId}";
-            if ($prod !== '') $txt .= " | {$prod}";
-            if ($qtdR !== '') $txt .= " | retirado {$qtdR}";
-            if ($resp !== '') $txt .= " | {$resp}";
-            if ($comp !== '') $txt .= " | {$comp}";
-            return $txt;
-        }
-
-        if ($action === 'delete') {
-            $prod = $p['before']['produto'] ?? ($p['payload']['produto'] ?? '');
-            $txt = "Excluiu retirada #{$entityId}";
-            if ($prod !== '') $txt .= " | {$prod}";
-            if ($comp !== '') $txt .= " | {$comp}";
-            return $txt;
-        }
-
-        if ($action === 'edit' || $action === 'update') {
-            $fields = [];
-            if (!empty($p['changed']) && is_array($p['changed'])) {
-                $fields = array_keys($p['changed']);
-                $fields = array_values(array_diff($fields, ['updated_at', 'request_id', 'user_agent']));
-            }
-            $fieldsTxt = $fields ? ('campos: ' . implode(', ', array_slice($fields, 0, 5))) : 'editou';
-            $txt = "Editou retirada #{$entityId} | {$fieldsTxt}";
-            if ($comp !== '') $txt .= " | {$comp}";
-            return $txt;
-        }
-    }
-
-    if ($entity === 'fechamento' || $entity === 'mes') {
-        if ($action === 'close_month') return "Fechou mês {$comp}";
-        if ($action === 'reopen_month') return "Reabriu mês {$comp}";
-    }
-
-    if ($entity === 'user') {
-        if ($action === 'reset_password') return "Resetou senha de usuário #{$entityId}";
-        if ($action === 'change_password') return "Alterou própria senha";
-    }
-
-    return trim("{$action} {$entity} #{$entityId}");
-}
-
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -170,31 +115,46 @@ function resumo_log(array $l): string
         </div>
 
         <form method="GET" class="card p-3 mb-3">
-            <input type="hidden" name="p" value="1"><!-- reset page ao filtrar -->
+            <input type="hidden" name="p" value="1">
             <div class="row g-2">
-                <div class="col-12 col-md-6">
+                <div class="col-12 col-md-5">
                     <label class="form-label mb-1">Buscar</label>
-                    <input name="q" class="form-control" value="<?= h($q) ?>" placeholder="nome, usuário, action, entity...">
+                    <input name="q" class="form-control" value="<?= h($q) ?>"
+                        placeholder="nome, usuário, message, event_code, action, entity...">
                 </div>
 
-                <div class="col-6 col-md-3">
+                <div class="col-6 col-md-2">
+                    <label class="form-label mb-1">Status</label>
+                    <select name="success" class="form-select">
+                        <option value="" <?= $success === '' ? 'selected' : '' ?>>Todos</option>
+                        <option value="1" <?= $success === '1' ? 'selected' : '' ?>>OK</option>
+                        <option value="0" <?= $success === '0' ? 'selected' : '' ?>>Falha</option>
+                    </select>
+                </div>
+
+                <div class="col-6 col-md-2">
                     <label class="form-label mb-1">Action</label>
                     <select name="action" class="form-select">
                         <option value="">Todas</option>
-                        <?php foreach (['create', 'finalize', 'edit', 'update', 'delete', 'close_month', 'reopen_month', 'reset_password', 'change_password'] as $a): ?>
+                        <?php foreach (['create', 'finalize', 'edit', 'delete', 'close_month', 'reopen_month', 'export', 'reset_password', 'change_password', 'login'] as $a): ?>
                             <option value="<?= h($a) ?>" <?= $action === $a ? 'selected' : '' ?>><?= h($a) ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>
 
-                <div class="col-6 col-md-3">
+                <div class="col-6 col-md-2">
                     <label class="form-label mb-1">Entity</label>
                     <select name="entity" class="form-select">
                         <option value="">Todas</option>
-                        <?php foreach (['retirada', 'fechamento', 'mes', 'user'] as $e): ?>
+                        <?php foreach (['retirada', 'fechamento', 'user'] as $e): ?>
                             <option value="<?= h($e) ?>" <?= $entity === $e ? 'selected' : '' ?>><?= h($e) ?></option>
                         <?php endforeach; ?>
                     </select>
+                </div>
+
+                <div class="col-6 col-md-1">
+                    <label class="form-label mb-1">Code</label>
+                    <input name="event_code" class="form-control" value="<?= h($eventCode) ?>" placeholder="ex: db_error">
                 </div>
 
                 <div class="col-12 d-flex gap-2">
@@ -211,116 +171,124 @@ function resumo_log(array $l): string
                         <th>ID</th>
                         <th>Quando</th>
                         <th>Usuário</th>
+                        <th>Status</th>
                         <th>Ação</th>
                         <th>Entidade</th>
-                        <th>ID Entidade</th>
-                        <th>IP</th>
+                        <th>ID</th>
                         <th>Resumo</th>
+                        <th>IP</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php foreach ($logs as $l): ?>
-                        <?php
-                        $pid = (int)($l['id'] ?? 0);
-                        $payloadArr = payload_array($l['payload_json'] ?? null);
-                        ?>
+                        <?php $pid = (int)($l['id'] ?? 0); ?>
                         <tr>
                             <td><?= $pid ?></td>
-                            <td><?= h($l['created_at']) ?></td>
+                            <td><?= h($l['created_at'] ?? '') ?></td>
                             <td>
                                 <?= h($l['nome'] ?? '—') ?>
                                 <br><small class="text-muted">@<?= h($l['usuario'] ?? '—') ?></small>
                             </td>
-                            <td><code><?= h($l['action']) ?></code></td>
-                            <td><code><?= h($l['entity']) ?></code></td>
+                            <td class="text-nowrap">
+                                <?php if ((int)($l['success'] ?? 1) === 1): ?>
+                                    <span class="badge bg-success">OK</span>
+                                <?php else: ?>
+                                    <span class="badge bg-danger">FALHA</span>
+                                <?php endif; ?>
+                                <?php if (!empty($l['event_code'])): ?>
+                                    <div><small class="text-muted"><?= h($l['event_code']) ?></small></div>
+                                <?php endif; ?>
+                            </td>
+                            <td><code><?= h($l['action'] ?? '') ?></code></td>
+                            <td><code><?= h($l['entity'] ?? '') ?></code></td>
                             <td><?= h($l['entity_id'] ?? '—') ?></td>
-                            <td><?= h($l['ip'] ?? '—') ?></td>
                             <td class="text-start" style="max-width:520px;">
-                                <div class="small"><?= h(resumo_log($l)) ?></div>
+                                <div class="small fw-semibold"><?= h($l['message'] ?? '') ?></div>
 
-                                <?php if (!empty($l['payload_json'])): ?>
+                                <div class="mt-2 d-flex gap-2 flex-wrap">
                                     <button
                                         type="button"
-                                        class="btn btn-outline-secondary btn-sm mt-2"
+                                        class="btn btn-outline-secondary btn-sm"
                                         data-bs-toggle="modal"
                                         data-bs-target="#auditModal<?= $pid ?>">
                                         Detalhes
                                     </button>
-                                <?php endif; ?>
+                                </div>
                             </td>
+                            <td><?= h($l['ip'] ?? '—') ?></td>
                         </tr>
                     <?php endforeach; ?>
 
                     <?php if (!$logs): ?>
                         <tr>
-                            <td colspan="8" class="text-center text-muted">Sem logs.</td>
+                            <td colspan="9" class="text-center text-muted">Sem logs.</td>
                         </tr>
                     <?php endif; ?>
                 </tbody>
             </table>
         </div>
 
-        <!-- Paginação -->
         <div class="d-flex justify-content-between align-items-center">
             <div class="text-muted small">
                 Total: <?= (int)$total ?> | Página <?= (int)$page ?> / <?= (int)$totalPages ?>
             </div>
             <div class="d-flex gap-2">
                 <?php if ($page > 1): ?>
-                    <a class="btn btn-outline-secondary btn-sm" href="<?= h('auditoria.php?' . http_build_query(array_merge($_GET, ['p' => $page - 1]))) ?>">←</a>
+                    <a class="btn btn-outline-secondary btn-sm"
+                        href="<?= h('auditoria.php?' . http_build_query(array_merge($_GET, ['p' => $page - 1]))) ?>">←</a>
                 <?php endif; ?>
                 <?php if ($page < $totalPages): ?>
-                    <a class="btn btn-outline-secondary btn-sm" href="<?= h('auditoria.php?' . http_build_query(array_merge($_GET, ['p' => $page + 1]))) ?>">→</a>
+                    <a class="btn btn-outline-secondary btn-sm"
+                        href="<?= h('auditoria.php?' . http_build_query(array_merge($_GET, ['p' => $page + 1]))) ?>">→</a>
                 <?php endif; ?>
             </div>
         </div>
 
     </div>
 
-    <!-- Modais de detalhes -->
+    <!-- Modais -->
     <?php foreach ($logs as $l): ?>
-        <?php if (empty($l['payload_json'])) continue; ?>
-        <?php
-        $pid = (int)($l['id'] ?? 0);
-        $p = payload_array($l['payload_json']);
-        ?>
+        <?php $pid = (int)($l['id'] ?? 0); ?>
         <div class="modal fade" id="auditModal<?= $pid ?>" tabindex="-1" aria-hidden="true">
             <div class="modal-dialog modal-lg modal-dialog-scrollable">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title">Detalhes do Log #<?= $pid ?></h5>
+                        <h5 class="modal-title">Log #<?= $pid ?> — <?= h($l['message'] ?? '') ?></h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
                     </div>
                     <div class="modal-body">
 
-                        <?php if (!empty($p['message']) && is_string($p['message'])): ?>
-                            <div class="alert alert-light border">
-                                <strong>Mensagem:</strong> <?= h($p['message']) ?>
-                            </div>
+                        <div class="mb-3">
+                            <div class="small text-muted">Action / Entity</div>
+                            <div><code><?= h($l['action'] ?? '') ?></code> / <code><?= h($l['entity'] ?? '') ?></code></div>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="small text-muted">Status</div>
+                            <?php if ((int)($l['success'] ?? 1) === 1): ?>
+                                <span class="badge bg-success">OK</span>
+                            <?php else: ?>
+                                <span class="badge bg-danger">FALHA</span>
+                            <?php endif; ?>
+                            <?php if (!empty($l['event_code'])): ?>
+                                <span class="ms-2 badge bg-secondary"><?= h($l['event_code']) ?></span>
+                            <?php endif; ?>
+                        </div>
+
+                        <?php if (!empty($l['before_json'])): ?>
+                            <h6>Before</h6>
+                            <pre class="bg-light p-2 rounded small" style="white-space:pre-wrap;"><?= h(pretty_json($l['before_json'])) ?></pre>
                         <?php endif; ?>
 
-                        <?php if (!empty($p['changed']) && is_array($p['changed'])): ?>
-                            <h6>Alterações</h6>
-                            <ul class="small">
-                                <?php foreach ($p['changed'] as $field => $chg): ?>
-                                    <?php
-                                    $from = $chg['from'] ?? null;
-                                    $to   = $chg['to'] ?? null;
-
-                                    $fromTxt = (is_scalar($from) || $from === null) ? (string)($from ?? 'null') : json_encode($from, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-                                    $toTxt   = (is_scalar($to) || $to === null) ? (string)($to ?? 'null') : json_encode($to, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-                                    ?>
-                                    <li>
-                                        <strong><?= h((string)$field) ?>:</strong>
-                                        <?= h($fromTxt) ?> → <?= h($toTxt) ?>
-                                    </li>
-                                <?php endforeach; ?>
-                            </ul>
-                            <hr>
+                        <?php if (!empty($l['after_json'])): ?>
+                            <h6>After</h6>
+                            <pre class="bg-light p-2 rounded small" style="white-space:pre-wrap;"><?= h(pretty_json($l['after_json'])) ?></pre>
                         <?php endif; ?>
 
-                        <h6>Payload (JSON)</h6>
-                        <pre class="bg-light p-2 rounded small" style="white-space:pre-wrap;"><?= h(json_encode($p, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) ?></pre>
+                        <?php if (!empty($l['payload_json'])): ?>
+                            <h6>Payload</h6>
+                            <pre class="bg-light p-2 rounded small" style="white-space:pre-wrap;"><?= h(pretty_json($l['payload_json'])) ?></pre>
+                        <?php endif; ?>
 
                     </div>
                 </div>
@@ -330,28 +298,24 @@ function resumo_log(array $l): string
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
+    <!-- Fix warning de foco (aria-hidden) -->
     <script>
         (() => {
             let lastFocused = null;
 
-            // 1) Antes de abrir o modal, guardamos quem estava com foco
             document.addEventListener('show.bs.modal', (e) => {
-                // O "relatedTarget" costuma ser o botão que abriu o modal
                 lastFocused = e.relatedTarget || document.activeElement;
             }, true);
 
-            // 2) No momento que começa a fechar, remove o foco de dentro do modal (evita o warning)
             document.addEventListener('hide.bs.modal', () => {
                 const a = document.activeElement;
                 if (a && typeof a.blur === 'function') a.blur();
             }, true);
 
-            // 3) Depois de fechar, devolve o foco pro elemento anterior (ou fallback)
             document.addEventListener('hidden.bs.modal', () => {
                 if (lastFocused && typeof lastFocused.focus === 'function') {
                     lastFocused.focus();
                 } else {
-                    // fallback seguro: joga o foco no body
                     document.body.setAttribute('tabindex', '-1');
                     document.body.focus();
                     document.body.removeAttribute('tabindex');

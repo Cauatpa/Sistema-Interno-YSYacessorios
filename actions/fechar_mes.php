@@ -1,11 +1,11 @@
 <?php
-require_once __DIR__ . '/config/database.php';
-require_once __DIR__ . '/helpers/competencia.php';
-require_once __DIR__ . '/services/fechamento.php';
-require_once __DIR__ . '/helpers/csrf.php';
-require_once __DIR__ . '/helpers/validation.php';
-require_once __DIR__ . '/helpers/auth.php';
-
+require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../helpers/competencia.php';
+require_once __DIR__ . '/../services/fechamento.php';
+require_once __DIR__ . '/../helpers/csrf.php';
+require_once __DIR__ . '/../helpers/validation.php';
+require_once __DIR__ . '/../helpers/auth.php';
+require_once __DIR__ . '/../helpers/audit.php';
 auth_require_role('admin');
 
 post_only();
@@ -41,11 +41,10 @@ if (!is_array($result) || empty($result['ok'])) {
     exit($msg);
 }
 
-require_once __DIR__ . '/helpers/audit.php';
-
 audit_log($pdo, 'delete', 'retirada', $id, [
     'competencia' => $competencia
 ]);
 
 // volta pra tela do mês fechado
-redirect_with_query('index.php', ['competencia' => $competencia]);
+header('Location: ../index.php?toast=mes_fechado&competencia=' . urlencode($competencia));
+exit;
