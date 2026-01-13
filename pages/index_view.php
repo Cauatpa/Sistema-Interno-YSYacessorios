@@ -299,6 +299,27 @@ function page_url(int $p): string
                     <button type="submit" class="btn btn-danger">📅 Fechar mês</button>
                 </form>
             <?php endif; ?>
+
+            <?php if ($canAdmin && $mesFechado): ?>
+                <form method="POST" action="actions/exportar_mes.php" class="d-inline">
+                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token('exportar_mes')) ?>">
+                    <input type="hidden" name="competencia" value="<?= htmlspecialchars($competencia) ?>">
+                    <button type="submit" class="btn btn-success">
+                        📥 Exportar XLSX
+                    </button>
+                </form>
+
+                <!-- regerar -->
+                <form method="POST" action="actions/exportar_mes.php" class="d-inline">
+                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token('exportar_mes')) ?>">
+                    <input type="hidden" name="competencia" value="<?= htmlspecialchars($competencia) ?>">
+                    <input type="hidden" name="regen" value="1">
+                    <button type="submit" class="btn btn-outline-success"
+                        onclick="return confirm('Regerar o XLSX do mês <?= htmlspecialchars($competencia) ?>?');">
+                        ♻ Regerar
+                    </button>
+                </form>
+            <?php endif; ?>
         </div>
     </div>
 
