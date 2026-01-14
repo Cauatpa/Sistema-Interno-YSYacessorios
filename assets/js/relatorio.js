@@ -1,96 +1,204 @@
 (async () => {
-  const root = document.documentElement;
-  const competencia = root?.dataset?.competencia;
-  if (!competencia) return;
+  try {
+    const root = document.documentElement;
+    const competencia = root?.dataset?.competencia;
+    if (!competencia) return;
 
-  const res = await fetch(
-    `actions/relatorio_data.php?competencia=${encodeURIComponent(competencia)}`
-  );
-  const data = await res.json();
-  if (data?.error) return;
+    const res = await fetch(
+      `actions/relatorio_data.php?competencia=${encodeURIComponent(
+        competencia
+      )}`
+    );
 
-  // 1) Status (doughnut)
-  const elStatus = document.getElementById("chartStatus");
-  if (elStatus) {
-    new Chart(elStatus, {
-      type: "doughnut",
-      data: {
-        labels: ["Finalizados", "Pendentes"],
-        datasets: [{ data: [data.status.finalizados, data.status.pendentes] }],
-      },
-      options: {
-        responsive: true,
-        plugins: { legend: { position: "bottom" } },
-        cutout: "65%",
-      },
-    });
-  }
+    const data = await res.json();
+    if (data?.error) return;
 
-  // 2) Alertas (bar)
-  const elAlertas = document.getElementById("chartAlertas");
-  if (elAlertas) {
-    new Chart(elAlertas, {
-      type: "bar",
-      data: {
-        labels: ["Sem estoque", "Precisa balanço"],
-        datasets: [{ data: [data.alertas.sem_estoque, data.alertas.balanco] }],
-      },
-      options: {
-        responsive: true,
-        plugins: { legend: { display: false } },
-        scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
-      },
-    });
-  }
+    // 1) Status (doughnut)
+    const elStatus = document.getElementById("chartStatus");
+    if (elStatus && data?.status) {
+      new Chart(elStatus, {
+        type: "doughnut",
+        data: {
+          labels: ["Finalizados", "Pendentes"],
+          datasets: [
+            { data: [data.status.finalizados, data.status.pendentes] },
+          ],
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { position: "bottom" } },
+          cutout: "65%",
+        },
+      });
+    }
 
-  // 3) Pedidos por dia (line)
-  const elDias = document.getElementById("chartDias");
-  if (elDias) {
-    new Chart(elDias, {
-      type: "line",
-      data: {
-        labels: data.dias.labels,
-        datasets: [
-          {
-            label: "Pedidos",
-            data: data.dias.values,
-            tension: 0.3,
-            pointRadius: 2,
+    // 2) Alertas (bar)
+    const elAlertas = document.getElementById("chartAlertas");
+    if (elAlertas && data?.alertas) {
+      new Chart(elAlertas, {
+        type: "bar",
+        data: {
+          labels: ["Sem estoque", "Precisa balanço"],
+          datasets: [
+            { data: [data.alertas.sem_estoque, data.alertas.balanco] },
+          ],
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { display: false } },
+          scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
+        },
+      });
+    }
+
+    // 3) Pedidos por dia (line)
+    const elDias = document.getElementById("chartDias");
+    if (elDias && data?.dias?.labels && data?.dias?.values) {
+      new Chart(elDias, {
+        type: "line",
+        data: {
+          labels: data.dias.labels,
+          datasets: [
+            {
+              label: "Pedidos",
+              data: data.dias.values,
+              tension: 0.3,
+              pointRadius: 2,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { display: false } },
+          scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
+        },
+      });
+    }
+
+    // 4) Top 10 produtos (bar horizontal)
+    const elTop = document.getElementById("chartTopProdutos");
+    const topLabels = data.top_produtos?.labels || [];
+    const topValues = data.top_produtos?.values || [];
+
+    if (elTop && topLabels.length) {
+      new Chart(elTop, {
+        type: "bar",
+        data: {
+          labels: topLabels,
+          datasets: [{ label: "Qtd solicitada", data: topValues }],
+        },
+        options: {
+          indexAxis: "y",
+          responsive: true,
+          plugins: {
+            legend: { display: false },
+            tooltip: { callbacks: { label: (ctx) => ` ${ctx.raw} itens` } },
           },
-        ],
-      },
-      options: {
-        responsive: true,
-        plugins: { legend: { display: false } },
-        scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
-      },
-    });
-  }
-
-  // 4) Top 10 produtos (bar horizontal)
-  const elTop = document.getElementById("chartTopProdutos");
-  const topLabels = data.top_produtos?.labels || [];
-  const topValues = data.top_produtos?.values || [];
-
-  if (elTop && topLabels.length) {
-    new Chart(elTop, {
-      type: "bar",
-      data: {
-        labels: topLabels,
-        datasets: [{ label: "Qtd solicitada", data: topValues }],
-      },
-      options: {
-        indexAxis: "y",
-        responsive: true,
-        plugins: {
-          legend: { display: false },
-          tooltip: { callbacks: { label: (ctx) => ` ${ctx.raw} itens` } },
+          scales: {
+            x: { beginAtZero: true, ticks: { precision: 0 } },
+            y: { ticks: { autoSkip: false } },
+          },
         },
-        scales: {
-          x: { beginAtZero: true, ticks: { precision: 0 } },
-          y: { ticks: { autoSkip: false } },
+      });
+    }
+
+    // 5) Solicitantes (bar) + seletor
+    const elSol = document.getElementById("chartSolicitantes");
+    const sel = document.getElementById("selSolicitante");
+    const boxResumo = document.getElementById("solicitanteResumo");
+
+    const solLabels = data.por_solicitante?.labels || [];
+    const solPedidos = data.por_solicitante?.pedidos || [];
+    const solItens = data.por_solicitante?.itens || [];
+
+    // Se não veio do endpoint, não tem como montar
+    if (!solLabels.length) {
+      if (boxResumo) {
+        boxResumo.textContent =
+          "Sem dados de solicitantes para este mês (verifique se o endpoint relatorio_data.php está retornando por_solicitante).";
+      }
+      return;
+    }
+
+    // popula select
+    if (sel) {
+      // evita duplicar options se o JS rodar de novo
+      while (sel.options.length > 1) sel.remove(1);
+
+      solLabels.forEach((name) => {
+        const opt = document.createElement("option");
+        opt.value = name;
+        opt.textContent = name;
+        sel.appendChild(opt);
+      });
+    }
+
+    let chartSolicitantes = null;
+
+    function renderSolicitantes(filterName = "") {
+      if (!elSol) return;
+
+      let labels = solLabels;
+      let pedidos = solPedidos;
+      let itens = solItens;
+
+      if (filterName) {
+        const idx = solLabels.indexOf(filterName);
+        labels = idx >= 0 ? [solLabels[idx]] : [];
+        pedidos = idx >= 0 ? [solPedidos[idx]] : [];
+        itens = idx >= 0 ? [solItens[idx]] : [];
+      }
+
+      if (chartSolicitantes) {
+        chartSolicitantes.destroy();
+        chartSolicitantes = null;
+      }
+
+      chartSolicitantes = new Chart(elSol, {
+        type: "bar",
+        data: {
+          labels,
+          datasets: [
+            { label: "Pedidos", data: pedidos },
+            { label: "Itens solicitados", data: itens },
+          ],
         },
-      },
-    });
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { position: "bottom" },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => ` ${ctx.dataset.label}: ${ctx.raw}`,
+              },
+            },
+          },
+          scales: {
+            y: { beginAtZero: true, ticks: { precision: 0 } },
+          },
+        },
+      });
+
+      if (boxResumo) {
+        if (!filterName) {
+          boxResumo.textContent = `Total de solicitantes no mês: ${solLabels.length}`;
+        } else {
+          const idx = solLabels.indexOf(filterName);
+          const p = idx >= 0 ? solPedidos[idx] : 0;
+          const it = idx >= 0 ? solItens[idx] : 0;
+          boxResumo.textContent = `📌 ${filterName}: ${p} pedidos | ${it} itens solicitados`;
+        }
+      }
+    }
+
+    renderSolicitantes("");
+
+    if (sel) {
+      sel.addEventListener("change", () => {
+        renderSolicitantes(sel.value);
+      });
+    }
+  } catch (e) {
+    console.error("Erro no relatorio.js:", e);
   }
 })();

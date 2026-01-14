@@ -21,13 +21,10 @@ $stmtMeses = $pdo->query("
     ORDER BY competencia DESC
 ");
 $mesesDisponiveis = $stmtMeses->fetchAll(PDO::FETCH_COLUMN) ?: [];
-if (!in_array($competencia, $mesesDisponiveis, true)) {
-    // se não existir na lista, ainda deixa ver (pode ser mês sem dados)
-}
 
 $mesFechado = mes_esta_fechado($pdo, $competencia);
 
-// ====== QUERIES ======
+// ====== KPIs ======
 $stmt = $pdo->prepare("
     SELECT
         COUNT(*) AS total_pedidos,
@@ -49,19 +46,19 @@ function h($v): string
     return htmlspecialchars((string)$v);
 }
 
-$totalPedidos = (int)($kpis['total_pedidos'] ?? 0);
-$totalItensSolic = (int)($kpis['total_itens_solicitados'] ?? 0);
-$totalFinal = (int)($kpis['total_finalizados'] ?? 0);
-$totalPend = (int)($kpis['total_pendentes'] ?? 0);
-$totalSemEstoque = (int)($kpis['total_sem_estoque'] ?? 0);
-$totalBalanco = (int)($kpis['total_balanco'] ?? 0);
-$totalRetirados = (int)($kpis['total_itens_retirados'] ?? 0);
+$totalPedidos      = (int)($kpis['total_pedidos'] ?? 0);
+$totalItensSolic   = (int)($kpis['total_itens_solicitados'] ?? 0);
+$totalFinal        = (int)($kpis['total_finalizados'] ?? 0);
+$totalPend         = (int)($kpis['total_pendentes'] ?? 0);
+$totalSemEstoque   = (int)($kpis['total_sem_estoque'] ?? 0);
+$totalBalanco      = (int)($kpis['total_balanco'] ?? 0);
+$totalRetirados    = (int)($kpis['total_itens_retirados'] ?? 0);
 
-$percFinal = $totalPedidos > 0 ? round(($totalFinal / $totalPedidos) * 100) : 0;
+$percFinal      = $totalPedidos > 0 ? round(($totalFinal / $totalPedidos) * 100) : 0;
 $percSemEstoque = $totalPedidos > 0 ? round(($totalSemEstoque / $totalPedidos) * 100) : 0;
 ?>
 <!DOCTYPE html>
-<html lang="pt-br" data-competencia="<?= htmlspecialchars($competencia) ?>">
+<html lang="pt-br" data-competencia="<?= h($competencia) ?>">
 
 <head>
     <meta charset="UTF-8">
@@ -228,15 +225,34 @@ $percSemEstoque = $totalPedidos > 0 ? round(($totalSemEstoque / $totalPedidos) *
                 </div>
             </div>
 
-            <div class="row g-3 mt-1">
-                <div class="col-12">
-                    <div class="card card-soft p-3">
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <div class="fw-semibold">Top 10 produtos (qtd solicitada)</div>
-                            <small class="text-muted">mês selecionado</small>
-                        </div>
-                        <canvas id="chartTopProdutos" height="220"></canvas>
+            <div class="col-12">
+                <div class="card card-soft p-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <div class="fw-semibold">Top 10 produtos (qtd solicitada)</div>
+                        <small class="text-muted">mês selecionado</small>
                     </div>
+                    <canvas id="chartTopProdutos" height="220"></canvas>
+                </div>
+            </div>
+
+            <div class="col-12">
+                <div class="card card-soft p-3">
+                    <div class="d-flex flex-wrap gap-2 align-items-center justify-content-between">
+                        <div class="fw-bold">👤 Solicitantes</div>
+
+                        <div class="d-flex gap-2 align-items-center">
+                            <label class="small subtle mb-0">Ver:</label>
+                            <select id="selSolicitante" class="form-select form-select-sm" style="min-width:220px;">
+                                <option value="">Todos</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="mt-3">
+                        <canvas id="chartSolicitantes" height="120"></canvas>
+                    </div>
+
+                    <div id="solicitanteResumo" class="small subtle mt-2"></div>
                 </div>
             </div>
         </div>
