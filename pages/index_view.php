@@ -66,6 +66,7 @@ function page_url(int $p): string
             <?php if ($canAdmin): ?>
                 <a href="usuarios.php" class="btn btn-outline-primary btn-sm">Usuários</a>
                 <a href="auditoria.php" class="btn btn-outline-dark btn-sm">Auditoria</a>
+                <a href="relatorio.php?competencia=<?= htmlspecialchars($competencia) ?>" class="btn btn-outline-success btn-sm">Relatório</a>
             <?php endif; ?>
             <button
                 type="button"
