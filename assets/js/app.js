@@ -49,4 +49,15 @@
     url.searchParams.delete("highlight_id");
     window.history.replaceState({}, document.title, url.toString());
   }
+
+  // Corrige padding-right do body ao abrir modal (bug do Bootstrap)
+  document.addEventListener("hide.bs.modal", () => {
+    document.body.style.paddingRight = "";
+  });
+
+  // Desabilita botões de submit ao enviar formulários
+  document.addEventListener("submit", (e) => {
+    const btns = e.target.querySelectorAll("button[type=submit]");
+    btns.forEach((b) => (b.disabled = true));
+  });
 })();

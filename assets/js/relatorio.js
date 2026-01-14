@@ -201,4 +201,9 @@
   } catch (e) {
     console.error("Erro no relatorio.js:", e);
   }
+
+  // Corrige padding-right do body ao abrir modal (bug do Bootstrap)
+  document.addEventListener("hide.bs.modal", () => {
+    document.body.style.paddingRight = "";
+  });
 })();

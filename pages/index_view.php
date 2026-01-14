@@ -13,11 +13,26 @@ $dataIni = (string)($f['dataIni'] ?? $f['data_ini'] ?? '');
 $dataFim = (string)($f['dataFim'] ?? $f['data_fim'] ?? '');
 
 // Paginação (garantia defensiva, caso controller não mande)
-$perPageOptions = $perPageOptions ?? [25, 50, 100];
+$perPageOptions = $perPageOptions ?? [5, 10, 50];
+
+// pega do controller se existir, senão do GET, senão 5
 $perPage = isset($perPage) ? (int)$perPage : (int)($_GET['per_page'] ?? 5);
+
+// valida contra as opções permitidas
+if (!in_array($perPage, $perPageOptions, true)) {
+    $perPage = 5;
+}
+
+// página atual
 $page = isset($page) ? (int)$page : (int)($_GET['p'] ?? 1);
-$totalPages = isset($totalPages) ? (int)$totalPages : 1;
+$page = max(1, $page);
+
+// totais (se o controller não mandar)
 $total = isset($total) ? (int)$total : 0;
+$totalPages = isset($totalPages) ? (int)$totalPages : max(1, (int)ceil($total / $perPage));
+
+// offset
+$offset = ($page - 1) * $perPage;
 
 // Helper de URL para paginação preservando filtros atuais
 function page_url(int $p): string
@@ -68,13 +83,11 @@ function page_url(int $p): string
                 <a href="auditoria.php" class="btn btn-outline-dark btn-sm">Auditoria</a>
                 <a href="relatorio.php?competencia=<?= htmlspecialchars($competencia) ?>" class="btn btn-outline-success btn-sm">Relatório</a>
             <?php endif; ?>
-            <button
-                type="button"
-                class="btn btn-outline-primary btn-sm"
-                data-bs-toggle="modal"
-                data-bs-target="#modalMinhaSenha">
+
+            <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalMinhaSenha">
                 🔑 Minha senha
             </button>
+
             <form method="POST" action="logout.php" class="d-inline">
                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token('logout')) ?>">
                 <button type="submit" class="btn btn-outline-secondary btn-sm">Sair</button>
@@ -142,9 +155,7 @@ function page_url(int $p): string
              Pesquisa + Filtros (somente PC)
              ====================== -->
         <form method="GET" class="card p-2 mb-3">
-            <!-- sempre reseta pra página 1 ao filtrar -->
             <input type="hidden" name="p" value="1">
-
             <input type="hidden" name="competencia" value="<?= htmlspecialchars($competencia) ?>">
             <input type="hidden" name="filtro" value="<?= htmlspecialchars($filtro) ?>">
 
@@ -176,39 +187,24 @@ function page_url(int $p): string
                 </div>
 
                 <div class="col-6 col-md-2">
-                    <label class="form-label mb-1">Por página</label>
-                    <select name="per_page" class="form-select">
-                        <?php foreach ($perPageOptions as $opt): ?>
-                            <option value="<?= (int)$opt ?>" <?= ((int)$perPage === (int)$opt) ? 'selected' : '' ?>>
-                                <?= (int)$opt ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-
-                <div class="col-6 col-md-2">
                     <label class="form-label mb-1">De</label>
-                    <input type="date" name="data_ini" class="form-control"
-                        value="<?= htmlspecialchars($dataIni) ?>">
+                    <input type="date" name="data_ini" class="form-control" value="<?= htmlspecialchars($dataIni) ?>">
                 </div>
 
                 <div class="col-6 col-md-2">
                     <label class="form-label mb-1">Até</label>
-                    <input type="date" name="data_fim" class="form-control"
-                        value="<?= htmlspecialchars($dataFim) ?>">
+                    <input type="date" name="data_fim" class="form-control" value="<?= htmlspecialchars($dataFim) ?>">
                 </div>
 
                 <div class="col-12 col-md-6">
                     <div class="d-flex flex-wrap gap-3">
                         <div class="form-check">
-                            <input class="form-check-input" type="checkbox" name="balanco" value="1" id="fBalanco"
-                                <?= ((int)$soBalanco === 1) ? 'checked' : '' ?>>
+                            <input class="form-check-input" type="checkbox" name="balanco" value="1" id="fBalanco" <?= ((int)$soBalanco === 1) ? 'checked' : '' ?>>
                             <label class="form-check-label" for="fBalanco">Só balanço</label>
                         </div>
 
                         <div class="form-check">
-                            <input class="form-check-input" type="checkbox" name="sem_estoque" value="1" id="fSemEstoque"
-                                <?= ((int)$soSemEstoque === 1) ? 'checked' : '' ?>>
+                            <input class="form-check-input" type="checkbox" name="sem_estoque" value="1" id="fSemEstoque" <?= ((int)$soSemEstoque === 1) ? 'checked' : '' ?>>
                             <label class="form-check-label" for="fSemEstoque">Só sem estoque</label>
                         </div>
                     </div>
@@ -251,8 +247,6 @@ function page_url(int $p): string
             <input type="hidden" name="status" value="<?= htmlspecialchars($statusFiltro) ?>">
             <input type="hidden" name="balanco" value="<?= (int)$soBalanco ?>">
             <input type="hidden" name="sem_estoque" value="<?= (int)$soSemEstoque ?>">
-
-            <!-- preserva datas + paginação ao trocar mês -->
             <input type="hidden" name="data_ini" value="<?= htmlspecialchars($dataIni) ?>">
             <input type="hidden" name="data_fim" value="<?= htmlspecialchars($dataFim) ?>">
             <input type="hidden" name="per_page" value="<?= (int)$perPage ?>">
@@ -260,9 +254,7 @@ function page_url(int $p): string
 
             <select name="competencia" class="form-select" onchange="this.form.submit()">
                 <?php if (!in_array($competencia, $mesesDisponiveis, true)): ?>
-                    <option value="<?= htmlspecialchars($competencia) ?>" selected>
-                        <?= htmlspecialchars($competencia) ?> (atual)
-                    </option>
+                    <option value="<?= htmlspecialchars($competencia) ?>" selected><?= htmlspecialchars($competencia) ?> (atual)</option>
                 <?php endif; ?>
 
                 <?php foreach ($mesesDisponiveis as $m): ?>
@@ -287,7 +279,7 @@ function page_url(int $p): string
                     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token('reabrir_mes')) ?>">
                     <input type="hidden" name="competencia" value="<?= htmlspecialchars($competencia) ?>">
                     <input name="confirm" class="form-control" placeholder="REABRIR <?= htmlspecialchars($competencia) ?>" required>
-                    <button type="submit" class="btn btn-warning">🔓 Reabrir mês</button>
+                    <button type="submit" class="btn btn-warning">🔓 Reabrir</button>
                 </form>
 
             <?php else: ?>
@@ -295,9 +287,8 @@ function page_url(int $p): string
                     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token('fechar_mes')) ?>">
                     <input type="hidden" name="competencia" value="<?= htmlspecialchars($competencia) ?>">
                     <input type="hidden" name="usuario" value="<?= htmlspecialchars($nomeUsuario) ?>">
-
                     <input name="confirm" class="form-control" placeholder="FECHAR <?= htmlspecialchars($competencia) ?>" required>
-                    <button type="submit" class="btn btn-danger">📅 Fechar mês</button>
+                    <button type="submit" class="btn btn-danger">📅 Fechar</button>
                 </form>
             <?php endif; ?>
 
@@ -305,17 +296,14 @@ function page_url(int $p): string
                 <form method="POST" action="actions/exportar_mes.php" class="d-inline">
                     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token('exportar_mes')) ?>">
                     <input type="hidden" name="competencia" value="<?= htmlspecialchars($competencia) ?>">
-                    <button type="submit" class="btn btn-success">
-                        📥 Exportar XLSX
-                    </button>
+                    <button type="submit" class="btn btn-success btn-sm">📥 XLSX</button>
                 </form>
 
-                <!-- regerar -->
                 <form method="POST" action="actions/exportar_mes.php" class="d-inline">
                     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token('exportar_mes')) ?>">
                     <input type="hidden" name="competencia" value="<?= htmlspecialchars($competencia) ?>">
                     <input type="hidden" name="regen" value="1">
-                    <button type="submit" class="btn btn-outline-success"
+                    <button type="submit" class="btn btn-outline-success btn-sm"
                         onclick="return confirm('Regerar o XLSX do mês <?= htmlspecialchars($competencia) ?>?');">
                         ♻ Regerar
                     </button>
@@ -382,8 +370,14 @@ function page_url(int $p): string
                         $tipoLinha = htmlspecialchars(ucfirst((string)($r['tipo'] ?? '')));
                         $id = (int)($r['id'] ?? 0);
                         $isFinalizado = (($r['status'] ?? '') === 'finalizado');
+                        $isPendente = !$isFinalizado;
                     ?>
-                        <tr class="<?= htmlspecialchars($info['classe']) ?>" data-id="<?= $id ?>">
+                        <tr
+                            class="<?= htmlspecialchars($info['classe']) ?>"
+                            data-id="<?= $id ?>"
+                            data-retirada-id="<?= $id ?>"
+                            data-pendente="<?= ($isPendente ? '1' : '0') ?>"
+                            data-status="<?= htmlspecialchars((string)($r['status'] ?? '')) ?>">
                             <td><?= date('d/m H:i', strtotime((string)$r['data_pedido'])) ?></td>
                             <td><strong><?= htmlspecialchars((string)$r['produto']) ?></strong></td>
                             <td><?= (int)($r['quantidade_solicitada'] ?? 0) ?></td>
@@ -402,12 +396,17 @@ function page_url(int $p): string
                             <td class="d-none d-md-table-cell">
                                 <strong><?= htmlspecialchars((string)$info['texto']) ?></strong>
                             </td>
+
                             <td class="d-table-cell d-md-none"><strong><?= $tipoLinha ?></strong></td>
 
                             <td>
-                                <div class="d-flex flex-column gap-2">
+                                <!-- layout compacto: não quebra fácil -->
+                                <div class="d-grid gap-1" style="min-width: 110px;">
                                     <?php if ($canOperate && !$mesFechado && !$isFinalizado): ?>
-                                        <button class="btn btn-success w-100"
+                                        <button
+                                            type="button"
+                                            class="btn btn-success btn-sm"
+                                            data-open-finalizar
                                             data-bs-toggle="modal"
                                             data-bs-target="#modalFinalizar<?= $id ?>">
                                             ✅ Finalizar
@@ -416,7 +415,7 @@ function page_url(int $p): string
 
                                     <?php if ($canAdmin): ?>
                                         <button type="button"
-                                            class="btn btn-outline-primary w-100"
+                                            class="btn btn-outline-primary btn-sm"
                                             data-bs-toggle="modal"
                                             data-bs-target="#modalEditar<?= $id ?>">
                                             ✏ Editar
@@ -425,7 +424,7 @@ function page_url(int $p): string
 
                                     <?php if ($canAdmin && !$mesFechado): ?>
                                         <button type="button"
-                                            class="btn btn-outline-danger w-100"
+                                            class="btn btn-outline-danger btn-sm"
                                             data-bs-toggle="modal"
                                             data-bs-target="#modalExcluir<?= $id ?>">
                                             🗑 Excluir
@@ -433,7 +432,7 @@ function page_url(int $p): string
                                     <?php endif; ?>
 
                                     <?php if (!$canAdmin && !$canOperate): ?>
-                                        —
+                                        <span class="text-muted">—</span>
                                     <?php endif; ?>
                                 </div>
                             </td>
@@ -494,7 +493,6 @@ function page_url(int $p): string
     <!-- Modais -->
     <?php include 'modals/_load_modals.php'; ?>
 
-    <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
     <!-- Toast UI -->
@@ -507,8 +505,8 @@ function page_url(int $p): string
         </div>
     </div>
 
-    <!-- JS (toast/highlight) -->
     <script src="assets/js/app.js" defer></script>
+    <script src="assets/js/ux_atalhos.js" defer></script>
 
     <?php require __DIR__ . '/../modals/modal_minha_senha.php'; ?>
 </body>
