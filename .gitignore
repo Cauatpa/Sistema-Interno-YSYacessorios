@@ -1,3 +1,5 @@
 vendor
 .env
 exports/
+env.php
+bootstrap_admin.php
