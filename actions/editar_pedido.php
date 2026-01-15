@@ -29,10 +29,17 @@ if (!csrf_validate($_POST['csrf_token'] ?? null, 'editar_pedido')) {
 }
 csrf_rotate('editar_pedido');
 
-$id      = int_pos($_POST['id'] ?? 0);
-$produto = trim((string)($_POST['produto'] ?? ''));
-$tipo    = one_of(trim((string)($_POST['tipo'] ?? '')), ['prata', 'ouro'], '');
+$id       = int_pos($_POST['id'] ?? 0);
+$produto  = trim((string)($_POST['produto'] ?? ''));
+$tipo     = one_of(trim((string)($_POST['tipo'] ?? '')), ['prata', 'ouro'], '');
 $qtdSolic = int_pos($_POST['quantidade_solicitada'] ?? 0);
+
+// flags do modal
+$precisa_balanco = ((int)($_POST['precisa_balanco'] ?? 0) === 1) ? 1 : 0;
+$sem_estoque     = ((int)($_POST['sem_estoque'] ?? 0) === 1) ? 1 : 0;
+
+// consistência: sem estoque => balanço
+if ($sem_estoque === 1) $precisa_balanco = 1;
 
 if ($id <= 0 || $produto === '' || $tipo === '' || $qtdSolic <= 0) {
     audit_log(
@@ -45,6 +52,8 @@ if ($id <= 0 || $produto === '' || $tipo === '' || $qtdSolic <= 0) {
             'produto' => $produto,
             'tipo' => $tipo,
             'quantidade_solicitada' => $qtdSolic,
+            'precisa_balanco' => $precisa_balanco,
+            'sem_estoque' => $sem_estoque,
         ],
         null,
         null,
@@ -57,13 +66,13 @@ if ($id <= 0 || $produto === '' || $tipo === '' || $qtdSolic <= 0) {
 }
 
 /**
- * BEFORE (puxa só o necessário para diff e regras)
+ * BEFORE (puxa o necessário)
  */
 $stmt = $pdo->prepare("
     SELECT
         id, competencia, status,
         produto, tipo, quantidade_solicitada,
-        quantidade_retirada, precisa_balanco, sem_estoque
+        quantidade_retirada, precisa_balanco, sem_estoque, falta_estoque
     FROM retiradas
     WHERE id = ? AND deleted_at IS NULL
     LIMIT 1
@@ -90,7 +99,6 @@ if (!$beforeRow) {
 
 $competencia = (string)($beforeRow['competencia'] ?? '');
 $status      = (string)($beforeRow['status'] ?? '');
-$qtdRetirada = isset($beforeRow['quantidade_retirada']) ? (int)$beforeRow['quantidade_retirada'] : null;
 
 if (!competencia_valida($competencia)) {
     audit_log(
@@ -109,41 +117,76 @@ if (!competencia_valida($competencia)) {
     exit('Competência inválida no registro.');
 }
 
-/**
- * Regras: admin edita mesmo mês fechado (mantido).
- * Se estiver finalizado, recalcula flags com base no qtdRetirada vs qtdSolic.
- */
-$precisa_balanco = null;
-$sem_estoque = null;
+$isFinalizado = ($status === 'finalizado');
 
-if ($status === 'finalizado' && $qtdRetirada !== null) {
-    if ($qtdRetirada < $qtdSolic) {
-        $precisa_balanco = 1;
-        $sem_estoque = 1;
+/**
+ * Quantidade entregue: só pode editar se finalizado (Opção A)
+ */
+$newQtdRet = null;
+
+if ($isFinalizado && array_key_exists('quantidade_retirada', $_POST)) {
+    $raw = $_POST['quantidade_retirada'];
+
+    // aceita vazio como null -> não altera
+    if (is_string($raw) && trim($raw) === '') {
+        $newQtdRet = null;
     } else {
-        $precisa_balanco = 0;
-        $sem_estoque = 0;
+        $newQtdRet = int_nonneg($raw);
     }
 }
 
 /**
- * UPDATE
+ * Se finalizado e sem_estoque=1 => quantidade_retirada obrigatoriamente 0
  */
-if ($precisa_balanco === null) {
-    $upd = $pdo->prepare("
-        UPDATE retiradas
-        SET produto = ?, tipo = ?, quantidade_solicitada = ?
-        WHERE id = ? AND deleted_at IS NULL
-    ");
-    $ok = $upd->execute([$produto, $tipo, $qtdSolic, $id]);
-} else {
-    $upd = $pdo->prepare("
-        UPDATE retiradas
-        SET produto = ?, tipo = ?, quantidade_solicitada = ?, precisa_balanco = ?, sem_estoque = ?
-        WHERE id = ? AND deleted_at IS NULL
-    ");
-    $ok = $upd->execute([$produto, $tipo, $qtdSolic, $precisa_balanco, $sem_estoque, $id]);
+if ($isFinalizado && $sem_estoque === 1) {
+    $newQtdRet = 0;
 }
+
+/**
+ * Regra falta_estoque (só faz sentido se finalizado)
+ */
+$falta_estoque = (int)($beforeRow['falta_estoque'] ?? 0);
+$beforeQtdRet  = isset($beforeRow['quantidade_retirada']) ? (int)$beforeRow['quantidade_retirada'] : null;
+
+$effectiveQtdRet = $beforeQtdRet;
+if ($isFinalizado && $newQtdRet !== null) {
+    $effectiveQtdRet = $newQtdRet;
+}
+
+if ($isFinalizado && $effectiveQtdRet !== null) {
+    $falta_estoque = 0;
+    if ($sem_estoque === 1) {
+        $falta_estoque = 1;
+    } else {
+        if ($effectiveQtdRet < $qtdSolic) $falta_estoque = 1;
+    }
+}
+
+/**
+ * UPDATE dinâmico (inclui qtd_retirada/falta_estoque somente se finalizado e enviado)
+ */
+$fields = [
+    'produto = ?',
+    'tipo = ?',
+    'quantidade_solicitada = ?',
+    'precisa_balanco = ?',
+    'sem_estoque = ?',
+];
+$params = [$produto, $tipo, $qtdSolic, $precisa_balanco, $sem_estoque];
+
+if ($isFinalizado && $newQtdRet !== null) {
+    $fields[] = 'quantidade_retirada = ?';
+    $params[] = $newQtdRet;
+
+    $fields[] = 'falta_estoque = ?';
+    $params[] = $falta_estoque;
+}
+
+$params[] = $id;
+
+$sql = "UPDATE retiradas SET " . implode(', ', $fields) . " WHERE id = ? AND deleted_at IS NULL";
+$upd = $pdo->prepare($sql);
+$ok = $upd->execute($params);
 
 if (!$ok) {
     audit_log(
@@ -163,21 +206,7 @@ if (!$ok) {
 }
 
 /**
- * AFTER (monta só o que importa; sem SELECT * gigante)
- */
-$afterRow = [
-    'produto' => $produto,
-    'tipo' => $tipo,
-    'quantidade_solicitada' => $qtdSolic,
-];
-
-if ($precisa_balanco !== null) {
-    $afterRow['precisa_balanco'] = $precisa_balanco;
-    $afterRow['sem_estoque'] = $sem_estoque;
-}
-
-/**
- * Diff só do que mudou
+ * Diff (inclui quantidade_retirada/falta_estoque pra auditoria quando aplicável)
  */
 $beforeForDiff = [
     'produto' => (string)($beforeRow['produto'] ?? ''),
@@ -185,31 +214,35 @@ $beforeForDiff = [
     'quantidade_solicitada' => (int)($beforeRow['quantidade_solicitada'] ?? 0),
     'precisa_balanco' => (int)($beforeRow['precisa_balanco'] ?? 0),
     'sem_estoque' => (int)($beforeRow['sem_estoque'] ?? 0),
+    'quantidade_retirada' => isset($beforeRow['quantidade_retirada']) ? (int)$beforeRow['quantidade_retirada'] : null,
+    'falta_estoque' => (int)($beforeRow['falta_estoque'] ?? 0),
 ];
 
 $afterForDiff = [
     'produto' => $produto,
     'tipo' => $tipo,
     'quantidade_solicitada' => $qtdSolic,
-    'precisa_balanco' => $precisa_balanco !== null ? (int)$precisa_balanco : (int)($beforeRow['precisa_balanco'] ?? 0),
-    'sem_estoque' => $sem_estoque !== null ? (int)$sem_estoque : (int)($beforeRow['sem_estoque'] ?? 0),
+    'precisa_balanco' => (int)$precisa_balanco,
+    'sem_estoque' => (int)$sem_estoque,
+    'quantidade_retirada' => ($isFinalizado && $newQtdRet !== null) ? (int)$newQtdRet : $beforeForDiff['quantidade_retirada'],
+    'falta_estoque' => ($isFinalizado && $newQtdRet !== null) ? (int)$falta_estoque : (int)$beforeForDiff['falta_estoque'],
 ];
 
-[$beforeDiff, $afterDiff] = audit_diff(
-    $beforeForDiff,
-    $afterForDiff,
-    ['produto', 'tipo', 'quantidade_solicitada', 'precisa_balanco', 'sem_estoque']
-);
+$keys = ['produto', 'tipo', 'quantidade_solicitada', 'precisa_balanco', 'sem_estoque'];
+if ($isFinalizado) {
+    // só aparece em diff quando finalizado
+    $keys[] = 'quantidade_retirada';
+    $keys[] = 'falta_estoque';
+}
+
+[$beforeDiff, $afterDiff] = audit_diff($beforeForDiff, $afterForDiff, $keys);
 
 audit_log(
     $pdo,
     'edit',
     'retirada',
     $id,
-    [
-        'competencia' => $competencia,
-        'reason' => null,
-    ],
+    ['competencia' => $competencia, 'reason' => null],
     $beforeDiff,
     $afterDiff,
     true,

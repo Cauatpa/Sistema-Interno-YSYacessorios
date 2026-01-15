@@ -59,6 +59,9 @@ function labelRole(string $role): string
 
     <!-- Bootstrap -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Ícone da aba -->
+    <link rel="icon" type="image/png" href="assets/imgs/Y.png">
 </head>
 
 <body class="p-3">

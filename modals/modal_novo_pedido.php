@@ -13,7 +13,6 @@
 
                 <div class="modal-body">
 
-                    <!-- Produto -->
                     <div class="mb-3">
                         <label class="form-label">Produto</label>
                         <input
@@ -25,7 +24,6 @@
                             autofocus>
                     </div>
 
-                    <!-- Tipo -->
                     <div class="mb-3">
                         <label class="form-label">Tipo</label>
                         <select name="tipo" class="form-select" required>
@@ -35,18 +33,18 @@
                         </select>
                     </div>
 
-                    <!-- Quantidade -->
                     <div class="mb-3">
-                        <label class="form-label">Quantidade solicitada</label>
+                        <label class="form-label">Quantidade solicitada (peças)</label>
                         <input
                             type="number"
                             name="quantidade_solicitada"
                             class="form-control"
                             min="1"
+                            value="1"
                             required>
+                        <div class="form-text">Quantas peças a pessoa pediu.</div>
                     </div>
 
-                    <!-- Solicitante REAL -->
                     <div class="mb-3">
                         <label class="form-label">Solicitante</label>
                         <input

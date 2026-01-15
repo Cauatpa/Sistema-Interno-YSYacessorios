@@ -66,6 +66,8 @@ $percSemEstoque = $totalPedidos > 0 ? round(($totalSemEstoque / $totalPedidos) *
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/relatorio.css">
+    <!-- Ícone da aba -->
+    <link rel="icon" type="image/png" href="assets/imgs/Y.png">
 </head>
 
 <body class="p-3 p-md-4">

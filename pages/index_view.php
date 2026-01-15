@@ -58,6 +58,9 @@ function page_url(int $p): string
 
     <!-- CSS próprio -->
     <link rel="stylesheet" href="assets/css/style.css">
+
+    <!-- Ícone da aba -->
+    <link rel="icon" type="image/png" href="assets/imgs/Y.png">
 </head>
 
 <body class="p-3">
@@ -343,7 +346,7 @@ function page_url(int $p): string
                 <tr>
                     <th>🕒 Pedido</th>
                     <th>📦 Produto</th>
-                    <th>🔢 Qtd (Lote)</th>
+                    <th>🔢 Quantidades</th>
 
                     <th class="d-none d-md-table-cell">🔖 Tipo</th>
                     <th class="d-none d-md-table-cell">👤 Solicitante</th>
@@ -380,7 +383,16 @@ function page_url(int $p): string
                             data-status="<?= htmlspecialchars((string)($r['status'] ?? '')) ?>">
                             <td><?= date('d/m H:i', strtotime((string)$r['data_pedido'])) ?></td>
                             <td><strong><?= htmlspecialchars((string)$r['produto']) ?></strong></td>
-                            <td><?= (int)($r['quantidade_solicitada'] ?? 0) ?></td>
+                            <td class="text-start">
+                                <div class="fw-semibold">Solicitado: <?= (int)($r['quantidade_solicitada'] ?? 0) ?></div>
+                                <div class="text-muted small">
+                                    Entregue:
+                                    <?php
+                                    $entregue = $r['quantidade_retirada'];
+                                    echo ($entregue === null || $entregue === '') ? '—' : (int)$entregue;
+                                    ?>
+                                </div>
+                            </td>
 
                             <td class="d-none d-md-table-cell"><?= $tipoLinha ?></td>
                             <td class="d-none d-md-table-cell"><?= htmlspecialchars((string)($r['solicitante'] ?? '')) ?></td>
