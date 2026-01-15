@@ -29,10 +29,11 @@ if (!csrf_validate($_POST['csrf_token'] ?? null, 'editar_pedido')) {
 }
 csrf_rotate('editar_pedido');
 
-$id       = int_pos($_POST['id'] ?? 0);
-$produto  = trim((string)($_POST['produto'] ?? ''));
-$tipo     = one_of(trim((string)($_POST['tipo'] ?? '')), ['prata', 'ouro'], '');
-$qtdSolic = int_pos($_POST['quantidade_solicitada'] ?? 0);
+$id         = int_pos($_POST['id'] ?? 0);
+$produto    = trim((string)($_POST['produto'] ?? ''));
+$tipo       = one_of(trim((string)($_POST['tipo'] ?? '')), ['prata', 'ouro'], '');
+$qtdSolic   = int_pos($_POST['quantidade_solicitada'] ?? 0);
+$solicitante = trim((string)($_POST['solicitante'] ?? ''));
 
 // flags do modal
 $precisa_balanco = ((int)($_POST['precisa_balanco'] ?? 0) === 1) ? 1 : 0;
@@ -41,7 +42,7 @@ $sem_estoque     = ((int)($_POST['sem_estoque'] ?? 0) === 1) ? 1 : 0;
 // consistência: sem estoque => balanço
 if ($sem_estoque === 1) $precisa_balanco = 1;
 
-if ($id <= 0 || $produto === '' || $tipo === '' || $qtdSolic <= 0) {
+if ($id <= 0 || $produto === '' || $tipo === '' || $qtdSolic <= 0 || $solicitante === '') {
     audit_log(
         $pdo,
         'edit',
@@ -52,6 +53,7 @@ if ($id <= 0 || $produto === '' || $tipo === '' || $qtdSolic <= 0) {
             'produto' => $produto,
             'tipo' => $tipo,
             'quantidade_solicitada' => $qtdSolic,
+            'solicitante' => $solicitante,
             'precisa_balanco' => $precisa_balanco,
             'sem_estoque' => $sem_estoque,
         ],
@@ -71,7 +73,7 @@ if ($id <= 0 || $produto === '' || $tipo === '' || $qtdSolic <= 0) {
 $stmt = $pdo->prepare("
     SELECT
         id, competencia, status,
-        produto, tipo, quantidade_solicitada,
+        produto, tipo, quantidade_solicitada, solicitante,
         quantidade_retirada, precisa_balanco, sem_estoque, falta_estoque
     FROM retiradas
     WHERE id = ? AND deleted_at IS NULL
@@ -127,7 +129,7 @@ $newQtdRet = null;
 if ($isFinalizado && array_key_exists('quantidade_retirada', $_POST)) {
     $raw = $_POST['quantidade_retirada'];
 
-    // aceita vazio como null -> não altera
+    // vazio = não altera
     if (is_string($raw) && trim($raw) === '') {
         $newQtdRet = null;
     } else {
@@ -135,9 +137,7 @@ if ($isFinalizado && array_key_exists('quantidade_retirada', $_POST)) {
     }
 }
 
-/**
- * Se finalizado e sem_estoque=1 => quantidade_retirada obrigatoriamente 0
- */
+// Se finalizado e sem_estoque=1 => quantidade_retirada obrigatoriamente 0
 if ($isFinalizado && $sem_estoque === 1) {
     $newQtdRet = 0;
 }
@@ -146,7 +146,9 @@ if ($isFinalizado && $sem_estoque === 1) {
  * Regra falta_estoque (só faz sentido se finalizado)
  */
 $falta_estoque = (int)($beforeRow['falta_estoque'] ?? 0);
-$beforeQtdRet  = isset($beforeRow['quantidade_retirada']) ? (int)$beforeRow['quantidade_retirada'] : null;
+$beforeQtdRet  = array_key_exists('quantidade_retirada', $beforeRow) && $beforeRow['quantidade_retirada'] !== null
+    ? (int)$beforeRow['quantidade_retirada']
+    : null;
 
 $effectiveQtdRet = $beforeQtdRet;
 if ($isFinalizado && $newQtdRet !== null) {
@@ -169,10 +171,11 @@ $fields = [
     'produto = ?',
     'tipo = ?',
     'quantidade_solicitada = ?',
+    'solicitante = ?',
     'precisa_balanco = ?',
     'sem_estoque = ?',
 ];
-$params = [$produto, $tipo, $qtdSolic, $precisa_balanco, $sem_estoque];
+$params = [$produto, $tipo, $qtdSolic, $solicitante, $precisa_balanco, $sem_estoque];
 
 if ($isFinalizado && $newQtdRet !== null) {
     $fields[] = 'quantidade_retirada = ?';
@@ -206,15 +209,16 @@ if (!$ok) {
 }
 
 /**
- * Diff (inclui quantidade_retirada/falta_estoque pra auditoria quando aplicável)
+ * Diff
  */
 $beforeForDiff = [
     'produto' => (string)($beforeRow['produto'] ?? ''),
     'tipo' => (string)($beforeRow['tipo'] ?? ''),
     'quantidade_solicitada' => (int)($beforeRow['quantidade_solicitada'] ?? 0),
+    'solicitante' => (string)($beforeRow['solicitante'] ?? ''),
     'precisa_balanco' => (int)($beforeRow['precisa_balanco'] ?? 0),
     'sem_estoque' => (int)($beforeRow['sem_estoque'] ?? 0),
-    'quantidade_retirada' => isset($beforeRow['quantidade_retirada']) ? (int)$beforeRow['quantidade_retirada'] : null,
+    'quantidade_retirada' => $beforeQtdRet,
     'falta_estoque' => (int)($beforeRow['falta_estoque'] ?? 0),
 ];
 
@@ -222,15 +226,15 @@ $afterForDiff = [
     'produto' => $produto,
     'tipo' => $tipo,
     'quantidade_solicitada' => $qtdSolic,
+    'solicitante' => $solicitante,
     'precisa_balanco' => (int)$precisa_balanco,
     'sem_estoque' => (int)$sem_estoque,
     'quantidade_retirada' => ($isFinalizado && $newQtdRet !== null) ? (int)$newQtdRet : $beforeForDiff['quantidade_retirada'],
     'falta_estoque' => ($isFinalizado && $newQtdRet !== null) ? (int)$falta_estoque : (int)$beforeForDiff['falta_estoque'],
 ];
 
-$keys = ['produto', 'tipo', 'quantidade_solicitada', 'precisa_balanco', 'sem_estoque'];
+$keys = ['produto', 'tipo', 'quantidade_solicitada', 'solicitante', 'precisa_balanco', 'sem_estoque'];
 if ($isFinalizado) {
-    // só aparece em diff quando finalizado
     $keys[] = 'quantidade_retirada';
     $keys[] = 'falta_estoque';
 }

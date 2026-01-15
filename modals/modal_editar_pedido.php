@@ -51,6 +51,17 @@
                     </div>
 
                     <div class="mb-3">
+                        <label class="form-label">Solicitante</label>
+                        <input
+                            type="text"
+                            name="solicitante"
+                            class="form-control"
+                            value="<?= htmlspecialchars((string)($r['solicitante'] ?? '')) ?>"
+                            required>
+                        <div class="form-text">Nome de quem solicitou o item (não precisa ser usuário do sistema).</div>
+                    </div>
+
+                    <div class="mb-3">
                         <label class="form-label">Quantidade solicitada (peças)</label>
                         <input
                             type="number"

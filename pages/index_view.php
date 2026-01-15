@@ -13,14 +13,14 @@ $dataIni = (string)($f['dataIni'] ?? $f['data_ini'] ?? '');
 $dataFim = (string)($f['dataFim'] ?? $f['data_fim'] ?? '');
 
 // Paginação (garantia defensiva, caso controller não mande)
-$perPageOptions = $perPageOptions ?? [5, 10, 50];
+$perPageOptions = $perPageOptions ?? [30, 50, 100];
 
-// pega do controller se existir, senão do GET, senão 5
-$perPage = isset($perPage) ? (int)$perPage : (int)($_GET['per_page'] ?? 5);
+// pega do controller se existir, senão do GET, senão 30
+$perPage = (int)($_GET['per_page'] ?? ($perPage ?? 30));
 
 // valida contra as opções permitidas
 if (!in_array($perPage, $perPageOptions, true)) {
-    $perPage = 5;
+    $perPage = 30;
 }
 
 // página atual
@@ -317,7 +317,9 @@ function page_url(int $p): string
 
     <!-- Botão Novo Pedido -->
     <div class="d-flex justify-content-between mb-3">
-        <button class="btn btn-primary btn-lg w-100 w-md-auto"
+        <button
+            id="btnNovoPedido"
+            class="btn btn-primary btn-lg w-100 w-md-auto"
             data-bs-toggle="modal"
             data-bs-target="#modalNovoPedido"
             <?= ($mesFechado || !$canOperate) ? 'disabled' : '' ?>>

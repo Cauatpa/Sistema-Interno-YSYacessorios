@@ -73,7 +73,7 @@ $dash = $stmtDash->fetch(PDO::FETCH_ASSOC) ?: [
 list($where, $params) = montar_where_retiradas($competencia, $f);
 
 // Paginação
-$perPage = 50; // escolha: 25, 50, 100
+$perPage = 30; // escolha: 30, 50, 100
 $page = max(1, (int)($_GET['p'] ?? 1));
 $offset = ($page - 1) * $perPage;
 
@@ -90,12 +90,12 @@ $offset = ($page - 1) * $perPage;
 list($where, $params) = montar_where_retiradas($competencia, $f);
 
 // ---------------------
-// Paginação + per_page
+// Paginação + per_page (ÚNICO BLOCO)
 // ---------------------
-$perPageOptions = [25, 50, 100];
-$perPage = (int)($_GET['per_page'] ?? 5);
+$perPageOptions = [30, 50, 100];
+$perPage = (int)($_GET['per_page'] ?? 30);
 if (!in_array($perPage, $perPageOptions, true)) {
-    $perPage = 5;
+    $perPage = 30;
 }
 
 $page = max(1, (int)($_GET['p'] ?? 1));
@@ -109,6 +109,12 @@ $total = (int)$stmtTotal->fetchColumn();
 $totalPages = max(1, (int)ceil($total / $perPage));
 if ($page > $totalPages) $page = $totalPages;
 $offset = ($page - 1) * $perPage;
+
+// Listagem paginada
+$sql = "SELECT * FROM retiradas {$where} ORDER BY data_pedido DESC LIMIT {$perPage} OFFSET {$offset}";
+$stmt = $pdo->prepare($sql);
+$stmt->execute($params);
+$retiradas = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Listagem paginada
 $sql = "SELECT * FROM retiradas {$where} ORDER BY data_pedido DESC LIMIT {$perPage} OFFSET {$offset}";
