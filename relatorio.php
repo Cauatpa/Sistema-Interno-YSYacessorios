@@ -48,11 +48,12 @@ function h($v): string
 
 $totalPedidos      = (int)($kpis['total_pedidos'] ?? 0);
 $totalItensSolic   = (int)($kpis['total_itens_solicitados'] ?? 0);
+$totalRetirados    = (int)($kpis['total_itens_retirados'] ?? 0);
 $totalFinal        = (int)($kpis['total_finalizados'] ?? 0);
 $totalPend         = (int)($kpis['total_pendentes'] ?? 0);
 $totalSemEstoque   = (int)($kpis['total_sem_estoque'] ?? 0);
 $totalBalanco      = (int)($kpis['total_balanco'] ?? 0);
-$totalRetirados    = (int)($kpis['total_itens_retirados'] ?? 0);
+
 
 $percFinal      = $totalPedidos > 0 ? round(($totalFinal / $totalPedidos) * 100) : 0;
 $percSemEstoque = $totalPedidos > 0 ? round(($totalSemEstoque / $totalPedidos) * 100) : 0;
@@ -151,11 +152,11 @@ $percSemEstoque = $totalPedidos > 0 ? round(($totalSemEstoque / $totalPedidos) *
             <div class="col-12 col-md-3">
                 <div class="card card-soft p-3 kpi">
                     <div class="d-flex align-items-center justify-content-between">
-                        <div class="icon green">✅</div>
-                        <div class="kpi-label">Finalizados</div>
+                        <div class="icon gray">📤</div>
+                        <div class="kpi-label">Itens retirados</div>
                     </div>
-                    <div class="kpi-value mt-2"><?= (int)$totalFinal ?></div>
-                    <div class="kpi-foot"><?= (int)$percFinal ?>% do total</div>
+                    <div class="kpi-value mt-2"><?= (int)$totalRetirados ?></div>
+                    <div class="kpi-foot">Soma de quantidade_retirada</div>
                 </div>
             </div>
 
@@ -195,13 +196,14 @@ $percSemEstoque = $totalPedidos > 0 ? round(($totalSemEstoque / $totalPedidos) *
             <div class="col-12 col-md-4">
                 <div class="card card-soft p-3 kpi">
                     <div class="d-flex align-items-center justify-content-between">
-                        <div class="icon gray">📤</div>
-                        <div class="kpi-label">Itens retirados</div>
+                        <div class="icon green">✅</div>
+                        <div class="kpi-label">Finalizados</div>
                     </div>
-                    <div class="kpi-value mt-2"><?= (int)$totalRetirados ?></div>
-                    <div class="kpi-foot">Soma de quantidade_retirada</div>
+                    <div class="kpi-value mt-2"><?= (int)$totalFinal ?></div>
+                    <div class="kpi-foot"><?= (int)$percFinal ?>% do total</div>
                 </div>
             </div>
+
         </div>
 
         <!-- Gráficos -->
