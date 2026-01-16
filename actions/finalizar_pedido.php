@@ -19,14 +19,16 @@ if (!csrf_validate($_POST['csrf_token'] ?? null, 'finalizar_pedido')) {
 }
 
 $id = int_pos($_POST['id'] ?? 0);
-$wantNext = (int)($_POST['next'] ?? 0) === 1;
+$wantNext = ((int)($_POST['next'] ?? 0) === 1);
+
+// ✅ se o JS mandar, a gente prioriza
+$nextTargetId = int_pos($_POST['next_target_id'] ?? 0);
 
 if ($id <= 0) {
     http_response_code(400);
     exit('ID inválido.');
 }
 
-// Busca o pedido (agora pega quantidade_solicitada)
 $stmt = $pdo->prepare("
     SELECT id, competencia, status, quantidade_solicitada
     FROM retiradas
@@ -67,9 +69,7 @@ $precisa_balanco = (int)($_POST['precisa_balanco'] ?? 0);
 $sem_estoque = (int)($_POST['sem_estoque'] ?? 0);
 
 $rawQtd = $_POST['quantidade_retirada'] ?? null;
-if (is_string($rawQtd) && trim($rawQtd) === '') {
-    $rawQtd = null;
-}
+if (is_string($rawQtd) && trim($rawQtd) === '') $rawQtd = null;
 
 if ($sem_estoque === 1) {
     $qtdEntregue = 0;
@@ -92,16 +92,10 @@ if ($responsavel_estoque === '') {
     exit('Responsável do estoque é obrigatório.');
 }
 
-// falta_estoque: entregou menos que solicitado OU sem estoque marcado
 $falta_estoque = 0;
-if ($qtdSolicitada > 0 && $qtdEntregue < $qtdSolicitada) {
-    $falta_estoque = 1;
-}
-if ($sem_estoque === 1) {
-    $falta_estoque = 1;
-}
+if ($qtdSolicitada > 0 && $qtdEntregue < $qtdSolicitada) $falta_estoque = 1;
+if ($sem_estoque === 1) $falta_estoque = 1;
 
-// Finaliza
 $update = $pdo->prepare("
     UPDATE retiradas
     SET
@@ -130,22 +124,41 @@ if (!$ok) {
 
 csrf_rotate('finalizar_pedido');
 
-// Se pediu "próximo", busca o próximo pendente do mesmo mês
+// ✅ calcula o próximo
 $openNextId = null;
 if ($wantNext) {
-    $nextStmt = $pdo->prepare("
-        SELECT id
-        FROM retiradas
-        WHERE competencia = ?
-          AND deleted_at IS NULL
-          AND status <> 'finalizado'
-          AND id <> ?
-        ORDER BY data_pedido ASC, id ASC
-        LIMIT 1
-    ");
-    $nextStmt->execute([$competencia, $id]);
-    $openNextId = $nextStmt->fetchColumn();
-    $openNextId = $openNextId ? (int)$openNextId : null;
+    // 1) se veio um next_target_id válido, garante que ele ainda está pendente no mesmo mês
+    if ($nextTargetId > 0) {
+        $chk = $pdo->prepare("
+            SELECT id
+            FROM retiradas
+            WHERE id = ?
+              AND competencia = ?
+              AND deleted_at IS NULL
+              AND status <> 'finalizado'
+            LIMIT 1
+        ");
+        $chk->execute([$nextTargetId, $competencia]);
+        $okId = $chk->fetchColumn();
+        if ($okId) $openNextId = (int)$okId;
+    }
+
+    // 2) fallback: busca no banco
+    if (!$openNextId) {
+        $nextStmt = $pdo->prepare("
+            SELECT id
+            FROM retiradas
+            WHERE competencia = ?
+              AND deleted_at IS NULL
+              AND status <> 'finalizado'
+              AND id <> ?
+            ORDER BY data_pedido ASC, id ASC
+            LIMIT 1
+        ");
+        $nextStmt->execute([$competencia, $id]);
+        $openNextId = $nextStmt->fetchColumn();
+        $openNextId = $openNextId ? (int)$openNextId : null;
+    }
 }
 
 $params = [

@@ -39,12 +39,14 @@ function one_of(string $value, array $allowed, string $fallback): string
     return in_array($value, $allowed, true) ? $value : $fallback;
 }
 
-function redirect_with_query(string $path, array $query = []): void
+function redirect_with_query(string $path, array $params = []): void
 {
-    $url = $path;
-    if (!empty($query)) {
-        $url .= '?' . http_build_query($query);
-    }
-    header("Location: {$url}");
+    // remove nulls
+    $params = array_filter($params, static fn($v) => $v !== null);
+
+    $qs = http_build_query($params);
+    $url = $path . ($qs ? ('?' . $qs) : '');
+
+    header('Location: ' . $url);
     exit;
 }

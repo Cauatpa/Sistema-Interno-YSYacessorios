@@ -318,11 +318,14 @@ function page_url(int $p): string
     <!-- Botão Novo Pedido -->
     <div class="d-flex justify-content-between mb-3">
         <button
-            id="btnNovoPedido"
+            type="button"
             class="btn btn-primary btn-lg w-100 w-md-auto"
+            id="btnNovoPedido"
             data-bs-toggle="modal"
             data-bs-target="#modalNovoPedido"
-            <?= ($mesFechado || !$canOperate) ? 'disabled' : '' ?>>
+            aria-controls="modalNovoPedido"
+            aria-haspopup="dialog"
+            <?= ($mesFechado || !$canOperate) ? 'disabled aria-disabled="true"' : '' ?>>
             ➕ Novo Pedido
         </button>
     </div>

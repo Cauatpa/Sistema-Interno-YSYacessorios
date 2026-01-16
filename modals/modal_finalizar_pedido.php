@@ -1,4 +1,4 @@
-<div class="modal fade" id="modalFinalizar<?= (int)$r['id'] ?>" tabindex="-1">
+<div class="modal fade" id="modalFinalizar<?= (int)$r['id'] ?>" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-fullscreen-sm-down modal-dialog-centered">
         <div class="modal-content">
 
@@ -10,6 +10,11 @@
                 <input type="hidden" name="precisa_balanco" value="0">
                 <input type="hidden" name="sem_estoque" value="0">
 
+                <!-- default: não é próximo -->
+                <input type="hidden" name="next" value="0">
+                <!-- ✅ usado quando o JS calcula o próximo pendente -->
+                <input type="hidden" name="next_target_id" value="0">
+
                 <div class="modal-header">
                     <h5 class="modal-title">📦 Finalizar Retirada</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
@@ -17,10 +22,9 @@
 
                 <div class="modal-body">
                     <div class="alert alert-light border mb-3">
-                        <div><strong>Produto:</strong> <?= htmlspecialchars((string)$r['produto']) ?></div>
-                        <div><strong>Tipo:</strong> <?= htmlspecialchars(ucfirst((string)$r['tipo'])) ?></div>
-                        <div><strong>Solicitado:</strong> <?= (int)($r['itens_solicitados'] ?? 0) ?> item(ns)</div>
-                        <div class="small text-muted">Lote: <?= (int)($r['quantidade_solicitada'] ?? 1) ?></div>
+                        <div><strong>Produto:</strong> <?= htmlspecialchars((string)($r['produto'] ?? '')) ?></div>
+                        <div><strong>Tipo:</strong> <?= htmlspecialchars(ucfirst((string)($r['tipo'] ?? ''))) ?></div>
+                        <div><strong>Solicitado:</strong> <?= (int)($r['quantidade_solicitada'] ?? 0) ?> peça(s)</div>
                     </div>
 
                     <div class="mb-3">
@@ -51,24 +55,33 @@
                             value="1"
                             id="sem<?= (int)$r['id'] ?>"
                             onchange="
-                const qtd = document.getElementById('qtdRetirada<?= (int)$r['id'] ?>');
-                if (this.checked) {
-                  qtd.value = 0;
-                  qtd.disabled = true;
-                } else {
-                  qtd.disabled = false;
-                  qtd.focus();
-                }
-              ">
+                                const qtd = document.getElementById('qtdRetirada<?= (int)$r['id'] ?>');
+                                const bal = document.getElementById('balanco<?= (int)$r['id'] ?>');
+                                if (this.checked) {
+                                    if (qtd) { qtd.value = 0; qtd.disabled = true; }
+                                    if (bal) { bal.checked = true; }
+                                } else {
+                                    if (qtd) { qtd.disabled = false; qtd.focus(); }
+                                }
+                            ">
                         <label class="form-check-label fw-semibold" for="sem<?= (int)$r['id'] ?>">
                             ❌ Produto sem estoque
                         </label>
                     </div>
+
+                    <div class="alert alert-light border py-2 small mt-3 mb-0">
+                        Atalhos: <strong>Enter</strong> finaliza • <strong>Shift + Enter</strong> finaliza e abre o próximo
+                    </div>
                 </div>
 
                 <div class="modal-footer d-flex gap-2">
-                    <button type="submit" class="btn btn-success btn-sm flex-fill">✅ Finalizar</button>
-                    <button type="submit" class="btn btn-outline-primary btn-sm flex-fill" name="next" value="1">→ Próximo</button>
+                    <button type="submit" class="btn btn-success btn-sm flex-fill">
+                        ✅ Finalizar
+                    </button>
+
+                    <button type="submit" class="btn btn-outline-primary btn-sm flex-fill" name="next" value="1">
+                        → Próximo
+                    </button>
                 </div>
             </form>
 

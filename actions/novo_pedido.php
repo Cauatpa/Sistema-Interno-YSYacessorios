@@ -31,15 +31,16 @@ if (!csrf_validate($_POST['csrf_token'] ?? null, 'novo_pedido')) {
     http_response_code(403);
     exit('CSRF inválido.');
 }
-csrf_rotate('novo_pedido');
 
-// Campos obrigatórios (voltou pro simples)
+$wantNext = ((int)($_POST['next'] ?? 0) === 1);
+
+// Campos obrigatórios
 require_fields($_POST, ['produto', 'tipo', 'solicitante', 'quantidade_solicitada']);
 
-$produto = trim((string)($_POST['produto'] ?? ''));
-$tipo = one_of(trim((string)($_POST['tipo'] ?? '')), ['prata', 'ouro'], '');
+$produto     = trim((string)($_POST['produto'] ?? ''));
+$tipo        = one_of(trim((string)($_POST['tipo'] ?? '')), ['prata', 'ouro'], '');
 $solicitante = trim((string)($_POST['solicitante'] ?? ''));
-$quantidade = int_pos($_POST['quantidade_solicitada'] ?? 0);
+$quantidade  = int_pos($_POST['quantidade_solicitada'] ?? 0);
 
 if ($produto === '' || $tipo === '' || $solicitante === '' || $quantidade <= 0) {
     audit_log(
@@ -135,8 +136,19 @@ audit_log(
     "Criou retirada #{$newId} | {$tipo} | {$produto} | solicitado: {$quantidade} | Solicitante: {$solicitante}."
 );
 
-redirect_with_query('../index.php', [
+// gira token só depois de sucesso
+csrf_rotate('novo_pedido');
+
+$params = [
     'competencia' => $competencia,
     'toast' => 'criado',
-    'highlight_id' => $newId
-]);
+    'highlight_id' => $newId,
+];
+
+if ($wantNext) {
+    $params['open_novo'] = 1;
+    $params['keep_solicitante'] = $solicitante;
+}
+
+redirect_with_query('../index.php', $params);
+exit;
