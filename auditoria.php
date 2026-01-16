@@ -95,7 +95,7 @@ function pretty_json(?string $json): string
 }
 ?>
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-br" data-bs-theme="light">
 
 <head>
     <meta charset="UTF-8">

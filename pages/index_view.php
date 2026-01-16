@@ -44,7 +44,7 @@ function page_url(int $p): string
 ?>
 
 <!DOCTYPE html>
-<html lang="pt-br"
+<html lang="pt-br" data-bs-theme="light"
     data-toast="<?= htmlspecialchars((string)$toast) ?>"
     data-highlight-id="<?= (int)$highlightId ?>">
 
@@ -90,6 +90,10 @@ function page_url(int $p): string
 
             <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalMinhaSenha">
                 🔑 Minha senha
+            </button>
+
+            <button id="btnTheme" class="btn btn-outline-secondary btn-sm">
+                🌙 Tema escuro
             </button>
 
             <form method="POST" action="logout.php" class="d-inline">
@@ -525,6 +529,7 @@ function page_url(int $p): string
 
     <script src="assets/js/app.js" defer></script>
     <script src="assets/js/ux_atalhos.js" defer></script>
+    <script src="assets/js/theme.js" defer></script>
 
     <?php require __DIR__ . '/../modals/modal_minha_senha.php'; ?>
 </body>

@@ -99,3 +99,9 @@ body {
   height: 1px;
   background: rgba(0, 0, 0, 0.06);
 }
+
+/* Base do site no dark */
+body {
+  background: var(--bs-body-bg) !important;
+  color: var(--bs-body-color) !important;
+}

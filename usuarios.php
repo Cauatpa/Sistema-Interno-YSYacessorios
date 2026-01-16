@@ -50,7 +50,7 @@ function labelRole(string $role): string
 }
 ?>
 <!DOCTYPE html>
-<html lang="pt-br" data-toast="<?= htmlspecialchars((string)$toast) ?>">
+<html lang="pt-br" data-toast="<?= htmlspecialchars((string)$toast) ?>" data-bs-theme="light">
 
 <head>
     <meta charset="UTF-8">
@@ -71,6 +71,10 @@ function labelRole(string $role): string
             <h3 class="m-0">👤 Gestão de Usuários</h3>
 
             <div class="d-flex gap-2">
+                <button id="btnTheme" class="btn btn-outline-secondary btn-sm">
+                    🌙 Tema escuro
+                </button>
+
                 <a href="index.php" class="btn btn-outline-secondary btn-sm">Voltar</a>
 
                 <form method="POST" action="logout.php" class="d-inline">
@@ -210,6 +214,7 @@ function labelRole(string $role): string
     <?php endforeach; ?>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="assets/js/theme.js" defer></script>
 </body>
 
 </html>

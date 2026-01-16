@@ -60,7 +60,7 @@ $percFinal      = $totalPedidos > 0 ? round(($totalFinal / $totalPedidos) * 100)
 $percSemEstoque = $totalPedidos > 0 ? round(($totalSemEstoque / $totalPedidos) * 100) : 0;
 ?>
 <!DOCTYPE html>
-<html lang="pt-br" data-competencia="<?= h($competencia) ?>">
+<html lang="pt-br" data-competencia="<?= h($competencia) ?>" data-bs-theme="light">
 
 <head>
     <meta charset="UTF-8">
@@ -81,6 +81,10 @@ $percSemEstoque = $totalPedidos > 0 ? round(($totalSemEstoque / $totalPedidos) *
                 <div class="page-title">📊 Relatório do mês</div>
                 <div class="subtle small">Resumo rápido do desempenho e status das retiradas</div>
             </div>
+
+            <button id="btnTheme" class="btn btn-outline-secondary btn-sm">
+                🌙 Tema escuro
+            </button>
 
             <div class="d-flex gap-2">
                 <a href="index.php?competencia=<?= h($competencia) ?>" class="btn btn-outline-secondary btn-sm">← Voltar</a>
@@ -268,6 +272,7 @@ $percSemEstoque = $totalPedidos > 0 ? round(($totalSemEstoque / $totalPedidos) *
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script src="./assets/js/relatorio.js" defer></script>
+    <script src="assets/js/theme.js" defer></script>
 </body>
 
 </html>
