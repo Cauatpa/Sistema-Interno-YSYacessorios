@@ -5,7 +5,7 @@
     if (!competencia) return;
 
     // ✅ nome correto do arquivo
-    const url = `actions/relatorio_dados.php?competencia=${encodeURIComponent(
+    const url = `./actions/relatorio_data.php?competencia=${encodeURIComponent(
       competencia
     )}`;
 

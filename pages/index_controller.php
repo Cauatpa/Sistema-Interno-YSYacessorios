@@ -121,3 +121,33 @@ $sql = "SELECT * FROM retiradas {$where} ORDER BY data_pedido DESC LIMIT {$perPa
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $retiradas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// ======================
+// Sugestões de solicitantes (para autocomplete)
+// ======================
+$stmtSol = $pdo->query("
+    SELECT DISTINCT solicitante
+    FROM retiradas
+    WHERE deleted_at IS NULL
+      AND COALESCE(solicitante,'') <> ''
+    ORDER BY solicitante ASC
+    LIMIT 500
+");
+$rawSolicitantes = $stmtSol->fetchAll(PDO::FETCH_COLUMN) ?: [];
+
+$solicitantesSugestoes = [];
+$seen = [];
+
+foreach ($rawSolicitantes as $s) {
+    foreach (preg_split('/,/', (string)$s) as $parte) {
+        $nome = trim($parte);
+        if ($nome === '') continue;
+
+        // chave case-insensitive pra não duplicar "sarah" e "Sarah"
+        $k = mb_strtolower($nome);
+        if (isset($seen[$k])) continue;
+
+        $seen[$k] = true;
+        $solicitantesSugestoes[] = $nome;
+    }
+}

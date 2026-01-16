@@ -14,6 +14,9 @@ auth_session_start();
 auth_require_role('operador');
 post_only();
 
+// ✅ Lê "next" uma vez (0/1)
+$wantNext = ((int)($_POST['next'] ?? 0) === 1);
+
 if (!csrf_validate($_POST['csrf_token'] ?? null, 'novo_pedido')) {
     audit_log(
         $pdo,
@@ -32,15 +35,13 @@ if (!csrf_validate($_POST['csrf_token'] ?? null, 'novo_pedido')) {
     exit('CSRF inválido.');
 }
 
-$wantNext = ((int)($_POST['next'] ?? 0) === 1);
-
 // Campos obrigatórios
 require_fields($_POST, ['produto', 'tipo', 'solicitante', 'quantidade_solicitada']);
 
-$produto     = trim((string)($_POST['produto'] ?? ''));
-$tipo        = one_of(trim((string)($_POST['tipo'] ?? '')), ['prata', 'ouro'], '');
+$produto = trim((string)($_POST['produto'] ?? ''));
+$tipo = one_of(trim((string)($_POST['tipo'] ?? '')), ['prata', 'ouro'], '');
 $solicitante = trim((string)($_POST['solicitante'] ?? ''));
-$quantidade  = int_pos($_POST['quantidade_solicitada'] ?? 0);
+$quantidade = int_pos($_POST['quantidade_solicitada'] ?? 0);
 
 if ($produto === '' || $tipo === '' || $solicitante === '' || $quantidade <= 0) {
     audit_log(

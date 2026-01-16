@@ -113,7 +113,6 @@
 
   // ======================================================
   // 2) FINALIZAR: garantir next_target_id ao clicar em "Próximo"
-  //    (captura antes do submit)
   // ======================================================
   document.addEventListener(
     "click",
@@ -131,7 +130,6 @@
 
       const nextId = getNextPendingIdInPage(currentId);
 
-      // garante hidden next + next_target_id
       const hiddenNext =
         form.querySelector('input[type="hidden"][name="next"]') ||
         form.querySelector('input[name="next"]');
@@ -144,7 +142,7 @@
   );
 
   // ======================================================
-  // 3) FINALIZAR: Enter / Shift+Enter (captura)
+  // 3) FINALIZAR: Enter / Shift+Enter
   //    Shift+Enter => Próximo
   //    Enter       => Finalizar
   // ======================================================
@@ -159,10 +157,7 @@
       if (!openModal) return;
 
       const active = document.activeElement;
-
-      // não mexe com textarea
       if (active && active.tagName === "TEXTAREA") return;
-      // só se foco estiver dentro do modal
       if (active && !openModal.contains(active)) return;
 
       e.preventDefault();
@@ -180,7 +175,6 @@
       const nextTarget = form.querySelector('input[name="next_target_id"]');
 
       if (e.shiftKey) {
-        // Próximo
         const nextId = currentId ? getNextPendingIdInPage(currentId) : null;
         if (hiddenNext) hiddenNext.value = "1";
         if (nextTarget) nextTarget.value = nextId ? String(nextId) : "0";
@@ -197,11 +191,9 @@
           form.submit();
         }
       } else {
-        // Finalizar normal
         if (hiddenNext) hiddenNext.value = "0";
         if (nextTarget) nextTarget.value = "0";
 
-        // preferir o botão "Finalizar" se existir
         const btnFinalizar =
           form.querySelector('button[type="submit"]:not([name="next"])') ||
           form.querySelector('button[type="submit"][name="next"][value="0"]');
@@ -217,8 +209,54 @@
   );
 
   // ======================================================
-  // 4) NOVO PEDIDO: Enter / Shift+Enter (captura)
-  //    (funciona MESMO se o navegador não enviar o value do botão)
+  // 4) NOVO PEDIDO: Botões (SEU MODAL USA type="button")
+  //    #btnNovoSalvar / #btnNovoProximo
+  // ======================================================
+  const submitNovoPedido = (goNext) => {
+    const modalEl = document.getElementById("modalNovoPedido");
+    if (!modalEl) return;
+
+    const form = modalEl.querySelector("form");
+    if (!form) return;
+
+    const hiddenNext =
+      form.querySelector('input[type="hidden"][name="next"]') ||
+      form.querySelector('input[name="next"]');
+
+    if (hiddenNext) hiddenNext.value = goNext ? "1" : "0";
+
+    // submit padrão
+    if (typeof form.requestSubmit === "function") form.requestSubmit();
+    else form.submit();
+  };
+
+  document.addEventListener(
+    "click",
+    (e) => {
+      const salvar = e.target?.closest?.("#btnNovoSalvar");
+      if (salvar) {
+        e.preventDefault();
+        submitNovoPedido(false);
+        return;
+      }
+
+      const proximo = e.target?.closest?.("#btnNovoProximo");
+      if (proximo) {
+        e.preventDefault();
+        submitNovoPedido(true);
+        return;
+      }
+    },
+    true
+  );
+
+  // ======================================================
+  // 5) NOVO PEDIDO: Enter / Shift+Enter
+  //    Enter       => salvar
+  //    Shift+Enter => salvar + próximo
+  //
+  // IMPORTANTE: se o usuário estiver clicando/selecionando
+  // na lista de sugestões do solicitante, não submeter.
   // ======================================================
   document.addEventListener(
     "keydown",
@@ -227,76 +265,29 @@
 
       const modalEl = document.getElementById("modalNovoPedido");
       if (!modalEl) return;
-
-      const isOpen = modalEl.classList.contains("show");
-      if (!isOpen) return;
+      if (!modalEl.classList.contains("show")) return;
 
       const active = document.activeElement;
       if (!active || !modalEl.contains(active)) return;
-
       if (active.tagName === "TEXTAREA") return;
+
+      // Se o foco/ação estiver dentro da lista de sugestões do solicitante, não submeter
+      const sugestBox = modalEl.querySelector("#solicitanteSugestoes");
+      if (sugestBox && sugestBox.style.display !== "none") {
+        // se o Enter veio de um botão/option da listinha
+        if (
+          document.activeElement &&
+          sugestBox.contains(document.activeElement)
+        ) {
+          return; // deixa o click do item acontecer
+        }
+      }
 
       e.preventDefault();
       e.stopPropagation();
       e.stopImmediatePropagation();
 
-      const form = modalEl.querySelector("form");
-      if (!form) return;
-
-      // ✅ garante envio do next via hidden
-      const hiddenNext =
-        form.querySelector('input[type="hidden"][name="next"]') ||
-        form.querySelector('input[name="next"]');
-
-      const goNext = e.shiftKey === true;
-
-      if (hiddenNext) hiddenNext.value = goNext ? "1" : "0";
-
-      // tenta submeter como se fosse o botão correto (se existir)
-      const btnProximo = form.querySelector(
-        'button[type="submit"][name="next"][value="1"]'
-      );
-      const btnSalvar =
-        form.querySelector('button[type="submit"][name="next"][value="0"]') ||
-        form.querySelector('button[type="submit"]:not([name="next"])');
-
-      if (goNext) {
-        if (btnProximo && typeof form.requestSubmit === "function")
-          form.requestSubmit(btnProximo);
-        else if (btnProximo) btnProximo.click();
-        else if (typeof form.requestSubmit === "function") form.requestSubmit();
-        else form.submit();
-      } else {
-        if (btnSalvar && typeof form.requestSubmit === "function")
-          form.requestSubmit(btnSalvar);
-        else if (btnSalvar) btnSalvar.click();
-        else if (typeof form.requestSubmit === "function") form.requestSubmit();
-        else form.submit();
-      }
-    },
-    true
-  );
-
-  // ======================================================
-  // 5) NOVO PEDIDO: clique no botão "Próximo" também garante hidden next=1
-  //    (se seu modal ainda usa submit normal)
-  // ======================================================
-  document.addEventListener(
-    "click",
-    (e) => {
-      const btn = e.target?.closest?.(
-        '#modalNovoPedido button[type="submit"][name="next"][value="1"]'
-      );
-      if (!btn) return;
-
-      const form = btn.closest("form");
-      if (!form) return;
-
-      const hiddenNext =
-        form.querySelector('input[type="hidden"][name="next"]') ||
-        form.querySelector('input[name="next"]');
-
-      if (hiddenNext) hiddenNext.value = "1";
+      submitNovoPedido(e.shiftKey === true);
     },
     true
   );
