@@ -4,14 +4,24 @@
     const competencia = root?.dataset?.competencia;
     if (!competencia) return;
 
-    const res = await fetch(
-      `actions/relatorio_data.php?competencia=${encodeURIComponent(
-        competencia
-      )}`
-    );
+    // ✅ nome correto do arquivo
+    const url = `actions/relatorio_dados.php?competencia=${encodeURIComponent(
+      competencia
+    )}`;
+
+    const res = await fetch(url, { credentials: "same-origin" });
+
+    // ✅ se der 403/404/500, mostra no console e para
+    if (!res.ok) {
+      console.error("Falha ao carregar relatório:", res.status, url);
+      return;
+    }
 
     const data = await res.json();
-    if (data?.error) return;
+    if (data?.error) {
+      console.error("Endpoint retornou erro:", data.error);
+      return;
+    }
 
     // 1) Status (doughnut)
     const elStatus = document.getElementById("chartStatus");
@@ -111,20 +121,14 @@
     const solPedidos = data.por_solicitante?.pedidos || [];
     const solItens = data.por_solicitante?.itens || [];
 
-    // Se não veio do endpoint, não tem como montar
     if (!solLabels.length) {
-      if (boxResumo) {
-        boxResumo.textContent =
-          "Sem dados de solicitantes para este mês (verifique se o endpoint relatorio_data.php está retornando por_solicitante).";
-      }
+      if (boxResumo)
+        boxResumo.textContent = "Sem dados de solicitantes para este mês.";
       return;
     }
 
-    // popula select
     if (sel) {
-      // evita duplicar options se o JS rodar de novo
       while (sel.options.length > 1) sel.remove(1);
-
       solLabels.forEach((name) => {
         const opt = document.createElement("option");
         opt.value = name;
@@ -149,10 +153,7 @@
         itens = idx >= 0 ? [solItens[idx]] : [];
       }
 
-      if (chartSolicitantes) {
-        chartSolicitantes.destroy();
-        chartSolicitantes = null;
-      }
+      if (chartSolicitantes) chartSolicitantes.destroy();
 
       chartSolicitantes = new Chart(elSol, {
         type: "bar",
@@ -173,37 +174,26 @@
               },
             },
           },
-          scales: {
-            y: { beginAtZero: true, ticks: { precision: 0 } },
-          },
+          scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
         },
       });
 
       if (boxResumo) {
-        if (!filterName) {
+        if (!filterName)
           boxResumo.textContent = `Total de solicitantes no mês: ${solLabels.length}`;
-        } else {
+        else {
           const idx = solLabels.indexOf(filterName);
-          const p = idx >= 0 ? solPedidos[idx] : 0;
-          const it = idx >= 0 ? solItens[idx] : 0;
-          boxResumo.textContent = `📌 ${filterName}: ${p} pedidos | ${it} itens solicitados`;
+          boxResumo.textContent = `📌 ${filterName}: ${
+            solPedidos[idx] || 0
+          } pedidos | ${solItens[idx] || 0} itens solicitados`;
         }
       }
     }
 
     renderSolicitantes("");
-
-    if (sel) {
-      sel.addEventListener("change", () => {
-        renderSolicitantes(sel.value);
-      });
-    }
+    if (sel)
+      sel.addEventListener("change", () => renderSolicitantes(sel.value));
   } catch (e) {
     console.error("Erro no relatorio.js:", e);
   }
-
-  // Corrige padding-right do body ao abrir modal (bug do Bootstrap)
-  document.addEventListener("hide.bs.modal", () => {
-    document.body.style.paddingRight = "";
-  });
 })();

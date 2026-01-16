@@ -6,7 +6,8 @@ require_once __DIR__ . '/helpers/validation.php';
 require_once __DIR__ . '/services/fechamento.php';
 
 auth_session_start();
-auth_require_role('admin');
+// verifica se está logado
+auth_require_login();
 
 $competencia = (string)($_GET['competencia'] ?? competencia_atual());
 if (!competencia_valida($competencia)) {
