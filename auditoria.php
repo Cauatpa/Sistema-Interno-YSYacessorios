@@ -175,7 +175,7 @@ function pretty_json(?string $json): string
 
         <div class="table-responsive">
             <table class="table table-bordered table-striped align-middle">
-                <thead class="table-light">
+                <thead class="">
                     <tr>
                         <th>ID</th>
                         <th>Quando</th>

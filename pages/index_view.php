@@ -3,22 +3,22 @@
 $canOperate = auth_has_role('operador'); // operador ou admin
 $canAdmin   = auth_has_role('admin');    // somente admin
 
-// Usuário logado (o controller deve fornecer $u; aqui deixo seguro)
+// Usuário logado
 $u = $u ?? [];
 $nomeUsuario = trim((string)($u['nome'] ?? $u['usuario'] ?? ''));
 if ($nomeUsuario === '') $nomeUsuario = '—';
 
-// Datas (compatível com chaves diferentes, caso seu normalizador use outro padrão)
+// Datas
 $dataIni = (string)($f['dataIni'] ?? $f['data_ini'] ?? '');
 $dataFim = (string)($f['dataFim'] ?? $f['data_fim'] ?? '');
 
-// Paginação (garantia defensiva, caso controller não mande)
+// Paginação
 $perPageOptions = $perPageOptions ?? [30, 50, 100];
 
-// pega do controller se existir, senão do GET, senão 30
+// itens por página
 $perPage = (int)($_GET['per_page'] ?? ($perPage ?? 30));
 
-// valida contra as opções permitidas
+// validação
 if (!in_array($perPage, $perPageOptions, true)) {
     $perPage = 30;
 }
@@ -86,10 +86,12 @@ $returnUrl = $_SERVER['REQUEST_URI'];
 
             <?php if ($canAdmin): ?>
                 <a href="usuarios.php" class="btn btn-outline-primary btn-sm">Usuários</a>
-                <a href="auditoria.php" class="btn btn-outline-secondary btn-sm">Auditoria</a>
+                <a href="auditoria.php" class="btn btn-outline-success btn-sm">Auditoria</a>
             <?php endif; ?>
 
             <a href="relatorio.php?competencia=<?= htmlspecialchars($competencia) ?>" class="btn btn-outline-success btn-sm">Relatório</a>
+
+            <a href="lotes.php" class="btn btn-outline-primary btn-sm">📦 Lotes</a>
 
             <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalMinhaSenha">
                 🔑 Minha senha
@@ -205,6 +207,17 @@ $returnUrl = $_SERVER['REQUEST_URI'];
                 <div class="col-6 col-md-2">
                     <label class="form-label mb-1">Até</label>
                     <input type="date" name="data_fim" class="form-control" value="<?= htmlspecialchars($dataFim) ?>">
+                </div>
+
+                <div class="col-6 col-md-1">
+                    <label class="form-label mb-1">Por pág.</label>
+                    <select name="per_page" class="form-select">
+                        <?php foreach ($perPageOptions as $opt): ?>
+                            <option value="<?= (int)$opt ?>" <?= ((int)$opt === (int)$perPage) ? 'selected' : '' ?>>
+                                <?= (int)$opt ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
                 </div>
 
                 <div class="col-12 col-md-6">
@@ -355,7 +368,7 @@ $returnUrl = $_SERVER['REQUEST_URI'];
     <!-- Tabela -->
     <div class="table-responsive">
         <table class="table table-bordered table-striped text-center align-middle">
-            <thead class="table-light">
+            <thead class="">
                 <tr>
                     <th>🕒 Pedido</th>
                     <th>📦 Produto</th>

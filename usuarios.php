@@ -130,7 +130,7 @@ function labelRole(string $role): string
         <!-- Listagem -->
         <div class="table-responsive">
             <table class="table table-bordered table-striped align-middle text-center">
-                <thead class="table-light">
+                <thead class="">
                     <tr>
                         <th>ID</th>
                         <th>Nome</th>

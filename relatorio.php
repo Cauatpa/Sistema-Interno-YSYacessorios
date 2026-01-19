@@ -60,7 +60,7 @@ $percFinal      = $totalPedidos > 0 ? round(($totalFinal / $totalPedidos) * 100)
 $percSemEstoque = $totalPedidos > 0 ? round(($totalSemEstoque / $totalPedidos) * 100) : 0;
 ?>
 <!DOCTYPE html>
-<html lang="pt-br" data-competencia="<?= h($competencia) ?>" data-bs-theme="light">
+<html lang="pt-br" data-competencia="<?= h($competencia) ?>" data-bs-theme="">
 
 <head>
     <meta charset="UTF-8">
