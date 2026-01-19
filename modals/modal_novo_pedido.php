@@ -51,6 +51,7 @@
                             <option value="prata">Prata</option>
                             <option value="ouro">Ouro</option>
                         </select>
+                        <div class="form-text">Prata ou Ouro.</div>
                     </div>
 
                     <div class="mb-3">
@@ -62,7 +63,7 @@
                             min="1"
                             value="1"
                             required>
-                        <div class="form-text">Quantas peças a pessoa pediu.</div>
+                        <div class="form-text">Quantas peças foram pedidas.</div>
                     </div>
 
                     <div class="mb-2 position-relative">
