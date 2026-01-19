@@ -108,13 +108,20 @@ function pretty_json(?string $json): string
 
 <body class="p-3">
     <div class="container">
-
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h3 class="m-0">🧾 Auditoria (logs)</h3>
+
             <div class="d-flex gap-2">
-                <a href="index.php" class="btn btn-outline-secondary btn-sm">Voltar</a>
+                <button id="btnTheme" class="btn btn-outline-secondary btn-sm">
+                    🌙 Tema escuro
+                </button>
+
+                <a href="index.php" class="btn btn-outline-secondary btn-sm">
+                    Voltar
+                </a>
             </div>
-        </div>
+        </div>div>
+
 
         <form method="GET" class="card p-3 mb-3">
             <input type="hidden" name="p" value="1">
@@ -326,6 +333,8 @@ function pretty_json(?string $json): string
             }, true);
         })();
     </script>
+
+    <script src="assets/js/theme.js" defer></script>
 </body>
 
 </html>

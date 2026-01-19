@@ -151,3 +151,58 @@ foreach ($rawSolicitantes as $s) {
         $solicitantesSugestoes[] = $nome;
     }
 }
+
+// ======================
+// Sugestões de solicitantes (para autocomplete)
+// ======================
+$stmtSol = $pdo->query("
+    SELECT DISTINCT solicitante
+    FROM retiradas
+    WHERE deleted_at IS NULL
+      AND COALESCE(solicitante,'') <> ''
+    ORDER BY solicitante ASC
+    LIMIT 500
+");
+$rawSolicitantes = $stmtSol->fetchAll(PDO::FETCH_COLUMN) ?: [];
+
+$solicitantesSugestoes = [];
+$seen = [];
+
+foreach ($rawSolicitantes as $s) {
+    foreach (preg_split('/,/', (string)$s) as $parte) {
+        $nome = trim($parte);
+        if ($nome === '') continue;
+
+        $k = mb_strtolower($nome);
+        if (isset($seen[$k])) continue;
+
+        $seen[$k] = true;
+        $solicitantesSugestoes[] = $nome;
+    }
+}
+
+// ======================
+// Sugestões de produtos (para autocomplete)
+// (com tabela nova: vem de produtos)
+// ======================
+$stmtProd = $pdo->query("
+    SELECT nome
+    FROM produtos
+    WHERE ativo = 1
+    ORDER BY nome ASC
+    LIMIT 800
+");
+$rawProdutos = $stmtProd->fetchAll(PDO::FETCH_COLUMN) ?: [];
+
+$produtosSugestoes = [];
+$seenProd = [];
+foreach ($rawProdutos as $p) {
+    $nome = preg_replace('/\s+/', ' ', trim((string)$p));
+    if ($nome === '') continue;
+
+    $k = mb_strtolower($nome);
+    if (isset($seenProd[$k])) continue;
+
+    $seenProd[$k] = true;
+    $produtosSugestoes[] = $nome;
+}

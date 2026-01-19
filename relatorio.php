@@ -82,14 +82,17 @@ $percSemEstoque = $totalPedidos > 0 ? round(($totalSemEstoque / $totalPedidos) *
                 <div class="subtle small">Resumo rápido do desempenho e status das retiradas</div>
             </div>
 
-            <button id="btnTheme" class="btn btn-outline-secondary btn-sm">
-                🌙 Tema escuro
-            </button>
-
             <div class="d-flex gap-2">
-                <a href="index.php?competencia=<?= h($competencia) ?>" class="btn btn-outline-secondary btn-sm">← Voltar</a>
+                <button id="btnTheme" class="btn btn-outline-secondary btn-sm">
+                    🌙 Tema escuro
+                </button>
+
+                <a href="index.php?competencia=<?= h($competencia) ?>" class="btn btn-outline-secondary btn-sm">
+                    ← Voltar
+                </a>
             </div>
         </div>
+
 
         <!-- Header Card (Mês + Status) -->
         <div class="card card-soft p-3 mb-3">

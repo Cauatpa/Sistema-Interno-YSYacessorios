@@ -6,6 +6,7 @@
                 <?php require_once __DIR__ . '/../helpers/csrf.php'; ?>
                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token('finalizar_pedido')) ?>">
                 <input type="hidden" name="id" value="<?= (int)$r['id'] ?>">
+                <input type="hidden" name="return" value="<?= htmlspecialchars($returnUrl) ?>">
 
                 <input type="hidden" name="precisa_balanco" value="0">
                 <input type="hidden" name="sem_estoque" value="0">

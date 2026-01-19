@@ -67,6 +67,24 @@ if ($produto === '' || $tipo === '' || $solicitante === '' || $quantidade <= 0) 
     exit('Dados inválidos.');
 }
 
+// Não interfere na lógica principal do pedido.
+try {
+    // normaliza: trim + remove espaços duplicados + case-insensitive
+    $produtoNorm = mb_strtolower(preg_replace('/\s+/', ' ', $produto));
+
+    // tenta inserir sem duplicar
+    $stmtP = $pdo->prepare("
+        INSERT INTO produtos (nome, nome_norm, ativo)
+        VALUES (?, ?, 1)
+        ON DUPLICATE KEY UPDATE
+            nome = VALUES(nome),
+            ativo = 1
+    ");
+    $stmtP->execute([$produto, $produtoNorm]);
+} catch (Throwable $e) {
+    // não quebra o pedido se falhar
+}
+
 // Usuário logado (ator)
 $u = auth_user() ?? [];
 $ator = trim((string)($u['nome'] ?? $u['usuario'] ?? ''));
@@ -151,5 +169,19 @@ if ($wantNext) {
     $params['keep_solicitante'] = $solicitante;
 }
 
-redirect_with_query('../index.php', $params);
+$return = (string)($_POST['return'] ?? '../index.php');
+
+// Normaliza (aceita "index.php?...")
+$base = $return;
+parse_str(parse_url($return, PHP_URL_QUERY) ?? '', $q);
+
+// injeta os params (toast, highlight, etc) sem perder os filtros
+foreach ($params as $k => $v) {
+    $q[$k] = $v;
+}
+
+$path = parse_url($return, PHP_URL_PATH) ?: '../index.php';
+$dest = $path . '?' . http_build_query($q);
+
+header('Location: ' . $dest);
 exit;

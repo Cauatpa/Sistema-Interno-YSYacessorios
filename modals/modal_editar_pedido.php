@@ -5,6 +5,7 @@
             <form action="actions/editar_pedido.php" method="POST">
                 <?php require_once __DIR__ . '/../helpers/csrf.php'; ?>
                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token('editar_pedido')) ?>">
+                <input type="hidden" name="return" value="<?= htmlspecialchars($returnUrl) ?>">
 
                 <input type="hidden" name="id" value="<?= (int)$r['id'] ?>">
 

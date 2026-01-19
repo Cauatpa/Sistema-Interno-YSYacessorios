@@ -5,6 +5,9 @@
             <form id="formNovoPedido" action="actions/novo_pedido.php" method="POST" autocomplete="off">
                 <?php require_once __DIR__ . '/../helpers/csrf.php'; ?>
                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token('novo_pedido')) ?>">
+                <input type="hidden" name="return" value="<?= htmlspecialchars($returnUrl ?? $_SERVER['REQUEST_URI'] ?? 'index.php') ?>">
+
+
 
                 <!-- ✅ ÚNICA fonte da verdade -->
                 <input type="hidden" name="next" id="novoPedidoNext" value="0">
@@ -15,15 +18,30 @@
                 </div>
 
                 <div class="modal-body">
-                    <div class="mb-3">
+
+                    <!-- ✅ Produto com autocomplete -->
+                    <div class="mb-3 position-relative">
                         <label class="form-label">Produto</label>
                         <input
                             type="text"
                             name="produto"
+                            id="inpProduto"
                             class="form-control"
                             placeholder="Ex: Anel Coração"
                             required
-                            autocomplete="off">
+                            autocomplete="off"
+                            list="listaProdutos">
+
+                        <datalist id="listaProdutos">
+                            <?php foreach (($produtosSugestoes ?? []) as $p): ?>
+                                <option value="<?= htmlspecialchars((string)$p) ?>"></option>
+                            <?php endforeach; ?>
+                        </datalist>
+
+                        <div id="produtoSugestoes"
+                            class="list-group position-absolute w-100"
+                            style="z-index: 2000; display:none; max-height: 220px; overflow:auto;">
+                        </div>
                     </div>
 
                     <div class="mb-3">
@@ -116,7 +134,7 @@
 
                     const setLastToken = (v, chosen) => {
                         const parts = v.split(",");
-                        parts[parts.length - 1] = " " + chosen; // mantém vírgula + espaço bonitinho
+                        parts[parts.length - 1] = " " + chosen;
                         return parts.map(p => p.trim()).join(", ");
                     };
 
@@ -154,13 +172,70 @@
                         render(matches);
                     });
 
-                    // Fecha a lista se clicar fora
                     document.addEventListener("click", (e) => {
                         if (e.target === input || box.contains(e.target)) return;
                         hide();
                     });
 
-                    // ESC fecha
+                    input.addEventListener("keydown", (e) => {
+                        if (e.key === "Escape") hide();
+                    });
+                })();
+            </script>
+
+            <script>
+                // Sugestões para Produto (1 nome só)
+                (() => {
+                    const modal = document.getElementById("modalNovoPedido");
+                    if (!modal) return;
+
+                    const input = modal.querySelector("#inpProduto");
+                    const box = modal.querySelector("#produtoSugestoes");
+                    const datalist = modal.querySelector("#listaProdutos");
+                    if (!input || !box || !datalist) return;
+
+                    const items = Array.from(datalist.querySelectorAll("option"))
+                        .map(o => (o.value || "").trim())
+                        .filter(Boolean);
+
+                    const hide = () => {
+                        box.style.display = "none";
+                        box.innerHTML = "";
+                    };
+
+                    const render = (list) => {
+                        box.innerHTML = "";
+                        list.slice(0, 10).forEach((txt) => {
+                            const btn = document.createElement("button");
+                            btn.type = "button";
+                            btn.className = "list-group-item list-group-item-action";
+                            btn.textContent = txt;
+                            btn.addEventListener("click", () => {
+                                input.value = txt;
+                                hide();
+                                input.focus();
+                            });
+                            box.appendChild(btn);
+                        });
+                        box.style.display = list.length ? "block" : "none";
+                    };
+
+                    input.addEventListener("input", () => {
+                        const q = (input.value || "").trim().toLowerCase();
+                        if (!q) {
+                            hide();
+                            return;
+                        }
+
+                        const matches = items.filter(n => n.toLowerCase().startsWith(q));
+                        render(matches);
+                    });
+
+                    document.addEventListener("click", (e) => {
+                        if (e.target === input || box.contains(e.target)) return;
+                        hide();
+                    });
+
                     input.addEventListener("keydown", (e) => {
                         if (e.key === "Escape") hide();
                     });

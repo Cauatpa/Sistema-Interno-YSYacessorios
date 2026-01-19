@@ -8,6 +8,8 @@ require_once __DIR__ . '/../services/fechamento.php';
 require_once __DIR__ . '/../helpers/csrf.php';
 require_once __DIR__ . '/../helpers/validation.php';
 require_once __DIR__ . '/../helpers/auth.php';
+require_once __DIR__ . '/../helpers/return_redirect.php';
+
 
 auth_session_start();
 auth_require_role('operador');

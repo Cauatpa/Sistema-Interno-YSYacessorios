@@ -41,6 +41,9 @@ function page_url(int $p): string
     $q['p'] = $p;
     return 'index.php?' . http_build_query($q);
 }
+
+// URL de retorno após ações
+$returnUrl = $_SERVER['REQUEST_URI']; // ex: /InterYSY/index.php?competencia=2026-01&...
 ?>
 
 <!DOCTYPE html>
@@ -83,7 +86,7 @@ function page_url(int $p): string
 
             <?php if ($canAdmin): ?>
                 <a href="usuarios.php" class="btn btn-outline-primary btn-sm">Usuários</a>
-                <a href="auditoria.php" class="btn btn-outline-dark btn-sm">Auditoria</a>
+                <a href="auditoria.php" class="btn btn-outline-secondary btn-sm">Auditoria</a>
             <?php endif; ?>
 
             <a href="relatorio.php?competencia=<?= htmlspecialchars($competencia) ?>" class="btn btn-outline-success btn-sm">Relatório</a>
