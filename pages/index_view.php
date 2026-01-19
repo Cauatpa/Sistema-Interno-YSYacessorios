@@ -43,7 +43,7 @@ function page_url(int $p): string
 }
 
 // URL de retorno após ações
-$returnUrl = $_SERVER['REQUEST_URI']; // ex: /InterYSY/index.php?competencia=2026-01&...
+$returnUrl = $_SERVER['REQUEST_URI'];
 ?>
 
 <!DOCTYPE html>
