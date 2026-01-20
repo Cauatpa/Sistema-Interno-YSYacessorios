@@ -83,13 +83,13 @@ $percSemEstoque = $totalPedidos > 0 ? round(($totalSemEstoque / $totalPedidos) *
             </div>
 
             <div class="d-flex gap-2">
-                <button id="btnTheme" class="btn btn-outline-secondary btn-sm">
-                    🌙 Tema escuro
-                </button>
-
                 <a href="index.php?competencia=<?= h($competencia) ?>" class="btn btn-outline-secondary btn-sm">
                     ← Voltar
                 </a>
+
+                <button id="btnTheme" class="btn btn-outline-secondary btn-sm">
+                    🌙 Tema escuro
+                </button>
             </div>
         </div>
 

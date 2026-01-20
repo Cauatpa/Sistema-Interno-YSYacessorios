@@ -119,12 +119,12 @@ function item_row_style(array $i): string
     </div>
 
     <!-- Legenda -->
-    <div class="d-flex flex-wrap gap-3 align-items-center mb-2">
+    <!-- <div class="d-flex flex-wrap gap-3 align-items-center mb-2">
         <div class="d-flex align-items-center gap-2"><span class="badge rounded-pill" style="background:#d4edda;color:#000;">&nbsp;&nbsp;</span><span class="small">quantidade certa (OK)</span></div>
         <div class="d-flex align-items-center gap-2"><span class="badge rounded-pill" style="background:#f8d7da;color:#000;">&nbsp;&nbsp;</span><span class="small">divergência / faltando / a mais</span></div>
         <div class="d-flex align-items-center gap-2"><span class="badge rounded-pill" style="background:#d1ecf1;color:#000;">&nbsp;&nbsp;</span><span class="small">banho trocado</span></div>
         <div class="d-flex align-items-center gap-2"><span class="badge rounded-pill" style="background:#fff3cd;color:#000;">&nbsp;&nbsp;</span><span class="small">quebra</span></div>
-    </div>
+    </div> -->
 
     <!-- Tabela itens -->
     <div class="table-responsive">

@@ -86,16 +86,21 @@ $returnUrl = $_SERVER['REQUEST_URI'];
 
             <?php if ($canAdmin): ?>
                 <a href="usuarios.php" class="btn btn-outline-primary btn-sm">Usuários</a>
+            <?php endif; ?>
+
+            <?php if ($canOperate || $canAdmin): ?>
+                <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalMinhaSenha">
+                    🔑 Minha senha
+                </button>
+
+                <a href="lotes.php" class="btn btn-outline-primary btn-sm">📦 Lotes</a>
+            <?php endif; ?>
+
+            <?php if ($canAdmin): ?>
                 <a href="auditoria.php" class="btn btn-outline-success btn-sm">Auditoria</a>
             <?php endif; ?>
 
             <a href="relatorio.php?competencia=<?= htmlspecialchars($competencia) ?>" class="btn btn-outline-success btn-sm">Relatório</a>
-
-            <a href="lotes.php" class="btn btn-outline-primary btn-sm">📦 Lotes</a>
-
-            <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalMinhaSenha">
-                🔑 Minha senha
-            </button>
 
             <button id="btnTheme" class="btn btn-outline-secondary btn-sm">
                 🌙 Tema escuro

@@ -112,15 +112,18 @@ function pretty_json(?string $json): string
             <h3 class="m-0">🧾 Auditoria (logs)</h3>
 
             <div class="d-flex gap-2">
+
+                <a href="index.php" class="btn btn-outline-secondary btn-sm">
+                    ← Voltar
+                </a>
+
                 <button id="btnTheme" class="btn btn-outline-secondary btn-sm">
                     🌙 Tema escuro
                 </button>
 
-                <a href="index.php" class="btn btn-outline-secondary btn-sm">
-                    Voltar
-                </a>
+
             </div>
-        </div>div>
+        </div>
 
 
         <form method="GET" class="card p-3 mb-3">

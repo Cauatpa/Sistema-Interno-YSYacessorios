@@ -12,3 +12,9 @@ if (!auth_has_role('operador')) {
 
 require_once __DIR__ . '/pages/lote_controller.php';
 require_once __DIR__ . '/pages/lote_view.php';
+
+$isFechado = ($lote['status'] === 'fechado');
+
+if ($isFechado && !$canAdmin) {
+    // desabilita inputs / botões
+}

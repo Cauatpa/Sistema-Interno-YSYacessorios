@@ -71,11 +71,12 @@ function labelRole(string $role): string
             <h3 class="m-0">👤 Gestão de Usuários</h3>
 
             <div class="d-flex gap-2">
+
+                <a href="index.php" class="btn btn-outline-secondary btn-sm">← Voltar</a>
+
                 <button id="btnTheme" class="btn btn-outline-secondary btn-sm">
                     🌙 Tema escuro
                 </button>
-
-                <a href="index.php" class="btn btn-outline-secondary btn-sm">Voltar</a>
 
                 <form method="POST" action="logout.php" class="d-inline">
                     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token('logout')) ?>">

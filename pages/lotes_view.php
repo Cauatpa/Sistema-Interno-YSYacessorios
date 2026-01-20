@@ -67,15 +67,6 @@ $competencia = (string)($_GET['competencia'] ?? ($competencia ?? ''));
 
             <a href="index.php" class="btn btn-outline-secondary btn-sm">← Voltar</a>
 
-            <?php if ($canAdmin): ?>
-                <a href="usuarios.php" class="btn btn-outline-primary btn-sm">Usuários</a>
-                <a href="auditoria.php" class="btn btn-outline-success btn-sm">Auditoria</a>
-            <?php endif; ?>
-
-            <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalMinhaSenha">
-                🔑 Minha senha
-            </button>
-
             <button id="btnTheme" class="btn btn-outline-secondary btn-sm">
                 🌙 Tema escuro
             </button>
@@ -259,18 +250,52 @@ $competencia = (string)($_GET['competencia'] ?? ($competencia ?? ''));
                             <td class="d-none d-md-table-cell"><?= htmlspecialchars($criadoPor) ?></td>
 
                             <td>
-                                <div class="d-grid gap-1" style="min-width: 130px;">
-                                    <a href="<?= htmlspecialchars('lote.php?id=' . $id) ?>"
-                                        class="btn btn-outline-primary btn-sm">
-                                        👁 Ver
-                                    </a>
+                                <div class="d-flex flex-column align-items-center gap-1" style="min-width: 140px;">
 
-                                    <?php if ($canAdmin && $st !== 'fechado'): ?>
-                                        <a href="<?= htmlspecialchars('lote.php?id=' . $id . '&edit=1') ?>"
-                                            class="btn btn-outline-secondary btn-sm">
-                                            ✏ Editar
+                                    <div class="w-100">
+                                        <a href="<?= htmlspecialchars('lote.php?id=' . $id) ?>"
+                                            class="btn btn-outline-primary btn-sm w-100 text-center">
+                                            👁 Ver
                                         </a>
+                                    </div>
+
+                                    <?php if (($canOperate || $canAdmin) && $st !== 'fechado'): ?>
+                                        <div class="w-100">
+                                            <a href="<?= htmlspecialchars('lote.php?id=' . $id . '&edit=1') ?>"
+                                                class="btn btn-outline-secondary btn-sm w-100 text-center">
+                                                ✏ Editar
+                                            </a>
+                                        </div>
                                     <?php endif; ?>
+
+                                    <?php if ($canAdmin): ?>
+
+                                        <?php if ($st !== 'fechado'): ?>
+                                            <form method="POST" action="actions/lote_fechar.php"
+                                                class="w-100"
+                                                onsubmit="return confirm('Finalizar este lote? Após isso, ele ficará bloqueado.');">
+                                                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token('lote_fechar')) ?>">
+                                                <input type="hidden" name="lote_id" value="<?= (int)$id ?>">
+                                                <button type="submit"
+                                                    class="btn btn-outline-danger btn-sm w-100 text-center">
+                                                    🔒 Finalizar
+                                                </button>
+                                            </form>
+                                        <?php else: ?>
+                                            <form method="POST" action="actions/lote_reabrir.php"
+                                                class="w-100"
+                                                onsubmit="return confirm('Reabrir este lote? Ele voltará para edição.');">
+                                                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token('lote_reabrir')) ?>">
+                                                <input type="hidden" name="lote_id" value="<?= (int)$id ?>">
+                                                <button type="submit"
+                                                    class="btn btn-outline-warning btn-sm w-100 text-center">
+                                                    🔓 Reabrir
+                                                </button>
+                                            </form>
+                                        <?php endif; ?>
+
+                                    <?php endif; ?>
+
                                 </div>
                             </td>
                         </tr>
