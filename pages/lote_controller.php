@@ -44,7 +44,7 @@ if (!$lote) {
     exit;
 }
 
-// Itens do lote
+// Itens do lote (linhas)
 $stmtItens = $pdo->prepare("
     SELECT li.*
     FROM lote_itens li
@@ -53,6 +53,48 @@ $stmtItens = $pdo->prepare("
 ");
 $stmtItens->execute([$id]);
 $itens = $stmtItens->fetchAll(PDO::FETCH_ASSOC);
+
+// Agrupar para UI: 1 linha por produto, com prata/ouro dentro
+$itensGrouped = [];
+foreach ($itens as $li) {
+    $produtoId = (int)($li['produto_id'] ?? 0);
+    $produtoNome = (string)($li['produto_nome'] ?? '');
+    $key = $produtoId > 0 ? ('pid:' . $produtoId) : ('pn:' . mb_strtolower(trim($produtoNome)));
+
+    if (!isset($itensGrouped[$key])) {
+        $itensGrouped[$key] = [
+            'produto_id'   => $produtoId,
+            'produto_nome' => $produtoNome,
+            'prata' => null,
+            'ouro'  => null,
+            // por padrão, pega de um dos registros (quando existir)
+            'situacao' => null,
+            'nota'     => null,
+        ];
+    }
+
+    $variacao = mb_strtolower(trim((string)($li['variacao'] ?? '')));
+    if ($variacao === 'prata') {
+        $itensGrouped[$key]['prata'] = $li;
+    } elseif ($variacao === 'ouro') {
+        $itensGrouped[$key]['ouro'] = $li;
+    } else {
+        // se vier algo fora (ou vazio), coloca em "prata" se estiver vazio, senão em "ouro"
+        if ($itensGrouped[$key]['prata'] === null) $itensGrouped[$key]['prata'] = $li;
+        else $itensGrouped[$key]['ouro'] = $li;
+    }
+
+    // situação/nota iguais: mantém a primeira que achar (ou substitui se estiver vazio)
+    if ($itensGrouped[$key]['situacao'] === null || $itensGrouped[$key]['situacao'] === '') {
+        $itensGrouped[$key]['situacao'] = (string)($li['situacao'] ?? 'ok');
+    }
+    if ($itensGrouped[$key]['nota'] === null || $itensGrouped[$key]['nota'] === '') {
+        $itensGrouped[$key]['nota'] = (string)($li['nota'] ?? '');
+    }
+}
+
+// transforma em lista para o foreach do view
+$itensGrouped = array_values($itensGrouped);
 
 // Sugestões (produtos ativos)
 $stmtProd = $pdo->query("

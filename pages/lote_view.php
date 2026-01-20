@@ -142,135 +142,221 @@ function item_row_style(array $i): string
                 </tr>
             </thead>
             <tbody>
-                <?php if (empty($itens)): ?>
+                <?php if (empty($itensGrouped)): ?>
                     <tr>
                         <td colspan="<?= $editMode ? 8 : 7 ?>" class="text-muted py-4">Nenhum item cadastrado.</td>
                     </tr>
                 <?php else: ?>
-                    <?php foreach ($itens as $i): $iid = (int)$i['id']; ?>
-                        <tr style="<?= htmlspecialchars(item_row_style($i)) ?>">
-                            <td><?= $iid ?></td>
-                            <td class="text-start"><?= htmlspecialchars((string)$i['produto_nome']) ?></td>
-                            <td><?= htmlspecialchars((string)($i['variacao'] ?? '—')) ?></td>
-                            <td><?= (int)$i['qtd_prevista'] ?></td>
+                    <?php foreach ($itensGrouped as $g):
+                        $produtoNome = (string)($g['produto_nome'] ?? '');
+                        $prata = $g['prata'];
+                        $ouro  = $g['ouro'];
+
+                        $idPrata = $prata ? (int)$prata['id'] : 0;
+                        $idOuro  = $ouro  ? (int)$ouro['id']  : 0;
+
+                        $modalId = 'modalEditFullGroup_' . ($idPrata ?: 0) . '_' . ($idOuro ?: 0) . '_' . md5($produtoNome);
+
+
+                        $prevPrata = $prata ? (int)$prata['qtd_prevista'] : null;
+                        $prevOuro  = $ouro  ? (int)$ouro['qtd_prevista']  : null;
+
+                        $confPrata = $prata ? $prata['qtd_conferida'] : null;
+                        $confOuro  = $ouro  ? $ouro['qtd_conferida']  : null;
+
+                        // situação/nota iguais (pega do grupo)
+                        $curSitu = (string)($g['situacao'] ?? 'ok');
+                        $curNota = (string)($g['nota'] ?? '');
+
+                        // estilo: se qualquer sub-item estiver "vermelho/azul/amarelo", pinta o grupo
+                        $rowStyle = '';
+                        if ($prata) $rowStyle = item_row_style($prata);
+                        if ($rowStyle === '' && $ouro) $rowStyle = item_row_style($ouro);
+                    ?>
+                        <tr style="<?= htmlspecialchars($rowStyle) ?>">
+                            <td class="text-muted">—</td>
+
+                            <td class="text-start">
+                                <strong><?= htmlspecialchars($produtoNome) ?></strong>
+                                <div class="text-muted small">
+                                    <?php if ($idPrata): ?>Prata (#<?= $idPrata ?>)<?php endif; ?>
+                                    <?php if ($idPrata && $idOuro): ?> • <?php endif; ?>
+                                    <?php if ($idOuro): ?>Ouro (#<?= $idOuro ?>)<?php endif; ?>
+                                </div>
+                            </td>
+
+                            <td>
+                                <?php if ($idPrata): ?><div>Prata</div><?php endif; ?>
+                                <?php if ($idOuro): ?><div>Ouro</div><?php endif; ?>
+                            </td>
+
+                            <td>
+                                <?php if ($idPrata): ?><div><?= (int)$prevPrata ?></div><?php endif; ?>
+                                <?php if ($idOuro): ?><div><?= (int)$prevOuro ?></div><?php endif; ?>
+                            </td>
 
                             <td>
                                 <?php if ($editMode): ?>
-                                    <form method="POST" action="actions/lote_item_update.php" class="d-flex gap-2 justify-content-center">
-                                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token('lote_item_update')) ?>">
+                                    <form method="POST" action="actions/lote_item_update_group.php" class="d-flex flex-column gap-2 align-items-center">
+                                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token('lote_item_update_group')) ?>">
                                         <input type="hidden" name="lote_id" value="<?= (int)$lote['id'] ?>">
-                                        <input type="hidden" name="id" value="<?= $iid ?>">
-                                        <input type="number" name="qtd_conferida" class="form-control form-control-sm" style="max-width:120px;"
-                                            value="<?= htmlspecialchars((string)($i['qtd_conferida'] ?? '')) ?>" placeholder="—">
+                                        <input type="hidden" name="id_prata" value="<?= (int)$idPrata ?>">
+                                        <input type="hidden" name="id_ouro" value="<?= (int)$idOuro ?>">
+
+                                        <?php if ($idPrata): ?>
+                                            <input type="number" name="qtd_conferida_prata" class="form-control form-control-sm" style="max-width:140px;"
+                                                value="<?= htmlspecialchars((string)($confPrata ?? '')) ?>" placeholder="Prata —">
+                                        <?php endif; ?>
+
+                                        <?php if ($idOuro): ?>
+                                            <input type="number" name="qtd_conferida_ouro" class="form-control form-control-sm" style="max-width:140px;"
+                                                value="<?= htmlspecialchars((string)($confOuro ?? '')) ?>" placeholder="Ouro —">
+                                        <?php endif; ?>
                                     <?php else: ?>
-                                        <?= ($i['qtd_conferida'] === null || $i['qtd_conferida'] === '') ? '—' : (int)$i['qtd_conferida'] ?>
+                                        <?php if ($idPrata): ?><div><?= ($confPrata === null || $confPrata === '') ? '—' : (int)$confPrata ?></div><?php endif; ?>
+                                        <?php if ($idOuro): ?><div><?= ($confOuro === null || $confOuro === '') ? '—' : (int)$confOuro ?></div><?php endif; ?>
                                     <?php endif; ?>
                             </td>
 
                             <td>
                                 <?php if ($editMode): ?>
-                                    <select name="situacao" class="form-select form-select-sm" style="max-width:170px;">
+                                    <select name="situacao" class="form-select form-select-sm" style="max-width:190px;">
                                         <?php
-                                        $opts = ['ok' => 'OK', 'faltando' => 'Faltando', 'a_mais' => 'A mais', 'banho_trocado' => 'Banho trocado', 'quebra' => 'Quebra', 'outro' => 'Outro'];
-                                        $cur = (string)($i['situacao'] ?? 'ok');
+                                        $opts = [
+                                            'ok' => 'OK',
+                                            'faltando' => 'Faltando',
+                                            'a_mais' => 'A mais',
+                                            'banho_trocado' => 'Banho trocado',
+                                            'quebra' => 'Quebra',
+                                            'outro' => 'Outro'
+                                        ];
                                         foreach ($opts as $k => $label):
                                         ?>
-                                            <option value="<?= htmlspecialchars($k) ?>" <?= $k === $cur ? 'selected' : '' ?>><?= htmlspecialchars($label) ?></option>
+                                            <option value="<?= htmlspecialchars($k) ?>" <?= $k === $curSitu ? 'selected' : '' ?>>
+                                                <?= htmlspecialchars($label) ?>
+                                            </option>
                                         <?php endforeach; ?>
                                     </select>
                                 <?php else: ?>
-                                    <?= htmlspecialchars((string)($i['situacao'] ?? 'ok')) ?>
+                                    <?= htmlspecialchars($curSitu) ?>
                                 <?php endif; ?>
                             </td>
 
                             <td class="text-start">
                                 <?php if ($editMode): ?>
-                                    <input name="nota" class="form-control form-control-sm" value="<?= htmlspecialchars((string)($i['nota'] ?? '')) ?>" placeholder="(opcional)">
+                                    <input name="nota" class="form-control form-control-sm" value="<?= htmlspecialchars($curNota) ?>" placeholder="(opcional)">
                                 <?php else: ?>
-                                    <?= htmlspecialchars((string)($i['nota'] ?? '')) ?>
+                                    <?= htmlspecialchars($curNota) ?>
                                 <?php endif; ?>
                             </td>
 
                             <?php if ($editMode): ?>
-                                <td style="min-width:160px;">
-                                    <button class="btn btn-primary btn-sm w-50" type="submit">Salvar</button>
+                                <td style="min-width: 100px;">
+                                    <button class="btn btn-primary btn-sm w-100" type="submit">Salvar</button>
                                     </form>
 
                                     <?php if ($editFull): ?>
                                         <button type="button"
-                                            class="btn btn-outline-secondary btn-sm w-50 mt-1"
+                                            class="btn btn-outline-secondary btn-sm w-100 mt-2"
                                             data-bs-toggle="modal"
-                                            data-bs-target="#modalEditFull<?= $iid ?>">
-                                            🛠 Editar completo
+                                            data-bs-target="#<?= htmlspecialchars($modalId) ?>">
+                                            🛠 Editar Item
                                         </button>
 
-                                        <form method="POST" action="actions/lote_item_delete.php" class="mt-1"
-                                            onsubmit="return confirm('Excluir este item?');">
-                                            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token('lote_item_delete')) ?>">
-                                            <input type="hidden" name="lote_id" value="<?= (int)$lote['id'] ?>">
-                                            <input type="hidden" name="id" value="<?= $iid ?>">
-                                            <button class="btn btn-outline-danger btn-sm w-50" type="submit">Excluir</button>
-                                        </form>
-                                    <?php endif; ?>
-
-                                    <?php if ($editFull): ?>
-                                        <div class="modal fade" id="modalEditFull<?= $iid ?>" tabindex="-1" aria-hidden="true">
+                                        <div class="modal fade" id="<?= htmlspecialchars($modalId) ?>" tabindex="-1" aria-hidden="true">
                                             <div class="modal-dialog modal-lg">
-                                                <form method="POST" action="actions/lote_item_edit_full.php" class="modal-content">
-                                                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token('lote_item_edit_full')) ?>">
+                                                <form method="POST" action="actions/lote_item_edit_full_group.php" class="modal-content">
+                                                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token('lote_item_edit_full_group')) ?>">
                                                     <input type="hidden" name="lote_id" value="<?= (int)$lote['id'] ?>">
-                                                    <input type="hidden" name="id" value="<?= $iid ?>">
+                                                    <input type="hidden" name="id_prata" value="<?= (int)$idPrata ?>">
+                                                    <input type="hidden" name="id_ouro" value="<?= (int)$idOuro ?>">
 
                                                     <div class="modal-header">
-                                                        <h5 class="modal-title">🛠 Editar item completo (#<?= $iid ?>)</h5>
+                                                        <h5 class="modal-title">🛠 Editar Item (<?= htmlspecialchars($produtoNome) ?>)</h5>
                                                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
                                                     </div>
 
                                                     <div class="modal-body">
                                                         <div class="row g-2">
-                                                            <div class="col-12 col-md-8">
+                                                            <div class="col-12">
                                                                 <label class="form-label">Produto</label>
                                                                 <select name="produto_id" class="form-select" required>
+                                                                    <option value="">Selecione...</option>
                                                                     <?php foreach ($produtos as $p): ?>
                                                                         <option value="<?= (int)$p['id'] ?>"
-                                                                            <?= ((int)$p['id'] === (int)($i['produto_id'] ?? 0)) ? 'selected' : '' ?>>
+                                                                            <?= ((int)$p['id'] === (int)($g['produto_id'] ?? 0)) ? 'selected' : '' ?>>
                                                                             <?= htmlspecialchars((string)$p['nome']) ?>
                                                                         </option>
                                                                     <?php endforeach; ?>
                                                                 </select>
                                                             </div>
 
-                                                            <div class="col-12 col-md-4">
-                                                                <label class="form-label">Variação</label>
-                                                                <select name="variacao" class="form-select">
-                                                                    <option value="">—</option>
-                                                                    <option value="Prata">Prata</option>
-                                                                    <option value="Ouro">Ouro</option>
-                                                                </select>
+                                                            <div class="col-12">
+                                                                <label class="form-label mb-1">Variações</label>
+                                                                <div class="d-flex flex-wrap gap-3">
+                                                                    <div class="form-check">
+                                                                        <input class="form-check-input" type="checkbox"
+                                                                            id="<?= htmlspecialchars($modalId) ?>_prata"
+                                                                            name="tem_prata" value="1"
+                                                                            <?= $idPrata ? 'checked' : '' ?>>
+                                                                        <label class="form-check-label" for="<?= htmlspecialchars($modalId) ?>_prata">Prata</label>
+                                                                    </div>
+                                                                    <div class="form-check">
+                                                                        <input class="form-check-input" type="checkbox"
+                                                                            id="<?= htmlspecialchars($modalId) ?>_ouro"
+                                                                            name="tem_ouro" value="1"
+                                                                            <?= $idOuro ? 'checked' : '' ?>>
+                                                                        <label class="form-check-label" for="<?= htmlspecialchars($modalId) ?>_ouro">Ouro</label>
+                                                                    </div>
+                                                                </div>
                                                             </div>
 
-
-                                                            <div class="col-12 col-md-4">
-                                                                <label class="form-label">Qtd prevista</label>
-                                                                <input type="number" name="qtd_prevista" class="form-control" min="0"
-                                                                    value="<?= (int)($i['qtd_prevista'] ?? 0) ?>" required>
+                                                            <!-- PRATA -->
+                                                            <div class="col-12" id="<?= htmlspecialchars($modalId) ?>_box_prata" style="<?= $idPrata ? '' : 'display:none;' ?>">
+                                                                <div class="card p-2">
+                                                                    <div class="fw-bold mb-2">Prata</div>
+                                                                    <div class="row g-2">
+                                                                        <div class="col-12 col-md-6">
+                                                                            <label class="form-label">Qtd prevista (Prata)</label>
+                                                                            <input type="number" name="qtd_prevista_prata" class="form-control" min="0"
+                                                                                value="<?= $idPrata ? (int)$prata['qtd_prevista'] : 0 ?>">
+                                                                        </div>
+                                                                        <div class="col-12 col-md-6">
+                                                                            <label class="form-label">Qtd conferida (Prata)</label>
+                                                                            <input type="number" name="qtd_conferida_prata" class="form-control"
+                                                                                value="<?= htmlspecialchars((string)($idPrata ? ($prata['qtd_conferida'] ?? '') : '')) ?>">
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
                                                             </div>
 
-                                                            <div class="col-12 col-md-4">
-                                                                <label class="form-label">Qtd conferida</label>
-                                                                <input type="number" name="qtd_conferida" class="form-control"
-                                                                    value="<?= htmlspecialchars((string)($i['qtd_conferida'] ?? '')) ?>">
+                                                            <!-- OURO -->
+                                                            <div class="col-12" id="<?= htmlspecialchars($modalId) ?>_box_ouro" style="<?= $idOuro ? '' : 'display:none;' ?>">
+                                                                <div class="card p-2">
+                                                                    <div class="fw-bold mb-2">Ouro</div>
+                                                                    <div class="row g-2">
+                                                                        <div class="col-12 col-md-6">
+                                                                            <label class="form-label">Qtd prevista (Ouro)</label>
+                                                                            <input type="number" name="qtd_prevista_ouro" class="form-control" min="0"
+                                                                                value="<?= $idOuro ? (int)$ouro['qtd_prevista'] : 0 ?>">
+                                                                        </div>
+                                                                        <div class="col-12 col-md-6">
+                                                                            <label class="form-label">Qtd conferida (Ouro)</label>
+                                                                            <input type="number" name="qtd_conferida_ouro" class="form-control"
+                                                                                value="<?= htmlspecialchars((string)($idOuro ? ($ouro['qtd_conferida'] ?? '') : '')) ?>">
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
                                                             </div>
 
-                                                            <div class="col-12 col-md-4">
-                                                                <label class="form-label">Situação</label>
+                                                            <div class="col-12 col-md-6">
+                                                                <label class="form-label">Situação (igual)</label>
                                                                 <select name="situacao" class="form-select">
                                                                     <?php
                                                                     $opts = ['ok' => 'OK', 'faltando' => 'Faltando', 'a_mais' => 'A mais', 'banho_trocado' => 'Banho trocado', 'quebra' => 'Quebra', 'outro' => 'Outro'];
-                                                                    $cur = (string)($i['situacao'] ?? 'ok');
                                                                     foreach ($opts as $k => $label):
                                                                     ?>
-                                                                        <option value="<?= htmlspecialchars($k) ?>" <?= $k === $cur ? 'selected' : '' ?>>
+                                                                        <option value="<?= htmlspecialchars($k) ?>" <?= $k === (string)$curSitu ? 'selected' : '' ?>>
                                                                             <?= htmlspecialchars($label) ?>
                                                                         </option>
                                                                     <?php endforeach; ?>
@@ -278,20 +364,45 @@ function item_row_style(array $i): string
                                                             </div>
 
                                                             <div class="col-12">
-                                                                <label class="form-label">Nota</label>
-                                                                <input name="nota" class="form-control" value="<?= htmlspecialchars((string)($i['nota'] ?? '')) ?>">
+                                                                <label class="form-label">Nota (igual)</label>
+                                                                <input name="nota" class="form-control" value="<?= htmlspecialchars($curNota) ?>">
+                                                            </div>
+
+                                                            <div class="col-12">
+                                                                <div class="alert alert-warning mb-0">
+                                                                    Se você <strong>desmarcar</strong> Prata ou Ouro, essa variação será <strong>removida</strong> do lote.
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     </div>
 
                                                     <div class="modal-footer">
                                                         <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-                                                        <button type="submit" class="btn btn-success">Salvar</button>
+                                                        <button type="submit" class="btn btn-success">Salvar completo</button>
                                                     </div>
                                                 </form>
                                             </div>
                                         </div>
+
+                                        <script>
+                                            document.addEventListener('DOMContentLoaded', () => {
+                                                const prata = document.getElementById('<?= htmlspecialchars($modalId) ?>_prata');
+                                                const ouro = document.getElementById('<?= htmlspecialchars($modalId) ?>_ouro');
+                                                const boxPrata = document.getElementById('<?= htmlspecialchars($modalId) ?>_box_prata');
+                                                const boxOuro = document.getElementById('<?= htmlspecialchars($modalId) ?>_box_ouro');
+
+                                                const sync = () => {
+                                                    if (boxPrata) boxPrata.style.display = prata && prata.checked ? '' : 'none';
+                                                    if (boxOuro) boxOuro.style.display = ouro && ouro.checked ? '' : 'none';
+                                                };
+
+                                                prata && prata.addEventListener('change', sync);
+                                                ouro && ouro.addEventListener('change', sync);
+                                                sync();
+                                            });
+                                        </script>
                                     <?php endif; ?>
+
                                 </td>
                             <?php endif; ?>
                         </tr>
@@ -316,7 +427,7 @@ function item_row_style(array $i): string
 
                     <div class="modal-body">
                         <div class="row g-2">
-                            <div class="col-12 col-md-8">
+                            <div class="col-12">
                                 <label class="form-label">Produto</label>
                                 <select name="produto_id" class="form-select" required>
                                     <option value="">Selecione...</option>
@@ -326,27 +437,57 @@ function item_row_style(array $i): string
                                 </select>
                             </div>
 
-                            <div class="col-12 col-md-4">
-                                <label class="form-label">Variação</label>
-                                <select name="variacao" class="form-select">
-                                    <option value="">—</option>
-                                    <option value="Prata">Prata</option>
-                                    <option value="Ouro">Ouro</option>
-                                </select>
+                            <div class="col-12">
+                                <label class="form-label mb-1">Variações</label>
+                                <div class="d-flex flex-wrap gap-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="vPrata" name="tem_prata" value="1" checked>
+                                        <label class="form-check-label" for="vPrata">Prata</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="vOuro" name="tem_ouro" value="1">
+                                        <label class="form-check-label" for="vOuro">Ouro</label>
+                                    </div>
+                                </div>
+                                <div class="text-muted small mt-1">Marque Prata e/ou Ouro. Situação e Nota serão iguais para ambas.</div>
                             </div>
 
-                            <div class="col-12 col-md-4">
-                                <label class="form-label">Qtd prevista</label>
-                                <input type="number" name="qtd_prevista" class="form-control" value="0" min="0" required>
+                            <!-- Bloco Prata -->
+                            <div class="col-12" id="boxPrata">
+                                <div class="card p-2">
+                                    <div class="fw-bold mb-2">Prata</div>
+                                    <div class="row g-2">
+                                        <div class="col-12 col-md-6">
+                                            <label class="form-label">Qtd prevista (Prata)</label>
+                                            <input type="number" name="qtd_prevista_prata" class="form-control" value="0" min="0">
+                                        </div>
+                                        <div class="col-12 col-md-6">
+                                            <label class="form-label">Qtd conferida (Prata)</label>
+                                            <input type="number" name="qtd_conferida_prata" class="form-control" placeholder="—">
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
 
-                            <div class="col-12 col-md-4">
-                                <label class="form-label">Qtd conferida (opcional)</label>
-                                <input type="number" name="qtd_conferida" class="form-control" placeholder="—">
+                            <!-- Bloco Ouro -->
+                            <div class="col-12" id="boxOuro" style="display:none;">
+                                <div class="card p-2">
+                                    <div class="fw-bold mb-2">Ouro</div>
+                                    <div class="row g-2">
+                                        <div class="col-12 col-md-6">
+                                            <label class="form-label">Qtd prevista (Ouro)</label>
+                                            <input type="number" name="qtd_prevista_ouro" class="form-control" value="0" min="0">
+                                        </div>
+                                        <div class="col-12 col-md-6">
+                                            <label class="form-label">Qtd conferida (Ouro)</label>
+                                            <input type="number" name="qtd_conferida_ouro" class="form-control" placeholder="—">
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
 
-                            <div class="col-12 col-md-4">
-                                <label class="form-label">Situação</label>
+                            <div class="col-12 col-md-6">
+                                <label class="form-label">Situação (igual para ambas)</label>
                                 <select name="situacao" class="form-select">
                                     <option value="ok">OK</option>
                                     <option value="faltando">Faltando</option>
@@ -358,7 +499,7 @@ function item_row_style(array $i): string
                             </div>
 
                             <div class="col-12">
-                                <label class="form-label">Nota</label>
+                                <label class="form-label">Nota (igual para ambas)</label>
                                 <input name="nota" class="form-control" placeholder="(opcional)">
                             </div>
                         </div>
@@ -371,6 +512,24 @@ function item_row_style(array $i): string
                 </form>
             </div>
         </div>
+
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                const vPrata = document.getElementById('vPrata');
+                const vOuro = document.getElementById('vOuro');
+                const boxPrata = document.getElementById('boxPrata');
+                const boxOuro = document.getElementById('boxOuro');
+
+                const sync = () => {
+                    boxPrata.style.display = vPrata.checked ? '' : 'none';
+                    boxOuro.style.display = vOuro.checked ? '' : 'none';
+                };
+
+                vPrata?.addEventListener('change', sync);
+                vOuro?.addEventListener('change', sync);
+                sync();
+            });
+        </script>
     <?php endif; ?>
 
     <!-- Toast (igual index) -->
