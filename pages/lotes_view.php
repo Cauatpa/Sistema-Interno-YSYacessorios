@@ -1,11 +1,9 @@
 <?php
 // pages/lotes_view.php
 
-// Permissões
-$canOperate = auth_has_role('operador'); // operador ou admin
-$canAdmin   = auth_has_role('admin');    // somente admin
+$canOperate = auth_has_role('operador');
+$canAdmin   = auth_has_role('admin');
 
-// Usuário logado (o controller fornece $u; aqui deixo seguro)
 $u = $u ?? [];
 $nomeUsuario = trim((string)($u['nome'] ?? $u['usuario'] ?? ''));
 if ($nomeUsuario === '') $nomeUsuario = '—';
@@ -21,7 +19,6 @@ $page = max(1, $page);
 $total = isset($total) ? (int)$total : 0;
 $totalPages = isset($totalPages) ? (int)$totalPages : max(1, (int)ceil($total / $perPage));
 
-// Helper de URL para paginação preservando filtros atuais
 function page_url(int $p): string
 {
     $q = $_GET;
@@ -33,6 +30,7 @@ $q = trim((string)($_GET['q'] ?? ''));
 $status = (string)($_GET['status'] ?? 'todos');
 $dataIni = (string)($_GET['data_ini'] ?? '');
 $dataFim = (string)($_GET['data_fim'] ?? '');
+$competencia = (string)($_GET['competencia'] ?? ($competencia ?? ''));
 ?>
 
 <!DOCTYPE html>
@@ -44,22 +42,16 @@ $dataFim = (string)($_GET['data_fim'] ?? '');
     <meta charset="UTF-8">
     <title>Lotes</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-
-    <!-- Bootstrap -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-
-    <!-- CSS próprio -->
     <link rel="stylesheet" href="assets/css/style.css">
-
-    <!-- Ícone da aba -->
     <link rel="icon" type="image/png" href="assets/imgs/Y.png">
 </head>
 
 <body class="p-3">
 
-    <!-- Topo: título + usuário + ações -->
+    <!-- Topo -->
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-center gap-2 mb-3">
-        <h2 class="text-center mb-0">📦Controle Lotes</h2>
+        <h2 class="text-center mb-0">📦Controle de Lotes</h2>
 
         <div class="d-flex flex-wrap align-items-center gap-2">
             <div class="small text-muted">
@@ -75,6 +67,15 @@ $dataFim = (string)($_GET['data_fim'] ?? '');
 
             <a href="index.php" class="btn btn-outline-secondary btn-sm">← Voltar</a>
 
+            <?php if ($canAdmin): ?>
+                <a href="usuarios.php" class="btn btn-outline-primary btn-sm">Usuários</a>
+                <a href="auditoria.php" class="btn btn-outline-success btn-sm">Auditoria</a>
+            <?php endif; ?>
+
+            <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalMinhaSenha">
+                🔑 Minha senha
+            </button>
+
             <button id="btnTheme" class="btn btn-outline-secondary btn-sm">
                 🌙 Tema escuro
             </button>
@@ -86,8 +87,45 @@ $dataFim = (string)($_GET['data_fim'] ?? '');
         </div>
     </div>
 
+    <!-- Barra: Mês + Novo Lote -->
+    <div class="d-flex flex-column flex-md-row gap-2 justify-content-between align-items-stretch mb-3">
+
+        <form method="GET" class="d-flex gap-2 align-items-center">
+            <label class="fw-bold">Mês:</label>
+
+            <!-- preserva filtros ao trocar mês -->
+            <input type="hidden" name="q" value="<?= htmlspecialchars($q) ?>">
+            <input type="hidden" name="status" value="<?= htmlspecialchars($status) ?>">
+            <input type="hidden" name="data_ini" value="<?= htmlspecialchars($dataIni) ?>">
+            <input type="hidden" name="data_fim" value="<?= htmlspecialchars($dataFim) ?>">
+            <input type="hidden" name="per_page" value="<?= (int)$perPage ?>">
+            <input type="hidden" name="p" value="1">
+
+            <select name="competencia" class="form-select" onchange="this.form.submit()">
+                <?php foreach (($mesesDisponiveis ?? []) as $m): ?>
+                    <option value="<?= htmlspecialchars($m) ?>" <?= $m === $competencia ? 'selected' : '' ?>>
+                        <?= htmlspecialchars($m) ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+
+            <noscript><button class="btn btn-secondary">OK</button></noscript>
+        </form>
+
+        <div class="d-flex justify-content-md-end">
+            <button type="button"
+                class="btn btn-success w-100 w-md-auto"
+                data-bs-toggle="modal"
+                data-bs-target="#modalNovoLote"
+                <?= !$canOperate ? 'disabled' : '' ?>>
+                ➕ Novo Lote
+            </button>
+        </div>
+    </div>
+
     <!-- Filtros -->
     <form method="GET" class="card p-2 mb-3">
+        <input type="hidden" name="competencia" value="<?= htmlspecialchars($competencia) ?>">
         <input type="hidden" name="p" value="1">
 
         <div class="row g-2 align-items-end">
@@ -133,19 +171,9 @@ $dataFim = (string)($_GET['data_fim'] ?? '');
                 <button class="btn btn-primary w-100" type="submit">Filtrar</button>
 
                 <a class="btn btn-outline-secondary w-100"
-                    href="<?= htmlspecialchars('lotes.php') ?>">
+                    href="<?= htmlspecialchars('lotes.php?competencia=' . urlencode($competencia)) ?>">
                     Limpar
                 </a>
-            </div>
-
-            <div class="col-12 col-md-6 d-flex justify-content-md-end">
-                <button type="button"
-                    class="btn btn-success w-100 w-md-auto"
-                    data-bs-toggle="modal"
-                    data-bs-target="#modalNovoLote"
-                    <?= !$canOperate ? 'disabled' : '' ?>>
-                    ➕ Novo Lote
-                </button>
             </div>
         </div>
     </form>
@@ -171,7 +199,7 @@ $dataFim = (string)($_GET['data_fim'] ?? '');
                 <?php if (empty($lotes ?? [])): ?>
                     <tr>
                         <td colspan="9" class="text-muted py-4">
-                            Nenhum lote encontrado com os filtros atuais.
+                            Nenhum lote encontrado neste mês com os filtros atuais.
                         </td>
                     </tr>
                 <?php else: ?>
@@ -226,9 +254,7 @@ $dataFim = (string)($_GET['data_fim'] ?? '');
                                 <?php endif; ?>
                             </td>
 
-                            <td>
-                                <span class="badge <?= $badge ?>"><?= htmlspecialchars($stTxt) ?></span>
-                            </td>
+                            <td><span class="badge <?= $badge ?>"><?= htmlspecialchars($stTxt) ?></span></td>
 
                             <td class="d-none d-md-table-cell"><?= htmlspecialchars($criadoPor) ?></td>
 
@@ -245,10 +271,6 @@ $dataFim = (string)($_GET['data_fim'] ?? '');
                                             ✏ Editar
                                         </a>
                                     <?php endif; ?>
-                                </div>
-
-                                <div class="text-muted small mt-1">
-                                    * `lote.php` é a próxima tela (detalhe/itens)
                                 </div>
                             </td>
                         </tr>
@@ -305,14 +327,15 @@ $dataFim = (string)($_GET['data_fim'] ?? '');
         </div>
     <?php endif; ?>
 
-    <!-- Modal: Novo Lote (MVP simples) -->
+    <!-- Modal: Novo Lote -->
     <div class="modal fade" id="modalNovoLote" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-lg">
             <form method="POST" action="actions/lotes_salvar.php" class="modal-content">
                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token('lotes_salvar')) ?>">
+                <input type="hidden" name="competencia" value="<?= htmlspecialchars($competencia) ?>">
 
                 <div class="modal-header">
-                    <h5 class="modal-title">➕ Novo Lote</h5>
+                    <h5 class="modal-title">➕ Novo Lote (<?= htmlspecialchars($competencia) ?>)</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
                 </div>
 
@@ -320,7 +343,7 @@ $dataFim = (string)($_GET['data_fim'] ?? '');
                     <div class="row g-2">
                         <div class="col-12 col-md-6">
                             <label class="form-label">Código</label>
-                            <input name="codigo" class="form-control" placeholder="Ex: LOTE 10 SETEMBRO" required>
+                            <input name="codigo" class="form-control" placeholder="Ex: LOTE 28 OUTUBRO" required>
                         </div>
 
                         <div class="col-12 col-md-6">
@@ -336,12 +359,8 @@ $dataFim = (string)($_GET['data_fim'] ?? '');
                         <div class="col-12">
                             <label class="form-label">Observações</label>
                             <textarea name="observacoes" class="form-control" rows="3"
-                                placeholder="Ex: veio com variações, conferir banho..."></textarea>
+                                placeholder="Ex: conferir banho, veio trocado..."></textarea>
                         </div>
-                    </div>
-
-                    <div class="alert alert-info mt-3 mb-0">
-                        Depois eu crio a tela <strong>lote.php</strong> (detalhe + itens). Por enquanto, esse modal só cria o “cabeçalho” do lote.
                     </div>
                 </div>
 
@@ -353,8 +372,17 @@ $dataFim = (string)($_GET['data_fim'] ?? '');
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Toast UI -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 9999;">
+        <div id="appToast" class="toast align-items-center border-0" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div id="appToastBody" class="toast-body"></div>
+                <button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast" aria-label="Fechar"></button>
+            </div>
+        </div>
+    </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="assets/js/app.js" defer></script>
     <script src="assets/js/ux_atalhos.js" defer></script>
     <script src="assets/js/theme.js" defer></script>
