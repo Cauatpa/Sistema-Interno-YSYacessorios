@@ -240,7 +240,7 @@ $percSemEstoque = $totalPedidos > 0 ? round(($totalSemEstoque / $totalPedidos) *
             <div class="col-12">
                 <div class="card card-soft p-3">
                     <div class="d-flex justify-content-between align-items-center mb-2">
-                        <div class="fw-semibold">Top 10 produtos</div>
+                        <div class="fw-semibold">Top produtos</div>
                         <small class="text-muted">mês selecionado</small>
                     </div>
                     <canvas id="chartTopProdutos" height="220"></canvas>

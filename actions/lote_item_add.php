@@ -19,8 +19,12 @@ if (!csrf_validate($_POST['csrf_token'] ?? '', 'lote_item_add')) {
 }
 
 $loteId = (int)($_POST['lote_id'] ?? 0);
-$recebimentoId = (int)($_POST['recebimento_id'] ?? 0);
 $produtoId = (int)($_POST['produto_id'] ?? 0);
+$recebimentoId = (int)($_POST['recebimento_id'] ?? 0);
+if ($recebimentoId <= 0) {
+    header('Location: ../lote.php?id=' . $loteId . '&edit=1&toast=' . urlencode('Selecione um recebimento antes de adicionar itens.'));
+    exit;
+}
 
 $temPrata = (int)($_POST['tem_prata'] ?? 0) === 1;
 $temOuro  = (int)($_POST['tem_ouro'] ?? 0) === 1;

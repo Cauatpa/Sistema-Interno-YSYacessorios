@@ -149,14 +149,19 @@ $temRecebimentoAtual = ((int)($recebimentoAtualId ?? 0) > 0);
                     <!-- Botões -->
                     <?php if ($editMode): ?>
                         <div class="d-grid gap-2" style="min-width: 220px;">
+
+                            <!-- ADICIONAR ITEM -->
                             <button
                                 class="btn btn-success"
                                 type="button"
                                 data-bs-toggle="modal"
-                                data-bs-target="#modalAddItem">
+                                data-bs-target="#modalAddItem"
+                                <?= !$temRecebimentoAtual ? 'disabled' : '' ?>
+                                title="<?= !$temRecebimentoAtual ? 'Crie ou selecione um recebimento antes de adicionar itens' : '' ?>">
                                 ➕ Item
                             </button>
 
+                            <!-- NOVO RECEBIMENTO -->
                             <button
                                 class="btn btn-outline-primary"
                                 type="button"
@@ -164,8 +169,16 @@ $temRecebimentoAtual = ((int)($recebimentoAtualId ?? 0) > 0);
                                 data-bs-target="#modalNovoRecebimento">
                                 📦 Recebimento
                             </button>
+
+                            <?php if (!$temRecebimentoAtual): ?>
+                                <div class="text-muted small text-center">
+                                    Crie um recebimento para liberar a adição de itens.
+                                </div>
+                            <?php endif; ?>
+
                         </div>
                     <?php endif; ?>
+
 
                 </div>
             </div>
@@ -672,6 +685,7 @@ $temRecebimentoAtual = ((int)($recebimentoAtualId ?? 0) > 0);
     <!-- Tom Select -->
     <script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
 
+    <!-- Tom Select -->
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const modalEl = document.getElementById('modalAddItem');

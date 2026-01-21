@@ -215,6 +215,8 @@ $competencia = (string)($_GET['competencia'] ?? ($competencia ?? ''));
 
                         $div = (int)($l['divergencias'] ?? 0);
                     ?>
+
+                        <!-- Lote -->
                         <tr data-id="<?= $id ?>">
                             <td><?= $id ?></td>
 
@@ -244,11 +246,12 @@ $competencia = (string)($_GET['competencia'] ?? ($competencia ?? ''));
 
                             <td class="d-none d-md-table-cell"><?= htmlspecialchars($criadoPor) ?></td>
 
+                            <!-- Ações -->
                             <td>
                                 <div class="d-flex flex-column align-items-center gap-1" style="min-width: 140px;">
 
                                     <div class="w-100">
-                                        <a href="<?= htmlspecialchars('lote.php?id=' . $id) ?>"
+                                        <a href="<?= htmlspecialchars('lote.php?id=' . (int)$id) ?>"
                                             class="btn btn-outline-primary btn-sm w-100 text-center">
                                             👁 Ver
                                         </a>
@@ -256,7 +259,7 @@ $competencia = (string)($_GET['competencia'] ?? ($competencia ?? ''));
 
                                     <?php if (($canOperate || $canAdmin) && $st !== 'fechado'): ?>
                                         <div class="w-100">
-                                            <a href="<?= htmlspecialchars('lote.php?id=' . $id . '&edit=1') ?>"
+                                            <a href="<?= htmlspecialchars('lote.php?id=' . (int)$id . '&edit=1') ?>"
                                                 class="btn btn-outline-secondary btn-sm w-100 text-center">
                                                 ✏ Editar
                                             </a>
@@ -264,31 +267,42 @@ $competencia = (string)($_GET['competencia'] ?? ($competencia ?? ''));
                                     <?php endif; ?>
 
                                     <?php if ($canAdmin): ?>
+                                        <form method="POST"
+                                            action="actions/lote_delete.php"
+                                            class="w-100 m-0"
+                                            onsubmit="return confirm('Tem certeza que deseja EXCLUIR este lote? Essa ação não pode ser desfeita.');">
+                                            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token('lote_delete')) ?>">
+                                            <input type="hidden" name="lote_id" value="<?= (int)$id ?>">
+                                            <button type="submit" class="btn btn-outline-danger btn-sm w-100 text-center">
+                                                🗑 Excluir
+                                            </button>
+                                        </form>
+                                    <?php endif; ?>
 
+                                    <?php if ($canAdmin): ?>
                                         <?php if ($st !== 'fechado'): ?>
-                                            <form method="POST" action="actions/lote_fechar.php"
-                                                class="w-100"
+                                            <form method="POST"
+                                                action="actions/lote_fechar.php"
+                                                class="w-100 m-0"
                                                 onsubmit="return confirm('Finalizar este lote? Após isso, ele ficará bloqueado.');">
                                                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token('lote_fechar')) ?>">
                                                 <input type="hidden" name="lote_id" value="<?= (int)$id ?>">
-                                                <button type="submit"
-                                                    class="btn btn-outline-danger btn-sm w-100 text-center">
+                                                <button type="submit" class="btn btn-outline-warning btn-sm w-100 text-center">
                                                     🔒 Finalizar
                                                 </button>
                                             </form>
                                         <?php else: ?>
-                                            <form method="POST" action="actions/lote_reabrir.php"
-                                                class="w-100"
+                                            <form method="POST"
+                                                action="actions/lote_reabrir.php"
+                                                class="w-100 m-0"
                                                 onsubmit="return confirm('Reabrir este lote? Ele voltará para edição.');">
                                                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token('lote_reabrir')) ?>">
                                                 <input type="hidden" name="lote_id" value="<?= (int)$id ?>">
-                                                <button type="submit"
-                                                    class="btn btn-outline-warning btn-sm w-100 text-center">
+                                                <button type="submit" class="btn btn-outline-warning btn-sm w-100 text-center">
                                                     🔓 Reabrir
                                                 </button>
                                             </form>
                                         <?php endif; ?>
-
                                     <?php endif; ?>
 
                                 </div>
