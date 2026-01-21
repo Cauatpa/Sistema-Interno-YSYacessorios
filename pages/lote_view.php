@@ -21,7 +21,6 @@ function item_row_style(array $i): string
     if ($situ === 'quebra') return 'background:#fff3cd;';
     if (in_array($situ, ['faltando', 'a_mais', 'outro'], true)) return 'background:#f8d7da;';
 
-    // ok: se conferiu e bateu -> verde, se conferiu e divergiu -> vermelho, se não conferiu -> neutro
     if ($confVal !== null) {
         if ($confVal !== $prev) return 'background:#f8d7da;';
         return 'background:#d4edda;';
@@ -34,7 +33,7 @@ $temRecebimentoAtual = ((int)($recebimentoAtualId ?? 0) > 0);
 ?>
 
 <!DOCTYPE html>
-<html lang="pt-br" data-bs-theme="light"
+<html lang="pt-br" data-bs-theme=""
     data-toast="<?= htmlspecialchars((string)($toast ?? '')) ?>"
     data-highlight-id="<?= (int)($highlightId ?? 0) ?>">
 
@@ -42,7 +41,9 @@ $temRecebimentoAtual = ((int)($recebimentoAtualId ?? 0) > 0);
     <meta charset="UTF-8">
     <title>Lote #<?= (int)$lote['id'] ?></title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
+
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.bootstrap5.min.css">
     <link rel="stylesheet" href="assets/css/style.css">
     <link rel="icon" type="image/png" href="assets/imgs/Y.png">
 </head>
@@ -77,6 +78,11 @@ $temRecebimentoAtual = ((int)($recebimentoAtualId ?? 0) > 0);
                 <a href="lote.php?id=<?= (int)$lote['id'] ?>" class="btn btn-outline-secondary btn-sm">👁 Ver</a>
             <?php endif; ?>
 
+            <button id="btnTheme" class="btn btn-outline-secondary btn-sm">
+                🌙 Tema escuro
+            </button>
+
+
             <form method="POST" action="logout.php" class="d-inline">
                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token('logout')) ?>">
                 <button type="submit" class="btn btn-outline-secondary btn-sm">Sair</button>
@@ -86,81 +92,82 @@ $temRecebimentoAtual = ((int)($recebimentoAtualId ?? 0) > 0);
 
     <!-- Card cabeçalho -->
     <div class="card p-3 mb-3">
-        <div class="row g-2 align-items-end">
-            <div class="col-12 col-md-5">
+        <div class="row g-3 align-items-start">
+
+            <!-- ESQUERDA: Fornecedor -->
+            <div class="col-12 col-md-4">
                 <div class="fw-bold">Fornecedor</div>
                 <div><?= htmlspecialchars((string)($lote['fornecedor'] ?? '—')) ?></div>
             </div>
 
-            <div class="col-6 col-md-3">
-                <div class="fw-bold">Recebimento</div>
+            <!-- MEIO: Status -->
+            <div class="col-12 col-md-2">
+                <div class="fw-bold">Status</div>
                 <div>
-                    <?= !empty($lote['data_recebimento']) ? date('d/m/Y', strtotime((string)$lote['data_recebimento'])) : '—' ?>
+                    <span class="badge text-bg-secondary"><?= htmlspecialchars($statusLote) ?></span>
                 </div>
             </div>
 
-            <div class="col-6 col-md-2">
-                <div class="fw-bold">Status</div>
-                <div><span class="badge text-bg-secondary"><?= htmlspecialchars($statusLote) ?></span></div>
-            </div>
+            <!-- DIREITA: Recebimento + botões -->
+            <div class="col-12 col-md-6">
+                <div class="d-flex flex-column flex-md-row gap-3 align-items-start align-items-md-end justify-content-between">
 
-            <div class="col-12 col-md-5">
-                <div class="fw-bold">Recebimento atual</div>
+                    <!-- Recebimento atual (dropdown) -->
+                    <div class="flex-grow-1" style="min-width: 260px;">
+                        <div class="fw-bold">Recebimento atual</div>
 
-                <?php if (!empty($recebimentos)): ?>
-                    <form method="GET" class="d-flex gap-2">
-                        <input type="hidden" name="id" value="<?= (int)$lote['id'] ?>">
-                        <?php if ($editMode): ?><input type="hidden" name="edit" value="1"><?php endif; ?>
+                        <?php if (!empty($recebimentos)): ?>
+                            <form method="GET" class="mt-1">
+                                <input type="hidden" name="id" value="<?= (int)$lote['id'] ?>">
+                                <?php if ($editMode): ?><input type="hidden" name="edit" value="1"><?php endif; ?>
 
-                        <select name="recebimento_id" class="form-select" onchange="this.form.submit()">
-                            <?php foreach ($recebimentos as $r): ?>
-                                <?php
-                                $rid = (int)$r['id'];
-                                $dt = !empty($r['data_hora']) ? date('d/m/Y H:i', strtotime((string)$r['data_hora'])) : '—';
-                                $label = trim((string)($r['volume_label'] ?? ''));
-                                $txt = $dt . ($label !== '' ? " • {$label}" : '');
-                                ?>
-                                <option value="<?= $rid ?>" <?= $rid === (int)$recebimentoAtualId ? 'selected' : '' ?>>
-                                    <?= htmlspecialchars($txt) ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
+                                <select name="recebimento_id" class="form-select" onchange="this.form.submit()">
+                                    <?php foreach ($recebimentos as $r): ?>
+                                        <?php
+                                        $rid = (int)$r['id'];
+                                        $dt = !empty($r['data_hora']) ? date('d/m/Y H:i', strtotime((string)$r['data_hora'])) : '—';
+                                        $label = trim((string)($r['volume_label'] ?? ''));
+                                        $txt = $dt . ($label !== '' ? " • {$label}" : '');
+                                        ?>
+                                        <option value="<?= $rid ?>" <?= $rid === (int)$recebimentoAtualId ? 'selected' : '' ?>>
+                                            <?= htmlspecialchars($txt) ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
 
-                        <noscript><button class="btn btn-secondary">OK</button></noscript>
-                    </form>
+                                <noscript><button class="btn btn-secondary btn-sm mt-2">OK</button></noscript>
+                            </form>
 
-                    <div class="text-muted small mt-1">
-                        Itens adicionados ficam vinculados ao recebimento selecionado.
+                            <div class="text-muted small mt-1">
+                                Itens adicionados ficam vinculados ao recebimento selecionado.
+                            </div>
+                        <?php else: ?>
+                            <div class="text-muted mt-1">Nenhum recebimento cadastrado ainda.</div>
+                        <?php endif; ?>
                     </div>
-                <?php else: ?>
-                    <div class="text-muted">Nenhum recebimento cadastrado ainda.</div>
-                <?php endif; ?>
-            </div>
 
-            <!-- Botões -->
-            <div class="col-12 col-md-2 ms-md-auto text-md-end">
-                <?php if ($editMode): ?>
-                    <div class="d-grid gap-2">
-                        <!-- ➕ Item -->
-                        <button
-                            type="button"
-                            class="btn btn-success w-100"
-                            data-bs-toggle="modal"
-                            data-bs-target="#modalAddItem"
-                            <?= ((int)$recebimentoAtualId <= 0) ? '' : '' ?>>
-                            ➕ Item
-                        </button>
+                    <!-- Botões -->
+                    <?php if ($editMode): ?>
+                        <div class="d-grid gap-2" style="min-width: 220px;">
+                            <button
+                                class="btn btn-success"
+                                type="button"
+                                data-bs-toggle="modal"
+                                data-bs-target="#modalAddItem">
+                                ➕ Item
+                            </button>
 
-                        <!-- 📦 Novo recebimento -->
-                        <button
-                            type="button"
-                            class="btn btn-outline-primary w-100"
-                            data-bs-toggle="modal"
-                            data-bs-target="#modalNovoRecebimento">
-                            📦 Novo recebimento
-                        </button>
-                    </div>
-                <?php endif; ?>
+                            <button
+                                class="btn btn-outline-primary"
+                                type="button"
+                                data-bs-toggle="modal"
+                                data-bs-target="#modalNovoRecebimento">
+                                📦 Recebimento
+                            </button>
+                        </div>
+                    <?php endif; ?>
+
+                </div>
             </div>
 
             <?php if (!empty($lote['observacoes'])): ?>
@@ -169,6 +176,7 @@ $temRecebimentoAtual = ((int)($recebimentoAtualId ?? 0) > 0);
                     <div class="text-muted"><?= nl2br(htmlspecialchars((string)$lote['observacoes'])) ?></div>
                 </div>
             <?php endif; ?>
+
         </div>
     </div>
 
@@ -304,7 +312,6 @@ $temRecebimentoAtual = ((int)($recebimentoAtualId ?? 0) > 0);
 
                             <?php if ($editMode): ?>
                                 <td style="min-width: 180px;">
-                                    <!-- botão do form UPDATE_GROUP -->
                                     <button class="btn btn-primary btn-sm w-100" type="submit">Salvar</button>
                                     </form>
 
@@ -316,7 +323,6 @@ $temRecebimentoAtual = ((int)($recebimentoAtualId ?? 0) > 0);
                                             🛠 Editar Item
                                         </button>
 
-                                        <!-- EXCLUIR (ADMIN) -->
                                         <form method="POST"
                                             action="actions/lote_item_delete_group.php"
                                             class="mt-2"
@@ -327,12 +333,10 @@ $temRecebimentoAtual = ((int)($recebimentoAtualId ?? 0) > 0);
                                             <input type="hidden" name="id_prata" value="<?= (int)$idPrata ?>">
                                             <input type="hidden" name="id_ouro" value="<?= (int)$idOuro ?>">
 
-                                            <button class="btn btn-outline-danger btn-sm w-100" type="submit">
-                                                Excluir
-                                            </button>
+                                            <button class="btn btn-outline-danger btn-sm w-100" type="submit">Excluir</button>
                                         </form>
 
-                                        <!-- MODAL EDIT FULL (igual ao seu, só mantive) -->
+                                        <!-- Modal edit full (mantido) -->
                                         <div class="modal fade" id="<?= htmlspecialchars($modalId) ?>" tabindex="-1" aria-hidden="true">
                                             <div class="modal-dialog modal-lg">
                                                 <form method="POST" action="actions/lote_item_edit_full_group.php" class="modal-content">
@@ -351,7 +355,6 @@ $temRecebimentoAtual = ((int)($recebimentoAtualId ?? 0) > 0);
                                                             <div class="col-12">
                                                                 <label class="form-label">Produto</label>
                                                                 <select name="produto_id" class="form-select" required>
-                                                                    <option value="">Selecione...</option>
                                                                     <?php foreach ($produtos as $p): ?>
                                                                         <option value="<?= (int)$p['id'] ?>"
                                                                             <?= ((int)$p['id'] === (int)($g['produto_id'] ?? 0)) ? 'selected' : '' ?>>
@@ -381,7 +384,6 @@ $temRecebimentoAtual = ((int)($recebimentoAtualId ?? 0) > 0);
                                                                 </div>
                                                             </div>
 
-                                                            <!-- PRATA -->
                                                             <div class="col-12" id="<?= htmlspecialchars($modalId) ?>_box_prata" style="<?= $idPrata ? '' : 'display:none;' ?>">
                                                                 <div class="card p-2">
                                                                     <div class="fw-bold mb-2">Prata</div>
@@ -400,7 +402,6 @@ $temRecebimentoAtual = ((int)($recebimentoAtualId ?? 0) > 0);
                                                                 </div>
                                                             </div>
 
-                                                            <!-- OURO -->
                                                             <div class="col-12" id="<?= htmlspecialchars($modalId) ?>_box_ouro" style="<?= $idOuro ? '' : 'display:none;' ?>">
                                                                 <div class="card p-2">
                                                                     <div class="fw-bold mb-2">Ouro</div>
@@ -499,7 +500,9 @@ $temRecebimentoAtual = ((int)($recebimentoAtualId ?? 0) > 0);
                         <div class="row g-2">
                             <div class="col-12">
                                 <label class="form-label">Produto</label>
-                                <select name="produto_id" class="form-select" required>
+
+                                <!-- ✅ AQUI ERA O ERRO: faltava o id -->
+                                <select id="produtoSelectAdd" name="produto_id" class="form-select" required>
                                     <option value="">Selecione...</option>
                                     <?php foreach ($produtos as $p): ?>
                                         <option value="<?= (int)$p['id'] ?>"><?= htmlspecialchars((string)$p['nome']) ?></option>
@@ -522,7 +525,6 @@ $temRecebimentoAtual = ((int)($recebimentoAtualId ?? 0) > 0);
                                 <div class="text-muted small mt-1">Marque Prata e/ou Ouro. Situação e Nota serão iguais para ambas.</div>
                             </div>
 
-                            <!-- Bloco Prata -->
                             <div class="col-12" id="boxPrata">
                                 <div class="card p-2">
                                     <div class="fw-bold mb-2">Prata</div>
@@ -539,7 +541,6 @@ $temRecebimentoAtual = ((int)($recebimentoAtualId ?? 0) > 0);
                                 </div>
                             </div>
 
-                            <!-- Bloco Ouro -->
                             <div class="col-12" id="boxOuro" style="display:none;">
                                 <div class="card p-2">
                                     <div class="fw-bold mb-2">Ouro</div>
@@ -619,8 +620,7 @@ $temRecebimentoAtual = ((int)($recebimentoAtualId ?? 0) > 0);
                         <div class="row g-2">
                             <div class="col-12 col-md-6">
                                 <label class="form-label">Data/Hora</label>
-                                <input type="datetime-local" name="data_hora" class="form-control"
-                                    value="<?= date('Y-m-d\TH:i') ?>">
+                                <input type="datetime-local" name="data_hora" class="form-control" value="<?= date('Y-m-d\TH:i') ?>">
                             </div>
 
                             <div class="col-12 col-md-6">
@@ -655,7 +655,7 @@ $temRecebimentoAtual = ((int)($recebimentoAtualId ?? 0) > 0);
         </div>
     <?php endif; ?>
 
-    <!-- Toast (igual index) -->
+    <!-- Toast -->
     <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 9999;">
         <div id="appToast" class="toast align-items-center border-0" role="alert" aria-live="assertive" aria-atomic="true">
             <div class="d-flex">
@@ -668,6 +668,34 @@ $temRecebimentoAtual = ((int)($recebimentoAtualId ?? 0) > 0);
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="assets/js/app.js" defer></script>
     <script src="assets/js/theme.js" defer></script>
+
+    <!-- Tom Select -->
+    <script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const modalEl = document.getElementById('modalAddItem');
+            if (!modalEl) return;
+
+            modalEl.addEventListener('shown.bs.modal', () => {
+                const el = document.getElementById('produtoSelectAdd');
+                if (!el) return;
+
+                if (!el.tomselect) {
+                    new TomSelect(el, {
+                        plugins: ['clear_button'],
+                        create: false,
+                        maxOptions: 1000,
+                        placeholder: "Digite para buscar...",
+                        allowEmptyOption: true,
+                        searchField: ['text']
+                    });
+                }
+
+                setTimeout(() => el.tomselect?.focus(), 50);
+            });
+        });
+    </script>
 </body>
 
 </html>

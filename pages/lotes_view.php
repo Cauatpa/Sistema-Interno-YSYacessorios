@@ -176,7 +176,7 @@ $competencia = (string)($_GET['competencia'] ?? ($competencia ?? ''));
                 <tr>
                     <th>#</th>
                     <th>📦 Código</th>
-                    <th class="d-none d-md-table-cell">📅 Recebimento</th>
+                    <!-- <th class="d-none d-md-table-cell">📅 Recebimento</th> -->
                     <th class="d-none d-md-table-cell">🏷 Fornecedor</th>
                     <th>📄 Itens</th>
                     <th>⚠️ Divergências</th>
@@ -225,11 +225,6 @@ $competencia = (string)($_GET['competencia'] ?? ($competencia ?? ''));
                                 <?php endif; ?>
                             </td>
 
-                            <td class="d-none d-md-table-cell">
-                                <?= !empty($l['data_recebimento'])
-                                    ? date('d/m/Y', strtotime((string)$l['data_recebimento']))
-                                    : '—' ?>
-                            </td>
 
                             <td class="d-none d-md-table-cell">
                                 <?= htmlspecialchars((string)($l['fornecedor'] ?? '—')) ?>
@@ -371,10 +366,10 @@ $competencia = (string)($_GET['competencia'] ?? ($competencia ?? ''));
                             <input name="codigo" class="form-control" placeholder="Ex: LOTE 28 OUTUBRO" required>
                         </div>
 
-                        <div class="col-12 col-md-6">
+                        <!-- <div class="col-12 col-md-6">
                             <label class="form-label">Data de recebimento</label>
                             <input type="date" name="data_recebimento" class="form-control">
-                        </div>
+                        </div> -->
 
                         <div class="col-12">
                             <label class="form-label">Fornecedor (opcional)</label>

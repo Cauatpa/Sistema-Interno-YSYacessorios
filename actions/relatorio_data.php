@@ -4,16 +4,32 @@ require_once __DIR__ . '/../helpers/auth.php';
 require_once __DIR__ . '/../helpers/competencia.php';
 
 auth_session_start();
-auth_require_login(); // ✅ agora operador/leitor também podem ver
-
-$competencia = (string)($_GET['competencia'] ?? '');
+auth_require_login();
 
 header('Content-Type: application/json; charset=utf-8');
+
+$competencia = (string)($_GET['competencia'] ?? '');
 
 if (!competencia_valida($competencia)) {
   http_response_code(400);
   echo json_encode(['error' => 'competencia_invalida'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
   exit;
+}
+
+/**
+ * LIMIT do Top Produtos:
+ * - default: 10
+ * - ?limit=all ou ?limit=0 => "todos" (com teto de segurança)
+ */
+$limitParam = $_GET['limit'] ?? '10';
+$limit = 10;
+
+if ($limitParam === 'all' || $limitParam === '0' || $limitParam === 0) {
+  $limit = 500; // teto de segurança (ajuste se quiser)
+} else {
+  $limit = (int)$limitParam;
+  if ($limit <= 0) $limit = 10;
+  if ($limit > 500) $limit = 500;
 }
 
 $resp = [
@@ -78,18 +94,21 @@ foreach ($rows as $r) {
 }
 $resp['dias'] = ['labels' => $labels, 'values' => $values];
 
-// 4) Top 10 produtos (qtd solicitada)
-$stmt = $pdo->prepare("
-  SELECT produto,
-         COALESCE(SUM(quantidade_solicitada),0) AS total_qtd,
-         COUNT(*) AS total_pedidos
+// 4) Top produtos (qtd retirada TOTAL) - com limite dinâmico
+$sqlTop = "
+  SELECT
+    produto,
+    COALESCE(SUM(COALESCE(quantidade_retirada, 0)), 0) AS total_qtd,
+    COUNT(*) AS total_pedidos
   FROM retiradas
   WHERE competencia = ?
     AND deleted_at IS NULL
   GROUP BY produto
   ORDER BY total_qtd DESC, total_pedidos DESC
-  LIMIT 10
-");
+  LIMIT {$limit}
+";
+
+$stmt = $pdo->prepare($sqlTop);
 $stmt->execute([$competencia]);
 $top = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
