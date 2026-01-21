@@ -28,6 +28,9 @@ function item_row_style(array $i): string
     }
     return '';
 }
+
+// helper pra saber se tem recebimento atual selecionado
+$temRecebimentoAtual = ((int)($recebimentoAtualId ?? 0) > 0);
 ?>
 
 <!DOCTYPE html>
@@ -101,11 +104,62 @@ function item_row_style(array $i): string
                 <div><span class="badge text-bg-secondary"><?= htmlspecialchars($statusLote) ?></span></div>
             </div>
 
-            <div class="col-12 col-md-2 text-md-end">
+            <div class="col-12 col-md-5">
+                <div class="fw-bold">Recebimento atual</div>
+
+                <?php if (!empty($recebimentos)): ?>
+                    <form method="GET" class="d-flex gap-2">
+                        <input type="hidden" name="id" value="<?= (int)$lote['id'] ?>">
+                        <?php if ($editMode): ?><input type="hidden" name="edit" value="1"><?php endif; ?>
+
+                        <select name="recebimento_id" class="form-select" onchange="this.form.submit()">
+                            <?php foreach ($recebimentos as $r): ?>
+                                <?php
+                                $rid = (int)$r['id'];
+                                $dt = !empty($r['data_hora']) ? date('d/m/Y H:i', strtotime((string)$r['data_hora'])) : '—';
+                                $label = trim((string)($r['volume_label'] ?? ''));
+                                $txt = $dt . ($label !== '' ? " • {$label}" : '');
+                                ?>
+                                <option value="<?= $rid ?>" <?= $rid === (int)$recebimentoAtualId ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($txt) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+
+                        <noscript><button class="btn btn-secondary">OK</button></noscript>
+                    </form>
+
+                    <div class="text-muted small mt-1">
+                        Itens adicionados ficam vinculados ao recebimento selecionado.
+                    </div>
+                <?php else: ?>
+                    <div class="text-muted">Nenhum recebimento cadastrado ainda.</div>
+                <?php endif; ?>
+            </div>
+
+            <!-- Botões -->
+            <div class="col-12 col-md-2 ms-md-auto text-md-end">
                 <?php if ($editMode): ?>
-                    <button class="btn btn-success w-100" data-bs-toggle="modal" data-bs-target="#modalAddItem" type="button">
-                        ➕ Item
-                    </button>
+                    <div class="d-grid gap-2">
+                        <!-- ➕ Item -->
+                        <button
+                            type="button"
+                            class="btn btn-success w-100"
+                            data-bs-toggle="modal"
+                            data-bs-target="#modalAddItem"
+                            <?= ((int)$recebimentoAtualId <= 0) ? '' : '' ?>>
+                            ➕ Item
+                        </button>
+
+                        <!-- 📦 Novo recebimento -->
+                        <button
+                            type="button"
+                            class="btn btn-outline-primary w-100"
+                            data-bs-toggle="modal"
+                            data-bs-target="#modalNovoRecebimento">
+                            📦 Novo recebimento
+                        </button>
+                    </div>
                 <?php endif; ?>
             </div>
 
@@ -117,14 +171,6 @@ function item_row_style(array $i): string
             <?php endif; ?>
         </div>
     </div>
-
-    <!-- Legenda -->
-    <!-- <div class="d-flex flex-wrap gap-3 align-items-center mb-2">
-        <div class="d-flex align-items-center gap-2"><span class="badge rounded-pill" style="background:#d4edda;color:#000;">&nbsp;&nbsp;</span><span class="small">quantidade certa (OK)</span></div>
-        <div class="d-flex align-items-center gap-2"><span class="badge rounded-pill" style="background:#f8d7da;color:#000;">&nbsp;&nbsp;</span><span class="small">divergência / faltando / a mais</span></div>
-        <div class="d-flex align-items-center gap-2"><span class="badge rounded-pill" style="background:#d1ecf1;color:#000;">&nbsp;&nbsp;</span><span class="small">banho trocado</span></div>
-        <div class="d-flex align-items-center gap-2"><span class="badge rounded-pill" style="background:#fff3cd;color:#000;">&nbsp;&nbsp;</span><span class="small">quebra</span></div>
-    </div> -->
 
     <!-- Tabela itens -->
     <div class="table-responsive">
@@ -157,18 +203,15 @@ function item_row_style(array $i): string
 
                         $modalId = 'modalEditFullGroup_' . ($idPrata ?: 0) . '_' . ($idOuro ?: 0) . '_' . md5($produtoNome);
 
-
                         $prevPrata = $prata ? (int)$prata['qtd_prevista'] : null;
                         $prevOuro  = $ouro  ? (int)$ouro['qtd_prevista']  : null;
 
                         $confPrata = $prata ? $prata['qtd_conferida'] : null;
                         $confOuro  = $ouro  ? $ouro['qtd_conferida']  : null;
 
-                        // situação/nota iguais (pega do grupo)
                         $curSitu = (string)($g['situacao'] ?? 'ok');
                         $curNota = (string)($g['nota'] ?? '');
 
-                        // estilo: se qualquer sub-item estiver "vermelho/azul/amarelo", pinta o grupo
                         $rowStyle = '';
                         if ($prata) $rowStyle = item_row_style($prata);
                         if ($rowStyle === '' && $ouro) $rowStyle = item_row_style($ouro);
@@ -197,20 +240,28 @@ function item_row_style(array $i): string
 
                             <td>
                                 <?php if ($editMode): ?>
-                                    <form method="POST" action="actions/lote_item_update_group.php" class="d-flex flex-column gap-2 align-items-center">
+                                    <form method="POST" action="actions/lote_item_update_group.php"
+                                        class="d-flex flex-column gap-2 align-items-center">
+
                                         <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token('lote_item_update_group')) ?>">
                                         <input type="hidden" name="lote_id" value="<?= (int)$lote['id'] ?>">
                                         <input type="hidden" name="id_prata" value="<?= (int)$idPrata ?>">
                                         <input type="hidden" name="id_ouro" value="<?= (int)$idOuro ?>">
 
                                         <?php if ($idPrata): ?>
-                                            <input type="number" name="qtd_conferida_prata" class="form-control form-control-sm" style="max-width:140px;"
-                                                value="<?= htmlspecialchars((string)($confPrata ?? '')) ?>" placeholder="Prata —">
+                                            <input type="number" name="qtd_conferida_prata"
+                                                class="form-control form-control-sm"
+                                                style="max-width:140px;"
+                                                value="<?= htmlspecialchars((string)($confPrata ?? '')) ?>"
+                                                placeholder="Prata —">
                                         <?php endif; ?>
 
                                         <?php if ($idOuro): ?>
-                                            <input type="number" name="qtd_conferida_ouro" class="form-control form-control-sm" style="max-width:140px;"
-                                                value="<?= htmlspecialchars((string)($confOuro ?? '')) ?>" placeholder="Ouro —">
+                                            <input type="number" name="qtd_conferida_ouro"
+                                                class="form-control form-control-sm"
+                                                style="max-width:140px;"
+                                                value="<?= htmlspecialchars((string)($confOuro ?? '')) ?>"
+                                                placeholder="Ouro —">
                                         <?php endif; ?>
                                     <?php else: ?>
                                         <?php if ($idPrata): ?><div><?= ($confPrata === null || $confPrata === '') ? '—' : (int)$confPrata ?></div><?php endif; ?>
@@ -244,14 +295,16 @@ function item_row_style(array $i): string
 
                             <td class="text-start">
                                 <?php if ($editMode): ?>
-                                    <input name="nota" class="form-control form-control-sm" value="<?= htmlspecialchars($curNota) ?>" placeholder="(opcional)">
+                                    <input name="nota" class="form-control form-control-sm"
+                                        value="<?= htmlspecialchars($curNota) ?>" placeholder="(opcional)">
                                 <?php else: ?>
                                     <?= htmlspecialchars($curNota) ?>
                                 <?php endif; ?>
                             </td>
 
                             <?php if ($editMode): ?>
-                                <td style="min-width: 100px;">
+                                <td style="min-width: 180px;">
+                                    <!-- botão do form UPDATE_GROUP -->
                                     <button class="btn btn-primary btn-sm w-100" type="submit">Salvar</button>
                                     </form>
 
@@ -263,6 +316,23 @@ function item_row_style(array $i): string
                                             🛠 Editar Item
                                         </button>
 
+                                        <!-- EXCLUIR (ADMIN) -->
+                                        <form method="POST"
+                                            action="actions/lote_item_delete_group.php"
+                                            class="mt-2"
+                                            onsubmit="return confirm('Excluir este item do lote? Isso removerá Prata e/ou Ouro (se existirem).');">
+
+                                            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token('lote_item_delete_group')) ?>">
+                                            <input type="hidden" name="lote_id" value="<?= (int)$lote['id'] ?>">
+                                            <input type="hidden" name="id_prata" value="<?= (int)$idPrata ?>">
+                                            <input type="hidden" name="id_ouro" value="<?= (int)$idOuro ?>">
+
+                                            <button class="btn btn-outline-danger btn-sm w-100" type="submit">
+                                                Excluir
+                                            </button>
+                                        </form>
+
+                                        <!-- MODAL EDIT FULL (igual ao seu, só mantive) -->
                                         <div class="modal fade" id="<?= htmlspecialchars($modalId) ?>" tabindex="-1" aria-hidden="true">
                                             <div class="modal-dialog modal-lg">
                                                 <form method="POST" action="actions/lote_item_edit_full_group.php" class="modal-content">
@@ -353,8 +423,8 @@ function item_row_style(array $i): string
                                                                 <label class="form-label">Situação (igual)</label>
                                                                 <select name="situacao" class="form-select">
                                                                     <?php
-                                                                    $opts = ['ok' => 'OK', 'faltando' => 'Faltando', 'a_mais' => 'A mais', 'banho_trocado' => 'Banho trocado', 'quebra' => 'Quebra', 'outro' => 'Outro'];
-                                                                    foreach ($opts as $k => $label):
+                                                                    $opts2 = ['ok' => 'OK', 'faltando' => 'Faltando', 'a_mais' => 'A mais', 'banho_trocado' => 'Banho trocado', 'quebra' => 'Quebra', 'outro' => 'Outro'];
+                                                                    foreach ($opts2 as $k => $label):
                                                                     ?>
                                                                         <option value="<?= htmlspecialchars($k) ?>" <?= $k === (string)$curSitu ? 'selected' : '' ?>>
                                                                             <?= htmlspecialchars($label) ?>
@@ -402,7 +472,6 @@ function item_row_style(array $i): string
                                             });
                                         </script>
                                     <?php endif; ?>
-
                                 </td>
                             <?php endif; ?>
                         </tr>
@@ -419,6 +488,7 @@ function item_row_style(array $i): string
                 <form method="POST" action="actions/lote_item_add.php" class="modal-content">
                     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token('lote_item_add')) ?>">
                     <input type="hidden" name="lote_id" value="<?= (int)$lote['id'] ?>">
+                    <input type="hidden" name="recebimento_id" value="<?= (int)$recebimentoAtualId ?>">
 
                     <div class="modal-header">
                         <h5 class="modal-title">➕ Adicionar item</h5>
@@ -521,15 +591,68 @@ function item_row_style(array $i): string
                 const boxOuro = document.getElementById('boxOuro');
 
                 const sync = () => {
-                    boxPrata.style.display = vPrata.checked ? '' : 'none';
-                    boxOuro.style.display = vOuro.checked ? '' : 'none';
+                    if (boxPrata) boxPrata.style.display = vPrata && vPrata.checked ? '' : 'none';
+                    if (boxOuro) boxOuro.style.display = vOuro && vOuro.checked ? '' : 'none';
                 };
 
-                vPrata?.addEventListener('change', sync);
-                vOuro?.addEventListener('change', sync);
+                vPrata && vPrata.addEventListener('change', sync);
+                vOuro && vOuro.addEventListener('change', sync);
                 sync();
             });
         </script>
+    <?php endif; ?>
+
+    <!-- Modal novo recebimento -->
+    <?php if ($editMode): ?>
+        <div class="modal fade" id="modalNovoRecebimento" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <form method="POST" action="actions/lote_recebimento_add.php" class="modal-content">
+                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token('lote_recebimento_add')) ?>">
+                    <input type="hidden" name="lote_id" value="<?= (int)$lote['id'] ?>">
+
+                    <div class="modal-header">
+                        <h5 class="modal-title">📦 Novo recebimento</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                    </div>
+
+                    <div class="modal-body">
+                        <div class="row g-2">
+                            <div class="col-12 col-md-6">
+                                <label class="form-label">Data/Hora</label>
+                                <input type="datetime-local" name="data_hora" class="form-control"
+                                    value="<?= date('Y-m-d\TH:i') ?>">
+                            </div>
+
+                            <div class="col-12 col-md-6">
+                                <label class="form-label">Volume/Label (opcional)</label>
+                                <input name="volume_label" class="form-control" placeholder="Ex: Caixa 1/3">
+                            </div>
+
+                            <div class="col-12 col-md-6">
+                                <label class="form-label">Rastreio / CT-e (opcional)</label>
+                                <input name="rastreio" class="form-control" placeholder="Ex: AV123... / CTe 000...">
+                            </div>
+
+                            <div class="col-12">
+                                <label class="form-label">Nota (opcional)</label>
+                                <input name="nota" class="form-control" placeholder="Ex: chegou caixa avulsa sem etiqueta">
+                            </div>
+
+                            <div class="col-12">
+                                <div class="alert alert-info mb-0">
+                                    Após salvar, este recebimento vira o <strong>Recebimento atual</strong>.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-success">Salvar recebimento</button>
+                    </div>
+                </form>
+            </div>
+        </div>
     <?php endif; ?>
 
     <!-- Toast (igual index) -->

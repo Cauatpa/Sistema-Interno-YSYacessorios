@@ -20,7 +20,7 @@ if ($id <= 0) {
 $canOperate = auth_has_role('operador');
 $canAdmin   = auth_has_role('admin');
 
-$edit = (int)($_GET['edit'] ?? 0) === 1;
+$edit = ((int)($_GET['edit'] ?? 0) === 1);
 
 // operador pode editar (conferência) quando edit=1
 $canEdit = $canOperate && $edit;
@@ -44,15 +44,52 @@ if (!$lote) {
     exit;
 }
 
-// Itens do lote (linhas)
-$stmtItens = $pdo->prepare("
-    SELECT li.*
-    FROM lote_itens li
-    WHERE li.lote_id = ?
-    ORDER BY li.id ASC
+// =============================
+// Recebimentos do lote
+// =============================
+$stmtRec = $pdo->prepare("
+    SELECT *
+    FROM lote_recebimentos
+    WHERE lote_id = ?
+    ORDER BY data_hora DESC, id DESC
 ");
-$stmtItens->execute([$id]);
-$itens = $stmtItens->fetchAll(PDO::FETCH_ASSOC);
+$stmtRec->execute([$id]);
+$recebimentos = $stmtRec->fetchAll(PDO::FETCH_ASSOC);
+
+// Recebimento atual vindo do GET
+$recebimentoAtualId = (int)($_GET['recebimento_id'] ?? 0);
+
+// Se não veio nada no GET, usa o mais recente (se existir)
+if ($recebimentoAtualId <= 0 && !empty($recebimentos)) {
+    $recebimentoAtualId = (int)$recebimentos[0]['id'];
+}
+
+// Valida: recebimento precisa pertencer ao lote
+if ($recebimentoAtualId > 0) {
+    $stmtChk = $pdo->prepare("SELECT COUNT(*) FROM lote_recebimentos WHERE id = ? AND lote_id = ?");
+    $stmtChk->execute([$recebimentoAtualId, $id]);
+    if ((int)$stmtChk->fetchColumn() <= 0) {
+        // se alguém tentar forçar um recebimento de outro lote
+        $recebimentoAtualId = (!empty($recebimentos)) ? (int)$recebimentos[0]['id'] : 0;
+    }
+}
+
+// =============================
+// Itens do lote (FILTRADOS pelo recebimento atual)
+// =============================
+if ($recebimentoAtualId > 0) {
+    $stmtItens = $pdo->prepare("
+        SELECT li.*
+        FROM lote_itens li
+        WHERE li.lote_id = ?
+          AND li.recebimento_id = ?
+        ORDER BY li.id ASC
+    ");
+    $stmtItens->execute([$id, $recebimentoAtualId]);
+    $itens = $stmtItens->fetchAll(PDO::FETCH_ASSOC);
+} else {
+    $itens = [];
+}
 
 // Agrupar para UI: 1 linha por produto, com prata/ouro dentro
 $itensGrouped = [];
@@ -67,7 +104,6 @@ foreach ($itens as $li) {
             'produto_nome' => $produtoNome,
             'prata' => null,
             'ouro'  => null,
-            // por padrão, pega de um dos registros (quando existir)
             'situacao' => null,
             'nota'     => null,
         ];
@@ -79,12 +115,10 @@ foreach ($itens as $li) {
     } elseif ($variacao === 'ouro') {
         $itensGrouped[$key]['ouro'] = $li;
     } else {
-        // se vier algo fora (ou vazio), coloca em "prata" se estiver vazio, senão em "ouro"
         if ($itensGrouped[$key]['prata'] === null) $itensGrouped[$key]['prata'] = $li;
         else $itensGrouped[$key]['ouro'] = $li;
     }
 
-    // situação/nota iguais: mantém a primeira que achar (ou substitui se estiver vazio)
     if ($itensGrouped[$key]['situacao'] === null || $itensGrouped[$key]['situacao'] === '') {
         $itensGrouped[$key]['situacao'] = (string)($li['situacao'] ?? 'ok');
     }
@@ -92,8 +126,6 @@ foreach ($itens as $li) {
         $itensGrouped[$key]['nota'] = (string)($li['nota'] ?? '');
     }
 }
-
-// transforma em lista para o foreach do view
 $itensGrouped = array_values($itensGrouped);
 
 // Sugestões (produtos ativos)

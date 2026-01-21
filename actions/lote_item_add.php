@@ -14,11 +14,12 @@ if (!auth_has_role('operador')) {
 }
 
 if (!csrf_validate($_POST['csrf_token'] ?? '', 'lote_item_add')) {
-    header('Location: ../lotes.php?toast=' . urlencode('CSRF inválido.'));
+    header('Location: ../lotes.php?toast=' . urlencode('CSRF inválido. Recarregue a página.'));
     exit;
 }
 
 $loteId = (int)($_POST['lote_id'] ?? 0);
+$recebimentoId = (int)($_POST['recebimento_id'] ?? 0);
 $produtoId = (int)($_POST['produto_id'] ?? 0);
 
 $temPrata = (int)($_POST['tem_prata'] ?? 0) === 1;
@@ -44,6 +45,19 @@ if ($loteId <= 0) {
     exit;
 }
 
+if ($recebimentoId <= 0) {
+    header('Location: ../lote.php?id=' . $loteId . '&edit=1&toast=' . urlencode('Crie/seleciona um recebimento antes de adicionar itens.'));
+    exit;
+}
+
+// valida recebimento pertence ao lote
+$stmtR = $pdo->prepare("SELECT id FROM lote_recebimentos WHERE id = ? AND lote_id = ? LIMIT 1");
+$stmtR->execute([$recebimentoId, $loteId]);
+if (!$stmtR->fetchColumn()) {
+    header('Location: ../lote.php?id=' . $loteId . '&edit=1&toast=' . urlencode('Recebimento inválido para este lote.'));
+    exit;
+}
+
 if ($produtoId <= 0) {
     header('Location: ../lote.php?id=' . $loteId . '&edit=1&toast=' . urlencode('Produto inválido.'));
     exit;
@@ -64,18 +78,28 @@ if (!$produtoNome) {
 
 $notaDb = ($nota === '') ? null : $nota;
 
-$stmtIns = $pdo->prepare("
-  INSERT INTO lote_itens (lote_id, produto_id, produto_nome, variacao, qtd_prevista, qtd_conferida, situacao, nota)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-");
+try {
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-if ($temPrata) {
-    $stmtIns->execute([$loteId, $produtoId, $produtoNome, 'Prata', $qPrevPrata, $qConfPrata, $situacao, $notaDb]);
+    // IMPORTANTÍSSIMO: precisa existir a coluna recebimento_id em lote_itens
+    $stmtIns = $pdo->prepare("
+        INSERT INTO lote_itens (lote_id, recebimento_id, produto_id, produto_nome, variacao, qtd_prevista, qtd_conferida, situacao, nota)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ");
+
+    if ($temPrata) {
+        $stmtIns->execute([$loteId, $recebimentoId, $produtoId, $produtoNome, 'Prata', $qPrevPrata, $qConfPrata, $situacao, $notaDb]);
+    }
+    if ($temOuro) {
+        $stmtIns->execute([$loteId, $recebimentoId, $produtoId, $produtoNome, 'Ouro', $qPrevOuro, $qConfOuro, $situacao, $notaDb]);
+    }
+
+    header('Location: ../lote.php?id=' . $loteId . '&edit=1&recebimento_id=' . $recebimentoId . '&toast=' . urlencode('Item adicionado!'));
+    exit;
+} catch (Throwable $e) {
+    $log = '[' . date('Y-m-d H:i:s') . '] ' . $e->getMessage() . PHP_EOL;
+    @file_put_contents(__DIR__ . '/../storage_itens_error.log', $log, FILE_APPEND);
+
+    header('Location: ../lote.php?id=' . $loteId . '&edit=1&recebimento_id=' . $recebimentoId . '&toast=' . urlencode('Erro ao salvar item. Veja storage_itens_error.log'));
+    exit;
 }
-
-if ($temOuro) {
-    $stmtIns->execute([$loteId, $produtoId, $produtoNome, 'Ouro', $qPrevOuro, $qConfOuro, $situacao, $notaDb]);
-}
-
-header('Location: ../lote.php?id=' . $loteId . '&edit=1&toast=' . urlencode('Item adicionado!'));
-exit;
