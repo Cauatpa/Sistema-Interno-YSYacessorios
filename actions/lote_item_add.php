@@ -1,6 +1,8 @@
 <?php
 // actions/lote_item_add.php
 
+declare(strict_types=1);
+
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../helpers/auth.php';
 require_once __DIR__ . '/../helpers/csrf.php';
@@ -18,13 +20,12 @@ if (!csrf_validate($_POST['csrf_token'] ?? '', 'lote_item_add')) {
     exit;
 }
 
+// ✅ Próximo (0/1)
+$wantNext = ((int)($_POST['next'] ?? 0) === 1);
+
 $loteId = (int)($_POST['lote_id'] ?? 0);
 $produtoId = (int)($_POST['produto_id'] ?? 0);
 $recebimentoId = (int)($_POST['recebimento_id'] ?? 0);
-if ($recebimentoId <= 0) {
-    header('Location: ../lote.php?id=' . $loteId . '&edit=1&toast=' . urlencode('Selecione um recebimento antes de adicionar itens.'));
-    exit;
-}
 
 $temPrata = (int)($_POST['tem_prata'] ?? 0) === 1;
 $temOuro  = (int)($_POST['tem_ouro'] ?? 0) === 1;
@@ -50,34 +51,45 @@ if ($loteId <= 0) {
 }
 
 if ($recebimentoId <= 0) {
-    header('Location: ../lote.php?id=' . $loteId . '&edit=1&toast=' . urlencode('Crie/seleciona um recebimento antes de adicionar itens.'));
+    header('Location: ../lote.php?id=' . $loteId . '&edit=1&toast=' . urlencode('Selecione um recebimento antes de adicionar itens.'));
     exit;
 }
+
+// ✅ Helper de redirect padronizado (mantém recebimento selecionado e abre modal no "próximo")
+$redirectBack = function (string $toastMsg) use ($loteId, $recebimentoId, $wantNext): void {
+    $params = [
+        'id' => $loteId,
+        'edit' => 1,
+        'recebimento_id' => $recebimentoId,
+        'toast' => $toastMsg,
+    ];
+    if ($wantNext) {
+        $params['open_item'] = 1;
+    }
+    header('Location: ../lote.php?' . http_build_query($params));
+    exit;
+};
 
 // valida recebimento pertence ao lote
 $stmtR = $pdo->prepare("SELECT id FROM lote_recebimentos WHERE id = ? AND lote_id = ? LIMIT 1");
 $stmtR->execute([$recebimentoId, $loteId]);
 if (!$stmtR->fetchColumn()) {
-    header('Location: ../lote.php?id=' . $loteId . '&edit=1&toast=' . urlencode('Recebimento inválido para este lote.'));
-    exit;
+    $redirectBack('Recebimento inválido para este lote.');
 }
 
 if ($produtoId <= 0) {
-    header('Location: ../lote.php?id=' . $loteId . '&edit=1&toast=' . urlencode('Produto inválido.'));
-    exit;
+    $redirectBack('Produto inválido.');
 }
 
 if (!$temPrata && !$temOuro) {
-    header('Location: ../lote.php?id=' . $loteId . '&edit=1&toast=' . urlencode('Selecione Prata e/ou Ouro.'));
-    exit;
+    $redirectBack('Selecione Prata e/ou Ouro.');
 }
 
 $stmtP = $pdo->prepare("SELECT nome FROM produtos WHERE id = ? LIMIT 1");
 $stmtP->execute([$produtoId]);
 $produtoNome = $stmtP->fetchColumn();
 if (!$produtoNome) {
-    header('Location: ../lote.php?id=' . $loteId . '&edit=1&toast=' . urlencode('Produto inválido.'));
-    exit;
+    $redirectBack('Produto inválido.');
 }
 
 $notaDb = ($nota === '') ? null : $nota;
@@ -98,12 +110,11 @@ try {
         $stmtIns->execute([$loteId, $recebimentoId, $produtoId, $produtoNome, 'Ouro', $qPrevOuro, $qConfOuro, $situacao, $notaDb]);
     }
 
-    header('Location: ../lote.php?id=' . $loteId . '&edit=1&recebimento_id=' . $recebimentoId . '&toast=' . urlencode('Item adicionado!'));
-    exit;
+    // ✅ Sucesso: respeita "Próximo" e abre o modal novamente
+    $redirectBack('Item adicionado!');
 } catch (Throwable $e) {
     $log = '[' . date('Y-m-d H:i:s') . '] ' . $e->getMessage() . PHP_EOL;
     @file_put_contents(__DIR__ . '/../storage_itens_error.log', $log, FILE_APPEND);
 
-    header('Location: ../lote.php?id=' . $loteId . '&edit=1&recebimento_id=' . $recebimentoId . '&toast=' . urlencode('Erro ao salvar item. Veja storage_itens_error.log'));
-    exit;
+    $redirectBack('Erro ao salvar item. Veja storage_itens_error.log');
 }

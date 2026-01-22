@@ -27,6 +27,9 @@
       } else if (toastType === "senha_alterada") {
         el.classList.add("text-bg-success");
         body.textContent = "🔑 Senha alterada com sucesso!";
+      } else {
+        el.classList.add("text-bg-success");
+        body.textContent = toastType;
       }
 
       new bootstrap.Toast(el, { delay: 2500 }).show();

@@ -30,6 +30,9 @@ function item_row_style(array $i): string
 
 // helper pra saber se tem recebimento atual selecionado
 $temRecebimentoAtual = ((int)($recebimentoAtualId ?? 0) > 0);
+
+// ✅ auto-abrir modal de adicionar item após "Próximo"
+$openItem = ((int)($_GET['open_item'] ?? 0) === 1);
 ?>
 
 <!DOCTYPE html>
@@ -81,7 +84,6 @@ $temRecebimentoAtual = ((int)($recebimentoAtualId ?? 0) > 0);
             <button id="btnTheme" class="btn btn-outline-secondary btn-sm">
                 🌙 Tema escuro
             </button>
-
 
             <form method="POST" action="logout.php" class="d-inline">
                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token('logout')) ?>">
@@ -179,7 +181,6 @@ $temRecebimentoAtual = ((int)($recebimentoAtualId ?? 0) > 0);
                         </div>
                     <?php endif; ?>
 
-
                 </div>
             </div>
 
@@ -209,10 +210,12 @@ $temRecebimentoAtual = ((int)($recebimentoAtualId ?? 0) > 0);
                 </tr>
             </thead>
             <tbody>
+                <!-- Grupo de itens -->
                 <?php if (empty($itensGrouped)): ?>
                     <tr>
                         <td colspan="<?= $editMode ? 8 : 7 ?>" class="text-muted py-4">Nenhum item cadastrado.</td>
                     </tr>
+                    <!-- Grupo de itens -->
                 <?php else: ?>
                     <?php foreach ($itensGrouped as $g):
                         $produtoNome = (string)($g['produto_nome'] ?? '');
@@ -495,178 +498,8 @@ $temRecebimentoAtual = ((int)($recebimentoAtualId ?? 0) > 0);
         </table>
     </div>
 
-    <!-- Modal adicionar item -->
-    <?php if ($editMode): ?>
-        <div class="modal fade" id="modalAddItem" tabindex="-1" aria-hidden="true">
-            <div class="modal-dialog modal-lg">
-                <form method="POST" action="actions/lote_item_add.php" class="modal-content">
-                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token('lote_item_add')) ?>">
-                    <input type="hidden" name="lote_id" value="<?= (int)$lote['id'] ?>">
-                    <input type="hidden" name="recebimento_id" value="<?= (int)$recebimentoAtualId ?>">
-
-                    <div class="modal-header">
-                        <h5 class="modal-title">➕ Adicionar item</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
-                    </div>
-
-                    <div class="modal-body">
-                        <div class="row g-2">
-                            <div class="col-12">
-                                <label class="form-label">Produto</label>
-
-                                <!-- ✅ AQUI ERA O ERRO: faltava o id -->
-                                <select id="produtoSelectAdd" name="produto_id" class="form-select" required>
-                                    <option value="">Selecione...</option>
-                                    <?php foreach ($produtos as $p): ?>
-                                        <option value="<?= (int)$p['id'] ?>"><?= htmlspecialchars((string)$p['nome']) ?></option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-
-                            <div class="col-12">
-                                <label class="form-label mb-1">Variações</label>
-                                <div class="d-flex flex-wrap gap-3">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="vPrata" name="tem_prata" value="1" checked>
-                                        <label class="form-check-label" for="vPrata">Prata</label>
-                                    </div>
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="vOuro" name="tem_ouro" value="1">
-                                        <label class="form-check-label" for="vOuro">Ouro</label>
-                                    </div>
-                                </div>
-                                <div class="text-muted small mt-1">Marque Prata e/ou Ouro. Situação e Nota serão iguais para ambas.</div>
-                            </div>
-
-                            <div class="col-12" id="boxPrata">
-                                <div class="card p-2">
-                                    <div class="fw-bold mb-2">Prata</div>
-                                    <div class="row g-2">
-                                        <div class="col-12 col-md-6">
-                                            <label class="form-label">Qtd prevista (Prata)</label>
-                                            <input type="number" name="qtd_prevista_prata" class="form-control" value="0" min="0">
-                                        </div>
-                                        <div class="col-12 col-md-6">
-                                            <label class="form-label">Qtd conferida (Prata)</label>
-                                            <input type="number" name="qtd_conferida_prata" class="form-control" placeholder="—">
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="col-12" id="boxOuro" style="display:none;">
-                                <div class="card p-2">
-                                    <div class="fw-bold mb-2">Ouro</div>
-                                    <div class="row g-2">
-                                        <div class="col-12 col-md-6">
-                                            <label class="form-label">Qtd prevista (Ouro)</label>
-                                            <input type="number" name="qtd_prevista_ouro" class="form-control" value="0" min="0">
-                                        </div>
-                                        <div class="col-12 col-md-6">
-                                            <label class="form-label">Qtd conferida (Ouro)</label>
-                                            <input type="number" name="qtd_conferida_ouro" class="form-control" placeholder="—">
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="col-12 col-md-6">
-                                <label class="form-label">Situação (igual para ambas)</label>
-                                <select name="situacao" class="form-select">
-                                    <option value="ok">OK</option>
-                                    <option value="faltando">Faltando</option>
-                                    <option value="a_mais">A mais</option>
-                                    <option value="banho_trocado">Banho trocado</option>
-                                    <option value="quebra">Quebra</option>
-                                    <option value="outro">Outro</option>
-                                </select>
-                            </div>
-
-                            <div class="col-12">
-                                <label class="form-label">Nota (igual para ambas)</label>
-                                <input name="nota" class="form-control" placeholder="(opcional)">
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-                        <button type="submit" class="btn btn-success">Adicionar</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-
-        <script>
-            document.addEventListener('DOMContentLoaded', () => {
-                const vPrata = document.getElementById('vPrata');
-                const vOuro = document.getElementById('vOuro');
-                const boxPrata = document.getElementById('boxPrata');
-                const boxOuro = document.getElementById('boxOuro');
-
-                const sync = () => {
-                    if (boxPrata) boxPrata.style.display = vPrata && vPrata.checked ? '' : 'none';
-                    if (boxOuro) boxOuro.style.display = vOuro && vOuro.checked ? '' : 'none';
-                };
-
-                vPrata && vPrata.addEventListener('change', sync);
-                vOuro && vOuro.addEventListener('change', sync);
-                sync();
-            });
-        </script>
-    <?php endif; ?>
-
-    <!-- Modal novo recebimento -->
-    <?php if ($editMode): ?>
-        <div class="modal fade" id="modalNovoRecebimento" tabindex="-1" aria-hidden="true">
-            <div class="modal-dialog modal-lg">
-                <form method="POST" action="actions/lote_recebimento_add.php" class="modal-content">
-                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token('lote_recebimento_add')) ?>">
-                    <input type="hidden" name="lote_id" value="<?= (int)$lote['id'] ?>">
-
-                    <div class="modal-header">
-                        <h5 class="modal-title">📦 Novo recebimento</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
-                    </div>
-
-                    <div class="modal-body">
-                        <div class="row g-2">
-                            <div class="col-12 col-md-6">
-                                <label class="form-label">Data/Hora</label>
-                                <input type="datetime-local" name="data_hora" class="form-control" value="<?= date('Y-m-d\TH:i') ?>">
-                            </div>
-
-                            <div class="col-12 col-md-6">
-                                <label class="form-label">Volume/Label (opcional)</label>
-                                <input name="volume_label" class="form-control" placeholder="Ex: Caixa 1/3">
-                            </div>
-
-                            <div class="col-12 col-md-6">
-                                <label class="form-label">Rastreio / CT-e (opcional)</label>
-                                <input name="rastreio" class="form-control" placeholder="Ex: AV123... / CTe 000...">
-                            </div>
-
-                            <div class="col-12">
-                                <label class="form-label">Nota (opcional)</label>
-                                <input name="nota" class="form-control" placeholder="Ex: chegou caixa avulsa sem etiqueta">
-                            </div>
-
-                            <div class="col-12">
-                                <div class="alert alert-info mb-0">
-                                    Após salvar, este recebimento vira o <strong>Recebimento atual</strong>.
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-                        <button type="submit" class="btn btn-success">Salvar recebimento</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    <?php endif; ?>
+    <?php require_once __DIR__ . '/../modals/lotes/modal_add_item.php'; ?>
+    <?php require_once __DIR__ . '/../modals/lotes/modal_novo_recebimento.php'; ?>
 
     <!-- Toast -->
     <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 9999;">
@@ -710,6 +543,29 @@ $temRecebimentoAtual = ((int)($recebimentoAtualId ?? 0) > 0);
             });
         });
     </script>
+
+    <!-- ✅ Auto abrir modal quando vier open_item=1 -->
+    <script>
+        (() => {
+            const params = new URLSearchParams(window.location.search);
+            if (!params.has("open_item")) return;
+
+            const modalEl = document.getElementById("modalAddItem");
+            if (!modalEl || !window.bootstrap) return;
+
+            const modal = new bootstrap.Modal(modalEl);
+            modal.show();
+
+            // ✅ remove open_item da URL depois de abrir
+            params.delete("open_item");
+            const newUrl =
+                window.location.pathname +
+                (params.toString() ? "?" + params.toString() : "");
+
+            window.history.replaceState({}, document.title, newUrl);
+        })();
+    </script>
+
 </body>
 
 </html>
