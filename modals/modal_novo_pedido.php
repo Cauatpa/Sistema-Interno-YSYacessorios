@@ -46,26 +46,69 @@
 
                     <div class="mb-3">
                         <label class="form-label">Tipo</label>
-                        <select name="tipo" class="form-select" required>
-                            <option value="">Selecione</option>
-                            <option value="prata">Prata</option>
-                            <option value="ouro">Ouro</option>
-                        </select>
-                        <div class="form-text">Prata ou Ouro.</div>
+
+                        <div class="d-flex gap-3 align-items-center">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="tipos[]" value="prata" id="tipoPrata">
+                                <label class="form-check-label" for="tipoPrata">Prata</label>
+                            </div>
+
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="tipos[]" value="ouro" id="tipoOuro">
+                                <label class="form-check-label" for="tipoOuro">Ouro</label>
+                            </div>
+                        </div>
+
+                        <div class="alert alert-light border py-2 small mb-0">
+                            Atalhos: <strong>P</strong> Marca Prata • <strong>O</strong> Marca Ouro
+                        </div>
                     </div>
 
-                    <div class="mb-3">
+                    <!-- quantidade única (quando só 1 tipo marcado) -->
+                    <div class="mb-3 d-none" id="qtdUnicaWrap">
                         <label class="form-label">Quantidade solicitada (peças)</label>
                         <input
                             type="number"
                             name="quantidade_solicitada"
+                            id="qtdUnica"
                             class="form-control"
                             min="1"
-                            value="1"
-                            required>
-                        <div class="form-text">Quantas peças foram pedidas.</div>
+                            value="1">
+                        <div class="form-text">Quando marcar só um tipo, preencha uma única quantidade.</div>
                     </div>
 
+                    <!-- quantidades separadas (quando Prata + Ouro) -->
+                    <div class="mb-3 d-none" id="qtdDuplaWrap">
+                        <label class="form-label mb-2">Quantidades por tipo</label>
+
+                        <div class="row g-2">
+                            <div class="col-md-6">
+                                <label class="form-label">Qtd (Prata)</label>
+                                <input
+                                    type="number"
+                                    name="quantidade_prata"
+                                    id="qtdPrata"
+                                    class="form-control"
+                                    min="1"
+                                    value="1">
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label">Qtd (Ouro)</label>
+                                <input
+                                    type="number"
+                                    name="quantidade_ouro"
+                                    id="qtdOuro"
+                                    class="form-control"
+                                    min="1"
+                                    value="1">
+                            </div>
+                        </div>
+
+                        <div class="form-text">Quando marcar os dois, informe a quantidade de cada.</div>
+                    </div>
+
+                    <!-- ✅ Solicitante com autocomplete e sugestão “esperta” p/ múltiplos nomes -->
                     <div class="mb-2 position-relative">
                         <label class="form-label">Solicitante</label>
                         <input
@@ -112,6 +155,7 @@
                 </div>
             </form>
 
+            <!-- Lógica de sugestão para Solicitante (autocomplete customizado) -->
             <script>
                 // Sugestão p/ múltiplos nomes: completa SOMENTE o último nome após a última vírgula.
                 (() => {
@@ -184,6 +228,7 @@
                 })();
             </script>
 
+            <!-- Lógica de sugestão para Produto (autocomplete customizado) -->
             <script>
                 // Sugestões para Produto (1 nome só)
                 (() => {
@@ -243,6 +288,151 @@
                 })();
             </script>
 
+            <!-- Lógica de validação e envio do formulário -->
+            <script>
+                (() => {
+                    const modal = document.getElementById("modalNovoPedido");
+                    if (!modal) return;
+
+                    const form = modal.querySelector("#formNovoPedido");
+                    const btnSalvar = modal.querySelector("#btnNovoSalvar");
+                    const btnProximo = modal.querySelector("#btnNovoProximo");
+                    const inpNext = modal.querySelector("#novoPedidoNext");
+
+                    const chkPrata = modal.querySelector("#tipoPrata");
+                    const chkOuro = modal.querySelector("#tipoOuro");
+
+                    const wrapUnica = modal.querySelector("#qtdUnicaWrap");
+                    const wrapDupla = modal.querySelector("#qtdDuplaWrap");
+
+                    const qtdUnica = modal.querySelector("#qtdUnica");
+                    const qtdPrata = modal.querySelector("#qtdPrata");
+                    const qtdOuro = modal.querySelector("#qtdOuro");
+
+                    if (!form || !chkPrata || !chkOuro || !wrapUnica || !wrapDupla) return;
+
+                    function refreshQtdUI() {
+                        const p = chkPrata.checked;
+                        const o = chkOuro.checked;
+
+                        // nenhum marcado -> esconde tudo (e deixa a validação barrar)
+                        if (!p && !o) {
+                            wrapUnica.classList.add("d-none");
+                            wrapDupla.classList.add("d-none");
+                            return;
+                        }
+
+                        // ambos marcados -> mostra dupla
+                        if (p && o) {
+                            wrapDupla.classList.remove("d-none");
+                            wrapUnica.classList.add("d-none");
+                            return;
+                        }
+
+                        // somente um -> mostra única
+                        wrapUnica.classList.remove("d-none");
+                        wrapDupla.classList.add("d-none");
+                    }
+
+                    chkPrata.addEventListener("change", refreshQtdUI);
+                    chkOuro.addEventListener("change", refreshQtdUI);
+                    refreshQtdUI();
+
+                    function validarAntesDeEnviar() {
+                        const p = chkPrata.checked;
+                        const o = chkOuro.checked;
+
+                        if (!p && !o) {
+                            alert("Selecione pelo menos um tipo: Prata e/ou Ouro.");
+                            return false;
+                        }
+
+                        // ambos -> exige qtd de cada
+                        if (p && o) {
+                            const qp = parseInt(qtdPrata?.value || "0", 10);
+                            const qo = parseInt(qtdOuro?.value || "0", 10);
+                            if (qp <= 0 || qo <= 0) {
+                                alert("Preencha a quantidade de Prata e de Ouro (maior que 0).");
+                                return false;
+                            }
+                            return true;
+                        }
+
+                        // só um -> exige qtd única e mapeia para o campo correto (compatível com o backend novo)
+                        const qu = parseInt(qtdUnica?.value || "0", 10);
+                        if (qu <= 0) {
+                            alert("Preencha a quantidade (maior que 0).");
+                            return false;
+                        }
+
+                        if (p && qtdPrata) qtdPrata.value = String(qu);
+                        if (o && qtdOuro) qtdOuro.value = String(qu);
+
+                        return true;
+                    }
+
+                    function submitWith(nextValue) {
+                        inpNext.value = nextValue ? "1" : "0";
+                        if (!validarAntesDeEnviar()) return;
+                        form.submit();
+                    }
+
+                    // Botões
+                    btnSalvar?.addEventListener("click", () => submitWith(false));
+                    btnProximo?.addEventListener("click", () => submitWith(true));
+
+                    // Atalhos: Enter salva / Shift+Enter próximo
+                    form.addEventListener("keydown", (e) => {
+                        // não intercepta se estiver digitando em textarea (se no futuro tiver)
+                        const tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : "";
+                        if (tag === "textarea") return;
+
+                        if (e.key === "Enter") {
+                            e.preventDefault();
+                            submitWith(e.shiftKey);
+                        }
+                    });
+                })();
+            </script>
+
+            <!-- Lógica de atalhos de teclado para marcar tipos -->
+            <script>
+                (() => {
+                    const modal = document.getElementById("modalNovoPedido");
+                    if (!modal) return;
+
+                    const chkPrata = modal.querySelector("#tipoPrata");
+                    const chkOuro = modal.querySelector("#tipoOuro");
+                    if (!chkPrata || !chkOuro) return;
+
+                    modal.addEventListener("keydown", (e) => {
+                        // 🔒 não interfere enquanto digita em campos de texto
+                        const tag = (e.target?.tagName || "").toLowerCase();
+                        const type = (e.target?.type || "").toLowerCase();
+                        if (tag === "input" && (type === "text" || type === "number")) return;
+
+                        const k = e.key.toLowerCase();
+
+                        if (k === "p") {
+                            e.preventDefault();
+                            chkPrata.checked = !chkPrata.checked;
+                            chkPrata.dispatchEvent(new Event("change", {
+                                bubbles: true
+                            }));
+                            chkPrata.focus();
+                        }
+
+                        if (k === "o") {
+                            e.preventDefault();
+                            chkOuro.checked = !chkOuro.checked;
+                            chkOuro.dispatchEvent(new Event("change", {
+                                bubbles: true
+                            }));
+                            chkOuro.focus();
+                        }
+                    });
+                })();
+            </script>
         </div>
     </div>
 </div>

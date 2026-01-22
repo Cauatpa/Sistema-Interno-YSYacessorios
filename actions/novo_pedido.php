@@ -35,36 +35,99 @@ if (!csrf_validate($_POST['csrf_token'] ?? null, 'novo_pedido')) {
     exit('CSRF inválido.');
 }
 
-// Campos obrigatórios
-require_fields($_POST, ['produto', 'tipo', 'solicitante', 'quantidade_solicitada']);
+// Campos obrigatórios (modo novo ou antigo)
+require_fields($_POST, ['produto', 'solicitante']);
 
 $produto = trim((string)($_POST['produto'] ?? ''));
-$tipo = one_of(trim((string)($_POST['tipo'] ?? '')), ['prata', 'ouro'], '');
 $solicitante = trim((string)($_POST['solicitante'] ?? ''));
-$quantidade = int_pos($_POST['quantidade_solicitada'] ?? 0);
 
-if ($produto === '' || $tipo === '' || $solicitante === '' || $quantidade <= 0) {
-    audit_log(
-        $pdo,
-        'create',
-        'retirada',
-        null,
-        [
-            'produto' => $produto,
-            'tipo' => $tipo,
-            'solicitante' => $solicitante,
-            'quantidade_solicitada' => $quantidade,
-            'reason' => 'validation_error'
-        ],
-        null,
-        null,
-        false,
-        'validation_error',
-        'Campos inválidos.',
-        'Falha ao criar retirada (validação).'
-    );
-    http_response_code(400);
-    exit('Dados inválidos.');
+// ---- MODO NOVO: tipos[] + quantidade_prata / quantidade_ouro
+$tipos = $_POST['tipos'] ?? null;
+$selected = [];
+
+$qtdByTipo = [
+    'prata' => 0,
+    'ouro'  => 0,
+];
+
+if (is_array($tipos) && count($tipos) > 0) {
+    foreach ($tipos as $t) {
+        $t = one_of(trim((string)$t), ['prata', 'ouro'], '');
+        if ($t !== '') $selected[$t] = true;
+    }
+
+    if (!empty($selected['prata'])) {
+        $qtdByTipo['prata'] = int_pos($_POST['quantidade_prata'] ?? 0);
+    }
+    if (!empty($selected['ouro'])) {
+        $qtdByTipo['ouro'] = int_pos($_POST['quantidade_ouro'] ?? 0);
+    }
+
+    // validações do modo novo
+    if (
+        $produto === '' ||
+        $solicitante === '' ||
+        (empty($selected['prata']) && empty($selected['ouro'])) ||
+        (!empty($selected['prata']) && $qtdByTipo['prata'] <= 0) ||
+        (!empty($selected['ouro']) && $qtdByTipo['ouro'] <= 0)
+    ) {
+        audit_log(
+            $pdo,
+            'create',
+            'retirada',
+            null,
+            [
+                'produto' => $produto,
+                'tipos' => array_keys($selected),
+                'qtd_prata' => $qtdByTipo['prata'],
+                'qtd_ouro' => $qtdByTipo['ouro'],
+                'solicitante' => $solicitante,
+                'reason' => 'validation_error'
+            ],
+            null,
+            null,
+            false,
+            'validation_error',
+            'Campos inválidos.',
+            'Falha ao criar retirada (validação).'
+        );
+        http_response_code(400);
+        exit('Dados inválidos.');
+    }
+
+    // ---- MODO ANTIGO: tipo + quantidade_solicitada
+} else {
+    require_fields($_POST, ['tipo', 'quantidade_solicitada']);
+
+    $tipo = one_of(trim((string)($_POST['tipo'] ?? '')), ['prata', 'ouro'], '');
+    $quantidade = int_pos($_POST['quantidade_solicitada'] ?? 0);
+
+    if ($produto === '' || $tipo === '' || $solicitante === '' || $quantidade <= 0) {
+        audit_log(
+            $pdo,
+            'create',
+            'retirada',
+            null,
+            [
+                'produto' => $produto,
+                'tipo' => $tipo,
+                'solicitante' => $solicitante,
+                'quantidade_solicitada' => $quantidade,
+                'reason' => 'validation_error'
+            ],
+            null,
+            null,
+            false,
+            'validation_error',
+            'Campos inválidos.',
+            'Falha ao criar retirada (validação).'
+        );
+        http_response_code(400);
+        exit('Dados inválidos.');
+    }
+
+    $selected[$tipo] = true;
+    $qtdByTipo[$tipo] = $quantidade;
 }
 
 // Não interfere na lógica principal do pedido.
@@ -112,48 +175,61 @@ $sql = "
 ";
 $stmt = $pdo->prepare($sql);
 
-$ok = $stmt->execute([
-    $produto,
-    $quantidade,
-    $tipo,
-    $solicitante,
-    $competencia
-]);
+$createdIds = [];
 
-if (!$ok) {
-    http_response_code(500);
-    exit('Erro ao salvar pedido.');
+foreach (['prata', 'ouro'] as $t) {
+    if (empty($selected[$t])) continue;
+
+    $qtd = (int)$qtdByTipo[$t];
+    $ok = $stmt->execute([
+        $produto,
+        $qtd,
+        $t,
+        $solicitante,
+        $competencia
+    ]);
+
+    if (!$ok) {
+        http_response_code(500);
+        exit('Erro ao salvar pedido.');
+    }
+
+    $newId = (int)$pdo->lastInsertId();
+    $createdIds[] = $newId;
+
+    audit_log(
+        $pdo,
+        'create',
+        'retirada',
+        $newId,
+        [
+            'competencia' => $competencia,
+            'produto' => $produto,
+            'tipo' => $t,
+            'quantidade_solicitada' => $qtd,
+            'solicitante' => $solicitante
+        ],
+        null,
+        [
+            'id' => $newId,
+            'produto' => $produto,
+            'quantidade_solicitada' => $qtd,
+            'tipo' => $t,
+            'solicitante' => $solicitante,
+            'status' => 'pedido',
+            'competencia' => $competencia,
+        ],
+        true,
+        null,
+        null,
+        "Criou retirada #{$newId} | {$t} | {$produto} | solicitado: {$qtd} | Solicitante: {$solicitante}."
+    );
 }
 
-$newId = (int)$pdo->lastInsertId();
-
-audit_log(
-    $pdo,
-    'create',
-    'retirada',
-    $newId,
-    [
-        'competencia' => $competencia,
-        'produto' => $produto,
-        'tipo' => $tipo,
-        'quantidade_solicitada' => $quantidade,
-        'solicitante' => $solicitante
-    ],
-    null,
-    [
-        'id' => $newId,
-        'produto' => $produto,
-        'quantidade_solicitada' => $quantidade,
-        'tipo' => $tipo,
-        'solicitante' => $solicitante,
-        'status' => 'pedido',
-        'competencia' => $competencia,
-    ],
-    true,
-    null,
-    null,
-    "Criou retirada #{$newId} | {$tipo} | {$produto} | solicitado: {$quantidade} | Solicitante: {$solicitante}."
-);
+if (count($createdIds) === 0) {
+    http_response_code(400);
+    exit('Nenhum pedido criado.');
+}
 
 // gira token só depois de sucesso
 csrf_rotate('novo_pedido');
@@ -161,8 +237,14 @@ csrf_rotate('novo_pedido');
 $params = [
     'competencia' => $competencia,
     'toast' => 'criado',
-    'highlight_id' => $newId,
+    // destaca o último criado (ou você pode mudar a UI depois pra destacar os 2)
+    'highlight_id' => end($createdIds),
 ];
+
+if ($wantNext) {
+    $params['open_novo'] = 1;
+    $params['keep_solicitante'] = $solicitante;
+}
 
 if ($wantNext) {
     $params['open_novo'] = 1;

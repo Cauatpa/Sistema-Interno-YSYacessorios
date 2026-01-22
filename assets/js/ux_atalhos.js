@@ -56,7 +56,7 @@
           const inpSolic = modalEl.querySelector('input[name="solicitante"]');
           const inpProd = modalEl.querySelector('input[name="produto"]');
           const inpQtd = modalEl.querySelector(
-            'input[name="quantidade_solicitada"]'
+            'input[name="quantidade_solicitada"]',
           );
           const selTipo = modalEl.querySelector('select[name="tipo"]');
 
@@ -69,7 +69,7 @@
 
           focusLater(inpProd);
         },
-        { once: true }
+        { once: true },
       );
     }
   })();
@@ -90,12 +90,12 @@
   // ======================================================
   const getNextPendingIdInPage = (currentId) => {
     const rows = Array.from(
-      document.querySelectorAll('tr[data-retirada-id][data-pendente="1"]')
+      document.querySelectorAll('tr[data-retirada-id][data-pendente="1"]'),
     );
     if (!rows.length) return null;
 
     const idx = rows.findIndex(
-      (tr) => String(tr.getAttribute("data-retirada-id")) === String(currentId)
+      (tr) => String(tr.getAttribute("data-retirada-id")) === String(currentId),
     );
 
     // próximo abaixo
@@ -118,7 +118,7 @@
     "click",
     (e) => {
       const btn = e.target?.closest?.(
-        '.modal[id^="modalFinalizar"] button[type="submit"][name="next"][value="1"]'
+        '.modal[id^="modalFinalizar"] button[type="submit"][name="next"][value="1"]',
       );
       if (!btn) return;
 
@@ -138,7 +138,7 @@
       if (hiddenNext) hiddenNext.value = "1";
       if (nextTarget) nextTarget.value = nextId ? String(nextId) : "0";
     },
-    true
+    true,
   );
 
   // ======================================================
@@ -152,7 +152,7 @@
       if (e.key !== "Enter") return;
 
       const openModal = document.querySelector(
-        '.modal.show[id^="modalFinalizar"]'
+        '.modal.show[id^="modalFinalizar"]',
       );
       if (!openModal) return;
 
@@ -180,7 +180,7 @@
         if (nextTarget) nextTarget.value = nextId ? String(nextId) : "0";
 
         const btnProximo = form.querySelector(
-          'button[type="submit"][name="next"][value="1"]'
+          'button[type="submit"][name="next"][value="1"]',
         );
 
         if (btnProximo && typeof form.requestSubmit === "function") {
@@ -205,7 +205,7 @@
         }
       }
     },
-    true
+    true,
   );
 
   // ======================================================
@@ -247,7 +247,7 @@
         return;
       }
     },
-    true
+    true,
   );
 
   // ======================================================
@@ -289,7 +289,7 @@
 
       submitNovoPedido(e.shiftKey === true);
     },
-    true
+    true,
   );
 
   // ======================================================
@@ -314,4 +314,36 @@
   document.addEventListener("hidden.bs.modal", () => {
     document.body.style.paddingRight = "";
   });
+
+  // ======================================================
+  // 8) Lógica de mostrar campos de quantidade conforme tipo
+  // ======================================================
+  (function () {
+    const prata = document.getElementById("tipoPrata");
+    const ouro = document.getElementById("tipoOuro");
+    const qtdUnica = document.getElementById("qtdUnicaWrap");
+    const qtdDupla = document.getElementById("qtdDuplaWrap");
+
+    if (!prata || !ouro || !qtdUnica || !qtdDupla) return;
+
+    function refresh() {
+      const p = prata.checked;
+      const o = ouro.checked;
+
+      if (p && o) {
+        qtdDupla.classList.remove("d-none");
+        qtdUnica.classList.add("d-none");
+      } else if (p || o) {
+        qtdUnica.classList.remove("d-none");
+        qtdDupla.classList.add("d-none");
+      } else {
+        qtdUnica.classList.add("d-none");
+        qtdDupla.classList.add("d-none");
+      }
+    }
+
+    prata.addEventListener("change", refresh);
+    ouro.addEventListener("change", refresh);
+    refresh();
+  })();
 })();
