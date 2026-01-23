@@ -168,7 +168,8 @@ function pagination_items(int $page, int $totalPages): array
     return $items;
 }
 
-$actionOptions = ['create', 'finalize', 'edit', 'delete', 'close_month', 'reopen_month', 'export', 'reset_password', 'change_password', 'login'];
+$actionOptions = ['create', 'finalize', 'edit', 'delete', 'import', 'close_month', 'reopen_month', 'export', 'reset_password', 'change_password', 'login'];
+
 $entityOptions = ['retirada', 'fechamento', 'user']; // ajuste se você adicionar outros
 ?>
 <!DOCTYPE html>

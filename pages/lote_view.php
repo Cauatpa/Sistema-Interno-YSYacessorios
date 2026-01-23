@@ -178,6 +178,14 @@ $openItem = ((int)($_GET['open_item'] ?? 0) === 1);
                                 </div>
                             <?php endif; ?>
 
+                            <!-- IMPORTAR XLSX -->
+                            <button
+                                type="button"
+                                class="btn btn-outline-primary"
+                                data-bs-toggle="modal"
+                                data-bs-target="#modalImportXlsx">
+                                📥 Importar XLSX
+                            </button>
                         </div>
                     <?php endif; ?>
 
@@ -600,6 +608,7 @@ $openItem = ((int)($_GET['open_item'] ?? 0) === 1);
 
     <?php require_once __DIR__ . '/../modals/lotes/modal_add_item.php'; ?>
     <?php require_once __DIR__ . '/../modals/lotes/modal_novo_recebimento.php'; ?>
+    <?php require_once __DIR__ . '/../modals/lotes/modal_import_xlsx.php'; ?>
 
     <!-- Toast -->
     <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 9999;">
