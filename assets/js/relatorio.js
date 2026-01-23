@@ -250,7 +250,6 @@
     if (!solLabels.length) {
       if (boxResumo)
         boxResumo.textContent = "Sem dados de solicitantes para este mês.";
-      // NÃO dá return aqui, pra não “matar” nada por acidente no futuro
     } else {
       if (sel) {
         while (sel.options.length > 1) sel.remove(1);
@@ -286,7 +285,7 @@
             labels,
             datasets: [
               { label: "Pedidos", data: pedidos },
-              { label: "Itens solicitados", data: itens },
+              { label: "Itens entregues", data: itens },
             ],
           },
           options: {
@@ -310,7 +309,7 @@
             const idx = solLabels.indexOf(filterName);
             boxResumo.textContent = `📌 ${filterName}: ${
               solPedidos[idx] || 0
-            } pedidos | ${solItens[idx] || 0} itens solicitados`;
+            } pedidos | ${solItens[idx] || 0} itens entregues`;
           }
         }
       }

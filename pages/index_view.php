@@ -201,6 +201,9 @@ $returnUrl = $_SERVER['REQUEST_URI'];
                         <option value="todos" <?= $statusFiltro === 'todos' ? 'selected' : '' ?>>Todos</option>
                         <option value="pendentes" <?= $statusFiltro === 'pendentes' ? 'selected' : '' ?>>Pendentes</option>
                         <option value="finalizados" <?= $statusFiltro === 'finalizados' ? 'selected' : '' ?>>Finalizados</option>
+                        <option value="balanco_feito" <?= $statusFiltro === 'balanco_feito' ? 'selected' : '' ?>>
+                            Balanço feito
+                        </option>
                     </select>
                 </div>
 
@@ -398,6 +401,7 @@ $returnUrl = $_SERVER['REQUEST_URI'];
                             Nenhum registro encontrado com os filtros atuais.
                         </td>
                     </tr>
+                    <!--  -->
                 <?php else: ?>
                     <?php foreach ($retiradas as $r):
                         $info = retirada_status_info($r);
@@ -406,6 +410,7 @@ $returnUrl = $_SERVER['REQUEST_URI'];
                         $isFinalizado = (($r['status'] ?? '') === 'finalizado');
                         $isPendente = !$isFinalizado;
                     ?>
+                        <!--  -->
                         <tr
                             class="<?= htmlspecialchars($info['classe']) ?>"
                             data-id="<?= $id ?>"
@@ -444,7 +449,7 @@ $returnUrl = $_SERVER['REQUEST_URI'];
 
                             <td>
                                 <!-- layout compacto: não quebra fácil -->
-                                <div class="d-grid gap-1" style="min-width: 110px;">
+                                <div class="d-grid gap-1" style="min-width: 100px;">
                                     <?php if ($canOperate && !$mesFechado && !$isFinalizado): ?>
                                         <button
                                             type="button"
@@ -453,6 +458,15 @@ $returnUrl = $_SERVER['REQUEST_URI'];
                                             data-bs-toggle="modal"
                                             data-bs-target="#modalFinalizar<?= $id ?>">
                                             ✅ Finalizar
+                                        </button>
+                                    <?php endif; ?>
+
+                                    <?php if ($canOperate && !$mesFechado && (int)$r['precisa_balanco'] === 1 && (int)$r['balanco_feito'] === 0): ?>
+                                        <button
+                                            type="button"
+                                            class="btn btn-outline-warning btn-sm"
+                                            data-balanco="<?= (int)$r['id'] ?>">
+                                            ⚖️ Fazer balanço
                                         </button>
                                     <?php endif; ?>
 
@@ -551,6 +565,51 @@ $returnUrl = $_SERVER['REQUEST_URI'];
     <script src="assets/js/app.js" defer></script>
     <script src="assets/js/ux_atalhos.js" defer></script>
     <script src="assets/js/theme.js" defer></script>
+    <script>
+        document.addEventListener('click', async (e) => {
+            const btn = e.target.closest('[data-balanco]');
+            if (!btn) return;
+
+            const id = btn.dataset.balanco;
+            if (!id) return;
+
+            if (!confirm('Confirmar balanço realizado?')) return;
+
+            const formData = new FormData();
+            formData.append('id', id);
+            formData.append('csrf_token', '<?= csrf_token('balanco_feito') ?>');
+
+            let res, text, out = null;
+
+            try {
+                res = await fetch('actions/retirada_balanco_feito.php', {
+                    method: 'POST',
+                    body: formData,
+                    credentials: 'same-origin',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+
+                text = await res.text();
+                try {
+                    out = JSON.parse(text);
+                } catch (_) {
+                    out = null;
+                }
+
+                if (res.ok && out && out.ok) {
+                    location.reload();
+                    return;
+                }
+
+                // se não veio JSON, mostra um erro “útil”
+                alert((out && out.error) ? out.error : ('Erro ao marcar balanço. Resposta: ' + (text?.slice(0, 120) || 'vazia')));
+            } catch (err) {
+                alert('Erro ao marcar balanço: ' + (err?.message || err));
+            }
+        });
+    </script>
 
     <?php require __DIR__ . '/../modals/modal_minha_senha.php'; ?>
 </body>

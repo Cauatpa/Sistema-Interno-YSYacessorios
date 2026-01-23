@@ -105,6 +105,12 @@ function montar_where_retiradas(string $competencia, array $f): array
         $where .= " AND status <> 'finalizado' ";
     } elseif ($statusFiltro === 'finalizados') {
         $where .= " AND status = 'finalizado' ";
+    } else if ($statusFiltro === 'pendentes') {
+        $where .= " AND (r.status <> 'finalizado' OR r.status IS NULL) ";
+    } elseif ($statusFiltro === 'finalizados') {
+        $where .= " AND r.status = 'finalizado' ";
+    } elseif ($statusFiltro === 'balanco_feito') {
+        $where .= " AND r.balanco_feito = 1 ";
     }
 
     // Flags

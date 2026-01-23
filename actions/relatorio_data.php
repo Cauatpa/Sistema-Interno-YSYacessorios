@@ -25,7 +25,7 @@ $limitParam = $_GET['limit'] ?? '10';
 $limit = 10;
 
 if ($limitParam === 'all' || $limitParam === '0' || $limitParam === 0) {
-  $limit = 500; // teto de segurança (ajuste se quiser)
+  $limit = 500; // teto de segurança
 } else {
   $limit = (int)$limitParam;
   if ($limit <= 0) $limit = 10;
@@ -38,6 +38,7 @@ $resp = [
   'dias' => ['labels' => [], 'values' => []],
   'top_produtos' => ['labels' => [], 'values' => []],
   'por_solicitante' => ['labels' => [], 'pedidos' => [], 'itens' => []],
+
 ];
 
 // 1) Status
@@ -52,10 +53,34 @@ $stmt = $pdo->prepare("
 $stmt->execute([$competencia]);
 $st = $stmt->fetch(PDO::FETCH_ASSOC) ?: ['finalizados' => 0, 'pendentes' => 0];
 
+// 
+$stmt = $pdo->prepare("
+  SELECT
+    SUM(precisa_balanco = 1) AS pendente,
+    SUM(balanco_feito = 1) AS feito
+  FROM retiradas
+  WHERE competencia = ?
+    AND deleted_at IS NULL
+");
+$stmt->execute([$competencia]);
+
+$bal = $stmt->fetch(PDO::FETCH_ASSOC);
+
+$resp['balanco'] = [
+  'pendente' => (int)($bal['pendente'] ?? 0),
+  'feito'    => (int)($bal['feito'] ?? 0),
+];
+
+
 $resp['status'] = [
   'finalizados' => (int)($st['finalizados'] ?? 0),
   'pendentes'   => (int)($st['pendentes'] ?? 0),
+  'balanco' => [
+    'pendente' => 0,
+    'feito' => 0
+  ],
 ];
+
 
 // 2) Alertas
 $stmt = $pdo->prepare("
@@ -120,17 +145,19 @@ foreach ($top as $t) {
 }
 $resp['top_produtos'] = ['labels' => $topLabels, 'values' => $topValues];
 
-// 5) Por solicitante (pedidos + itens)
+// 5) Por solicitante (pedidos finalizados + itens ENTREGUES)
 $stmt = $pdo->prepare("
-  SELECT solicitante,
-         COUNT(*) AS pedidos,
-         COALESCE(SUM(quantidade_solicitada),0) AS itens
+  SELECT
+    solicitante,
+    COUNT(*) AS pedidos,
+    COALESCE(SUM(COALESCE(quantidade_retirada, 0)), 0) AS itens
   FROM retiradas
   WHERE competencia = ?
     AND deleted_at IS NULL
+    AND status = 'finalizado'
     AND COALESCE(solicitante,'') <> ''
   GROUP BY solicitante
-  ORDER BY pedidos DESC, itens DESC
+  ORDER BY itens DESC, pedidos DESC
 ");
 $stmt->execute([$competencia]);
 $solRows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];

@@ -8,7 +8,6 @@ require_once __DIR__ . '/../helpers/competencia.php';
 require_once __DIR__ . '/../helpers/audit.php';
 require_once __DIR__ . '/../helpers/return_redirect.php';
 
-
 auth_session_start();
 auth_require_role('admin');
 post_only();
@@ -31,10 +30,10 @@ if (!csrf_validate($_POST['csrf_token'] ?? null, 'editar_pedido')) {
 }
 csrf_rotate('editar_pedido');
 
-$id         = int_pos($_POST['id'] ?? 0);
-$produto    = trim((string)($_POST['produto'] ?? ''));
-$tipo       = one_of(trim((string)($_POST['tipo'] ?? '')), ['prata', 'ouro'], '');
-$qtdSolic   = int_pos($_POST['quantidade_solicitada'] ?? 0);
+$id          = int_pos($_POST['id'] ?? 0);
+$produto     = trim((string)($_POST['produto'] ?? ''));
+$tipo        = one_of(trim((string)($_POST['tipo'] ?? '')), ['prata', 'ouro'], '');
+$qtdSolic    = int_pos($_POST['quantidade_solicitada'] ?? 0);
 $solicitante = trim((string)($_POST['solicitante'] ?? ''));
 
 // flags do modal
@@ -43,6 +42,12 @@ $sem_estoque     = ((int)($_POST['sem_estoque'] ?? 0) === 1) ? 1 : 0;
 
 // consistência: sem estoque => balanço
 if ($sem_estoque === 1) $precisa_balanco = 1;
+
+// ✅ REGRA NOVA: se tirou "precisa_balanco", destrava/reset "balanco_feito"
+$resetBalancoFeito = false;
+if ($precisa_balanco === 0) {
+    $resetBalancoFeito = true;
+}
 
 if ($id <= 0 || $produto === '' || $tipo === '' || $qtdSolic <= 0 || $solicitante === '') {
     audit_log(
@@ -76,7 +81,8 @@ $stmt = $pdo->prepare("
     SELECT
         id, competencia, status,
         produto, tipo, quantidade_solicitada, solicitante,
-        quantidade_retirada, precisa_balanco, sem_estoque, falta_estoque
+        quantidade_retirada, precisa_balanco, sem_estoque, falta_estoque,
+        balanco_feito, balanco_feito_em
     FROM retiradas
     WHERE id = ? AND deleted_at IS NULL
     LIMIT 1
@@ -148,6 +154,7 @@ if ($isFinalizado && $sem_estoque === 1) {
  * Regra falta_estoque (só faz sentido se finalizado)
  */
 $falta_estoque = (int)($beforeRow['falta_estoque'] ?? 0);
+
 $beforeQtdRet  = array_key_exists('quantidade_retirada', $beforeRow) && $beforeRow['quantidade_retirada'] !== null
     ? (int)$beforeRow['quantidade_retirada']
     : null;
@@ -178,6 +185,12 @@ $fields = [
     'sem_estoque = ?',
 ];
 $params = [$produto, $tipo, $qtdSolic, $solicitante, $precisa_balanco, $sem_estoque];
+
+// ✅ se tirou precisa_balanco, resetar balanco_feito e data
+if ($resetBalancoFeito) {
+    $fields[] = 'balanco_feito = 0';
+    $fields[] = 'balanco_feito_em = NULL';
+}
 
 if ($isFinalizado && $newQtdRet !== null) {
     $fields[] = 'quantidade_retirada = ?';
@@ -211,7 +224,7 @@ if (!$ok) {
 }
 
 /**
- * Diff
+ * Diff (inclui campos novos pra auditoria)
  */
 $beforeForDiff = [
     'produto' => (string)($beforeRow['produto'] ?? ''),
@@ -222,6 +235,8 @@ $beforeForDiff = [
     'sem_estoque' => (int)($beforeRow['sem_estoque'] ?? 0),
     'quantidade_retirada' => $beforeQtdRet,
     'falta_estoque' => (int)($beforeRow['falta_estoque'] ?? 0),
+    'balanco_feito' => (int)($beforeRow['balanco_feito'] ?? 0),
+    'balanco_feito_em' => $beforeRow['balanco_feito_em'] ?? null,
 ];
 
 $afterForDiff = [
@@ -233,9 +248,11 @@ $afterForDiff = [
     'sem_estoque' => (int)$sem_estoque,
     'quantidade_retirada' => ($isFinalizado && $newQtdRet !== null) ? (int)$newQtdRet : $beforeForDiff['quantidade_retirada'],
     'falta_estoque' => ($isFinalizado && $newQtdRet !== null) ? (int)$falta_estoque : (int)$beforeForDiff['falta_estoque'],
+    'balanco_feito' => $resetBalancoFeito ? 0 : (int)$beforeForDiff['balanco_feito'],
+    'balanco_feito_em' => $resetBalancoFeito ? null : $beforeForDiff['balanco_feito_em'],
 ];
 
-$keys = ['produto', 'tipo', 'quantidade_solicitada', 'solicitante', 'precisa_balanco', 'sem_estoque'];
+$keys = ['produto', 'tipo', 'quantidade_solicitada', 'solicitante', 'precisa_balanco', 'sem_estoque', 'balanco_feito', 'balanco_feito_em'];
 if ($isFinalizado) {
     $keys[] = 'quantidade_retirada';
     $keys[] = 'falta_estoque';
