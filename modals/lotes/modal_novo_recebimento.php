@@ -1,8 +1,8 @@
 <?php
-// modals/lotes/modal_novo_recebimento.php
 if (empty($editMode)) return;
 ?>
 
+<!-- Modal de novo recebimento -->
 <div class="modal fade" id="modalNovoRecebimento" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <form method="POST" action="actions/lote_recebimento_add.php" class="modal-content" autocomplete="off">

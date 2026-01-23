@@ -9,13 +9,25 @@ require_once __DIR__ . '/../helpers/csrf.php';
 require_once __DIR__ . '/../helpers/validation.php';
 require_once __DIR__ . '/../helpers/auth.php';
 require_once __DIR__ . '/../helpers/return_redirect.php';
-
+require_once __DIR__ . '/../helpers/audit.php';
 
 auth_session_start();
 auth_require_role('operador');
 post_only();
 
 if (!csrf_validate($_POST['csrf_token'] ?? null, 'finalizar_pedido')) {
+    audit_log(
+        $pdo,
+        'finalize',
+        'retirada',
+        null,
+        ['reason' => 'csrf_invalid'],
+        null,
+        null,
+        false,
+        'csrf_invalid',
+        'Falha ao finalizar retirada (CSRF inválido).'
+    );
     http_response_code(403);
     exit('CSRF inválido.');
 }
@@ -27,36 +39,107 @@ $wantNext = ((int)($_POST['next'] ?? 0) === 1);
 $nextTargetId = int_pos($_POST['next_target_id'] ?? 0);
 
 if ($id <= 0) {
+    audit_log(
+        $pdo,
+        'finalize',
+        'retirada',
+        null,
+        ['reason' => 'invalid_id', 'id' => $id],
+        null,
+        null,
+        false,
+        'invalid_id',
+        'Falha ao finalizar retirada (ID inválido).'
+    );
     http_response_code(400);
     exit('ID inválido.');
 }
 
+// BEFORE (para log)
 $stmt = $pdo->prepare("
-    SELECT id, competencia, status, quantidade_solicitada
+    SELECT
+        id, competencia, status,
+        produto, tipo, solicitante,
+        quantidade_solicitada,
+        quantidade_retirada,
+        precisa_balanco, sem_estoque, falta_estoque,
+        responsavel_estoque, data_finalizacao
     FROM retiradas
     WHERE id = ? AND deleted_at IS NULL
     LIMIT 1
 ");
 $stmt->execute([$id]);
-$row = $stmt->fetch(PDO::FETCH_ASSOC);
+$before = $stmt->fetch(PDO::FETCH_ASSOC);
 
-if (!$row) {
+if (!$before) {
+    audit_log(
+        $pdo,
+        'finalize',
+        'retirada',
+        $id,
+        ['reason' => 'not_found'],
+        null,
+        null,
+        false,
+        'not_found',
+        "Falha ao finalizar retirada #{$id} (não encontrada)."
+    );
     http_response_code(404);
     exit('Pedido não encontrado.');
 }
 
-$competencia = (string)$row['competencia'];
+$competencia = (string)($before['competencia'] ?? '');
+$status = (string)($before['status'] ?? '');
+
 if (!competencia_valida($competencia)) {
+    audit_log(
+        $pdo,
+        'finalize',
+        'retirada',
+        $id,
+        ['reason' => 'invalid_competencia', 'competencia' => $competencia],
+        ['competencia' => $competencia],
+        null,
+        false,
+        'invalid_competencia',
+        "Falha ao finalizar retirada #{$id} (competência inválida)."
+    );
     http_response_code(500);
     exit('Competência inválida no registro.');
 }
 
 if (mes_esta_fechado($pdo, $competencia)) {
+    audit_log(
+        $pdo,
+        'finalize',
+        'retirada',
+        $id,
+        ['reason' => 'month_closed', 'competencia' => $competencia],
+        $before,
+        null,
+        false,
+        'month_closed',
+        "Falha ao finalizar retirada #{$id} (mês fechado {$competencia})."
+    );
     http_response_code(403);
     exit("Não é possível finalizar em mês fechado ({$competencia}).");
 }
 
-if ((string)$row['status'] === 'finalizado') {
+if ($status === 'finalizado') {
+    // log opcional: tentativa redundante
+    audit_log(
+        $pdo,
+        'finalize',
+        'retirada',
+        $id,
+        ['competencia' => $competencia, 'reason' => 'already_finalized'],
+        null,
+        null,
+        true,
+        'already_finalized',
+        "Retirada #{$id} já estava finalizada."
+    );
+
     redirect_with_query('../index.php', [
         'competencia' => $competencia,
         'toast' => 'ja_finalizado',
@@ -65,7 +148,7 @@ if ((string)$row['status'] === 'finalizado') {
     exit;
 }
 
-$qtdSolicitada = (int)($row['quantidade_solicitada'] ?? 0);
+$qtdSolicitada = (int)($before['quantidade_solicitada'] ?? 0);
 
 $precisa_balanco = (int)($_POST['precisa_balanco'] ?? 0);
 $sem_estoque = (int)($_POST['sem_estoque'] ?? 0);
@@ -86,10 +169,35 @@ if ($responsavel_estoque === '') {
 }
 
 if ($qtdEntregue < 0) {
+    audit_log(
+        $pdo,
+        'finalize',
+        'retirada',
+        $id,
+        ['reason' => 'invalid_qtd', 'qtdEntregue' => $qtdEntregue, 'competencia' => $competencia],
+        $before,
+        null,
+        false,
+        'invalid_qtd',
+        "Falha ao finalizar retirada #{$id} (quantidade entregue inválida)."
+    );
     http_response_code(400);
     exit('Quantidade entregue inválida.');
 }
+
 if ($responsavel_estoque === '') {
+    audit_log(
+        $pdo,
+        'finalize',
+        'retirada',
+        $id,
+        ['reason' => 'missing_responsavel', 'competencia' => $competencia],
+        $before,
+        null,
+        false,
+        'missing_responsavel',
+        "Falha ao finalizar retirada #{$id} (responsável obrigatório)."
+    );
     http_response_code(400);
     exit('Responsável do estoque é obrigatório.');
 }
@@ -120,16 +228,75 @@ $ok = $update->execute([
 ]);
 
 if (!$ok) {
+    audit_log(
+        $pdo,
+        'finalize',
+        'retirada',
+        $id,
+        ['reason' => 'db_error', 'competencia' => $competencia],
+        $before,
+        null,
+        false,
+        'db_error',
+        "Falha ao finalizar retirada #{$id} (erro banco)."
+    );
     http_response_code(500);
     exit('Erro ao finalizar.');
 }
 
 csrf_rotate('finalizar_pedido');
 
+// AFTER para log
+$stmt2 = $pdo->prepare("
+    SELECT
+        id, competencia, status,
+        quantidade_retirada, responsavel_estoque,
+        precisa_balanco, sem_estoque, falta_estoque,
+        data_finalizacao
+    FROM retiradas
+    WHERE id = ? LIMIT 1
+");
+$stmt2->execute([$id]);
+$after = $stmt2->fetch(PDO::FETCH_ASSOC) ?: null;
+
+audit_log(
+    $pdo,
+    'finalize',
+    'retirada',
+    $id,
+    [
+        'competencia' => $competencia,
+        'qtd_solicitada' => $qtdSolicitada,
+        'qtd_entregue' => $qtdEntregue,
+        'sem_estoque' => $sem_estoque ? 1 : 0,
+        'precisa_balanco' => $precisa_balanco ? 1 : 0,
+        'responsavel_estoque' => $responsavel_estoque,
+    ],
+    [
+        'status' => (string)($before['status'] ?? ''),
+        'quantidade_retirada' => $before['quantidade_retirada'] ?? null,
+        'responsavel_estoque' => $before['responsavel_estoque'] ?? null,
+        'precisa_balanco' => (int)($before['precisa_balanco'] ?? 0),
+        'sem_estoque' => (int)($before['sem_estoque'] ?? 0),
+        'falta_estoque' => (int)($before['falta_estoque'] ?? 0),
+    ],
+    $after ? [
+        'status' => (string)($after['status'] ?? ''),
+        'quantidade_retirada' => $after['quantidade_retirada'] ?? null,
+        'responsavel_estoque' => $after['responsavel_estoque'] ?? null,
+        'precisa_balanco' => (int)($after['precisa_balanco'] ?? 0),
+        'sem_estoque' => (int)($after['sem_estoque'] ?? 0),
+        'falta_estoque' => (int)($after['falta_estoque'] ?? 0),
+        'data_finalizacao' => (string)($after['data_finalizacao'] ?? ''),
+    ] : null,
+    true,
+    null,
+    "Finalizou retirada #{$id} ({$competencia})."
+);
+
 // ✅ calcula o próximo
 $openNextId = null;
 if ($wantNext) {
-    // 1) se veio um next_target_id válido, garante que ele ainda está pendente no mesmo mês
     if ($nextTargetId > 0) {
         $chk = $pdo->prepare("
             SELECT id
@@ -145,7 +312,6 @@ if ($wantNext) {
         if ($okId) $openNextId = (int)$okId;
     }
 
-    // 2) fallback: busca no banco
     if (!$openNextId) {
         $nextStmt = $pdo->prepare("
             SELECT id

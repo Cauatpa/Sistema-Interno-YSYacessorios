@@ -75,21 +75,62 @@ if ($recebimentoAtualId > 0) {
 }
 
 // =============================
+// Filtros de itens
+// =============================
+$qProduto  = trim((string)($_GET['q_produto'] ?? ''));
+$qVariacao = trim((string)($_GET['q_variacao'] ?? ''));
+$qSituacao = trim((string)($_GET['q_situacao'] ?? ''));
+
+$page = max(1, (int)($_GET['page'] ?? 1));
+$perPage = max(10, min(200, (int)($_GET['per_page'] ?? 50)));
+$offset = ($page - 1) * $perPage;
+
+// =============================
 // Itens do lote (FILTRADOS pelo recebimento atual)
 // =============================
+$itens = [];
+$totalItens = 0;
+
 if ($recebimentoAtualId > 0) {
+    $where = " li.lote_id = ? AND li.recebimento_id = ? ";
+    $args = [$id, $recebimentoAtualId];
+
+    if ($qProduto !== '') {
+        $where .= " AND li.produto_nome LIKE ? ";
+        $args[] = '%' . $qProduto . '%';
+    }
+
+    if ($qVariacao === 'prata' || $qVariacao === 'ouro') {
+        $where .= " AND LOWER(li.variacao) = ? ";
+        $args[] = $qVariacao;
+    }
+
+    $allowedSit = ['ok', 'faltando', 'a_mais', 'banho_trocado', 'quebra', 'outro'];
+    if (in_array($qSituacao, $allowedSit, true)) {
+        $where .= " AND li.situacao = ? ";
+        $args[] = $qSituacao;
+    }
+
+    // total
+    $stmtCount = $pdo->prepare("SELECT COUNT(*) FROM lote_itens li WHERE $where");
+    $stmtCount->execute($args);
+    $totalItens = (int)$stmtCount->fetchColumn();
+
+    // página
     $stmtItens = $pdo->prepare("
         SELECT li.*
         FROM lote_itens li
-        WHERE li.lote_id = ?
-          AND li.recebimento_id = ?
+        WHERE $where
         ORDER BY li.id ASC
+        LIMIT $perPage OFFSET $offset
     ");
-    $stmtItens->execute([$id, $recebimentoAtualId]);
+    $stmtItens->execute($args);
     $itens = $stmtItens->fetchAll(PDO::FETCH_ASSOC);
-} else {
-    $itens = [];
 }
+
+// Paginação
+$totalPages = (int)ceil($totalItens / $perPage);
+if ($totalPages < 1) $totalPages = 1;
 
 // Agrupar para UI: 1 linha por produto, com prata/ouro dentro
 $itensGrouped = [];

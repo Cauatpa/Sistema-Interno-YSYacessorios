@@ -194,6 +194,61 @@ $openItem = ((int)($_GET['open_item'] ?? 0) === 1);
         </div>
     </div>
 
+    <!-- Filtros de itens -->
+    <form method="GET" class="card p-2 mb-3">
+        <input type="hidden" name="id" value="<?= (int)$lote['id'] ?>">
+        <?php if ($editMode): ?><input type="hidden" name="edit" value="1"><?php endif; ?>
+        <input type="hidden" name="recebimento_id" value="<?= (int)$recebimentoAtualId ?>">
+
+        <div class="row g-2 align-items-end">
+            <div class="col-12 col-md-5">
+                <label class="form-label mb-1">Produto</label>
+                <input name="q_produto" class="form-control" value="<?= htmlspecialchars((string)($qProduto ?? '')) ?>" placeholder="Buscar nome do produto...">
+            </div>
+
+            <div class="col-6 col-md-2">
+                <label class="form-label mb-1">Variação</label>
+                <select name="q_variacao" class="form-select">
+                    <option value="">Todas</option>
+                    <option value="prata" <?= (($qVariacao ?? '') === 'prata') ? 'selected' : '' ?>>Prata</option>
+                    <option value="ouro" <?= (($qVariacao ?? '') === 'ouro') ? 'selected' : '' ?>>Ouro</option>
+                </select>
+            </div>
+
+            <div class="col-6 col-md-2">
+                <label class="form-label mb-1">Situação</label>
+                <select name="q_situacao" class="form-select">
+                    <option value="">Todas</option>
+                    <?php
+                    $opts = ['ok' => 'OK', 'faltando' => 'Faltando', 'a_mais' => 'A mais', 'banho_trocado' => 'Banho trocado', 'quebra' => 'Quebra', 'outro' => 'Outro'];
+                    foreach ($opts as $k => $lbl):
+                    ?>
+                        <option value="<?= $k ?>" <?= (($qSituacao ?? '') === $k) ? 'selected' : '' ?>><?= htmlspecialchars($lbl) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+
+            <div class="col-6 col-md-1">
+                <label class="form-label mb-1">Por pág.</label>
+                <select name="per_page" class="form-select">
+                    <?php foreach ([30, 50, 100, 200] as $n): ?>
+                        <option value="<?= $n ?>" <?= ((int)($perPage ?? 50) === $n) ? 'selected' : '' ?>><?= $n ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+
+            <div class="col-6 col-md-2 d-flex gap-2">
+                <button class="btn btn-primary w-100" type="submit">Filtrar</button>
+
+                <a class="btn btn-outline-secondary w-100"
+                    href="lote.php?id=<?= (int)$lote['id'] ?><?= $editMode ? '&edit=1' : '' ?>&recebimento_id=<?= (int)$recebimentoAtualId ?>">
+                    Limpar
+                </a>
+            </div>
+        </div>
+    </form>
+
+
     <!-- Tabela itens -->
     <div class="table-responsive">
         <table class="table table-bordered table-striped text-center align-middle">
@@ -271,6 +326,8 @@ $openItem = ((int)($_GET['open_item'] ?? 0) === 1);
                                         <input type="hidden" name="lote_id" value="<?= (int)$lote['id'] ?>">
                                         <input type="hidden" name="id_prata" value="<?= (int)$idPrata ?>">
                                         <input type="hidden" name="id_ouro" value="<?= (int)$idOuro ?>">
+                                        <input type="hidden" name="recebimento_id" value="<?= (int)$recebimentoAtualId ?>">
+
 
                                         <?php if ($idPrata): ?>
                                             <input type="number" name="qtd_conferida_prata"
@@ -339,6 +396,7 @@ $openItem = ((int)($_GET['open_item'] ?? 0) === 1);
                                             🛠 Editar Item
                                         </button>
 
+                                        <!-- Modal delete -->
                                         <form method="POST"
                                             action="actions/lote_item_delete_group.php"
                                             class="mt-2"
@@ -348,11 +406,12 @@ $openItem = ((int)($_GET['open_item'] ?? 0) === 1);
                                             <input type="hidden" name="lote_id" value="<?= (int)$lote['id'] ?>">
                                             <input type="hidden" name="id_prata" value="<?= (int)$idPrata ?>">
                                             <input type="hidden" name="id_ouro" value="<?= (int)$idOuro ?>">
+                                            <input type="hidden" name="recebimento_id" value="<?= (int)$recebimentoAtualId ?>">
 
                                             <button class="btn btn-outline-danger btn-sm w-100" type="submit">Excluir</button>
                                         </form>
 
-                                        <!-- Modal edit full (mantido) -->
+                                        <!-- Modal edit full -->
                                         <div class="modal fade" id="<?= htmlspecialchars($modalId) ?>" tabindex="-1" aria-hidden="true">
                                             <div class="modal-dialog modal-lg">
                                                 <form method="POST" action="actions/lote_item_edit_full_group.php" class="modal-content">
@@ -360,6 +419,7 @@ $openItem = ((int)($_GET['open_item'] ?? 0) === 1);
                                                     <input type="hidden" name="lote_id" value="<?= (int)$lote['id'] ?>">
                                                     <input type="hidden" name="id_prata" value="<?= (int)$idPrata ?>">
                                                     <input type="hidden" name="id_ouro" value="<?= (int)$idOuro ?>">
+                                                    <input type="hidden" name="recebimento_id" value="<?= (int)$recebimentoAtualId ?>">
 
                                                     <div class="modal-header">
                                                         <h5 class="modal-title">🛠 Editar Item (<?= htmlspecialchars($produtoNome) ?>)</h5>
@@ -497,6 +557,46 @@ $openItem = ((int)($_GET['open_item'] ?? 0) === 1);
             </tbody>
         </table>
     </div>
+
+    <!-- Paginação -->
+    <?php if (($totalPages ?? 1) > 1): ?>
+        <nav class="mt-3">
+            <ul class="pagination justify-content-center flex-wrap">
+                <?php
+                $qsBase = $_GET;
+                $qsBase['id'] = (int)$lote['id'];
+                if ($editMode) $qsBase['edit'] = 1;
+                $qsBase['recebimento_id'] = (int)$recebimentoAtualId;
+
+                $mkLink = function (int $p) use ($qsBase) {
+                    $qs = $qsBase;
+                    $qs['page'] = $p;
+                    return 'lote.php?' . http_build_query($qs);
+                };
+
+                $cur = (int)($page ?? 1);
+                ?>
+
+                <li class="page-item <?= $cur <= 1 ? 'disabled' : '' ?>">
+                    <a class="page-link" href="<?= htmlspecialchars($mkLink(max(1, $cur - 1))) ?>">«</a>
+                </li>
+
+                <?php for ($p = max(1, $cur - 2); $p <= min($totalPages, $cur + 2); $p++): ?>
+                    <li class="page-item <?= $p === $cur ? 'active' : '' ?>">
+                        <a class="page-link" href="<?= htmlspecialchars($mkLink($p)) ?>"><?= $p ?></a>
+                    </li>
+                <?php endfor; ?>
+
+                <li class="page-item <?= $cur >= $totalPages ? 'disabled' : '' ?>">
+                    <a class="page-link" href="<?= htmlspecialchars($mkLink(min($totalPages, $cur + 1))) ?>">»</a>
+                </li>
+            </ul>
+
+            <div class="text-center text-muted small">
+                Mostrando <?= count($itens ?? []) ?> de <?= (int)($totalItens ?? 0) ?> itens
+            </div>
+        </nav>
+    <?php endif; ?>
 
     <?php require_once __DIR__ . '/../modals/lotes/modal_add_item.php'; ?>
     <?php require_once __DIR__ . '/../modals/lotes/modal_novo_recebimento.php'; ?>

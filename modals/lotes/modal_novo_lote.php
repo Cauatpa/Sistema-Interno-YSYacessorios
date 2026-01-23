@@ -1,9 +1,4 @@
 <?php
-// modals/lotes/modal_novo_lote.php
-// Espera receber do arquivo que inclui:
-// $competencia  (string)
-// csrf_token()  (helper já carregado no lotes_view.php)
-
 if (!isset($competencia)) {
     $competencia = '';
 }

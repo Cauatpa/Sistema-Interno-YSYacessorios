@@ -1,13 +1,10 @@
 <?php
-// modals/lotes/modal_add_item.php
-// Dependências esperadas no include:
-// $editMode, $lote, $recebimentoAtualId, $produtos, csrf_token(), $_GET['open_item'] (opcional)
-
 if (empty($editMode)) return;
 
 $openItem = ((int)($_GET['open_item'] ?? 0) === 1);
 ?>
 
+<!-- Modal de adição de item -->
 <div class="modal fade" id="modalAddItem" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <form method="POST" action="actions/lote_item_add.php" class="modal-content" autocomplete="off">
@@ -114,6 +111,7 @@ $openItem = ((int)($_GET['open_item'] ?? 0) === 1);
     </div>
 </div>
 
+<!-- Script para sincronizar checkboxes e campos -->
 <script>
     document.addEventListener('DOMContentLoaded', () => {
         const vPrata = document.getElementById('vPrata');
@@ -130,8 +128,7 @@ $openItem = ((int)($_GET['open_item'] ?? 0) === 1);
         vOuro && vOuro.addEventListener('change', sync);
         sync();
     });
-</script>
-
+</script> -->
 <script>
     (() => {
         const modal = document.getElementById("modalAddItem");
@@ -192,7 +189,6 @@ $openItem = ((int)($_GET['open_item'] ?? 0) === 1);
         });
     })();
 </script>
-
 <script>
     document.addEventListener('DOMContentLoaded', () => {
         const shouldOpen = <?= $openItem ? 'true' : 'false' ?>;
