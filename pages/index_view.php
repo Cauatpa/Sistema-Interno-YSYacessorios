@@ -170,8 +170,8 @@ $returnUrl = $_SERVER['REQUEST_URI'];
         </div>
 
         <!-- ======================
-             Pesquisa + Filtros (somente PC)
-             ====================== -->
+        Pesquisa + Filtros (somente PC)
+        ====================== -->
         <form method="GET" class="card p-2 mb-3">
             <input type="hidden" name="p" value="1">
             <input type="hidden" name="competencia" value="<?= htmlspecialchars($competencia) ?>">
@@ -201,9 +201,7 @@ $returnUrl = $_SERVER['REQUEST_URI'];
                         <option value="todos" <?= $statusFiltro === 'todos' ? 'selected' : '' ?>>Todos</option>
                         <option value="pendentes" <?= $statusFiltro === 'pendentes' ? 'selected' : '' ?>>Pendentes</option>
                         <option value="finalizados" <?= $statusFiltro === 'finalizados' ? 'selected' : '' ?>>Finalizados</option>
-                        <option value="balanco_feito" <?= $statusFiltro === 'balanco_feito' ? 'selected' : '' ?>>
-                            Balanço feito
-                        </option>
+                        <option value="balanco_feito" <?= $statusFiltro === 'balanco_feito' ? 'selected' : '' ?>>Balanço feito</option>
                     </select>
                 </div>
 
@@ -263,6 +261,7 @@ $returnUrl = $_SERVER['REQUEST_URI'];
                 </div>
             </div>
         </form>
+
 
     </div>
 

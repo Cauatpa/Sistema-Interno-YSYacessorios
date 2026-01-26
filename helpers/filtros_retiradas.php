@@ -30,8 +30,9 @@ function normaliza_filtros(array $get): array
     $tipoPermitidos = ['todos', 'prata', 'ouro'];
     if (!in_array($tipo, $tipoPermitidos, true)) $tipo = 'todos';
 
+    // ✅ AQUI: permitir balanco_feito
     $statusFiltro = (string)($get['status'] ?? 'todos');
-    $statusPermitidos = ['todos', 'pendentes', 'finalizados'];
+    $statusPermitidos = ['todos', 'pendentes', 'finalizados', 'balanco_feito'];
     if (!in_array($statusFiltro, $statusPermitidos, true)) $statusFiltro = 'todos';
 
     $soBalanco = (int)($get['balanco'] ?? 0);
@@ -70,14 +71,15 @@ function montar_where_retiradas(string $competencia, array $f): array
     $where = " WHERE competencia = ? AND deleted_at IS NULL ";
     $params = [$competencia];
 
-    // Dashboard
+    // Dashboard (cards de cima)
     $dash = (string)($f['filtro'] ?? 'todos');
     if ($dash === 'pendentes') {
         $where .= " AND status <> 'finalizado' ";
     } elseif ($dash === 'finalizados') {
         $where .= " AND status = 'finalizado' ";
     } elseif ($dash === 'balanco') {
-        $where .= " AND precisa_balanco = 1 AND sem_estoque = 0 ";
+        // balanço pendente (não inclui sem_estoque)
+        $where .= " AND precisa_balanco = 1 AND sem_estoque = 0 AND COALESCE(balanco_feito,0) = 0 ";
     } elseif ($dash === 'sem_estoque') {
         $where .= " AND sem_estoque = 1 ";
     }
@@ -99,23 +101,20 @@ function montar_where_retiradas(string $competencia, array $f): array
         $params[] = $tipo;
     }
 
-    // Status dropdown
+    // Status dropdown (select Status)
     $statusFiltro = (string)($f['statusFiltro'] ?? 'todos');
     if ($statusFiltro === 'pendentes') {
         $where .= " AND status <> 'finalizado' ";
     } elseif ($statusFiltro === 'finalizados') {
         $where .= " AND status = 'finalizado' ";
-    } else if ($statusFiltro === 'pendentes') {
-        $where .= " AND (r.status <> 'finalizado' OR r.status IS NULL) ";
-    } elseif ($statusFiltro === 'finalizados') {
-        $where .= " AND r.status = 'finalizado' ";
     } elseif ($statusFiltro === 'balanco_feito') {
-        $where .= " AND r.balanco_feito = 1 ";
+        $where .= " AND COALESCE(balanco_feito,0) = 1 ";
     }
 
-    // Flags
+    // Checkboxes
     if ((int)($f['soBalanco'] ?? 0) === 1) {
-        $where .= " AND precisa_balanco = 1 AND sem_estoque = 0 ";
+        // Só balanço = pendente
+        $where .= " AND precisa_balanco = 1 AND sem_estoque = 0 AND COALESCE(balanco_feito,0) = 0 ";
     }
     if ((int)($f['soSemEstoque'] ?? 0) === 1) {
         $where .= " AND sem_estoque = 1 ";
