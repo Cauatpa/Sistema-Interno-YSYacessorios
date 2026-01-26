@@ -33,7 +33,8 @@ $stmt = $pdo->prepare("
         COALESCE(SUM(CASE WHEN status = 'finalizado' THEN 1 ELSE 0 END), 0) AS total_finalizados,
         COALESCE(SUM(CASE WHEN status <> 'finalizado' THEN 1 ELSE 0 END), 0) AS total_pendentes,
         COALESCE(SUM(CASE WHEN sem_estoque = 1 THEN 1 ELSE 0 END), 0) AS total_sem_estoque,
-        COALESCE(SUM(CASE WHEN precisa_balanco = 1 AND sem_estoque = 0 THEN 1 ELSE 0 END), 0) AS total_balanco,
+        COALESCE(SUM(CASE WHEN precisa_balanco = 1 AND sem_estoque = 0 AND COALESCE(balanco_feito,0) = 0 THEN 1 ELSE 0 END), 0) AS total_balanco,
+        COALESCE(SUM(CASE WHEN balanco_feito = 1 THEN 1 ELSE 0 END), 0) AS total_balanco_feito,
         COALESCE(SUM(COALESCE(quantidade_retirada, 0)), 0) AS total_itens_retirados
     FROM retiradas
     WHERE competencia = ?
@@ -171,11 +172,11 @@ $percSemEstoque = $totalPedidos > 0 ? round(($totalSemEstoque / $totalPedidos) *
             <div class="col-12 col-md-3">
                 <div class="card card-soft p-3 kpi">
                     <div class="d-flex align-items-center justify-content-between">
-                        <div class="icon gray">⏳</div>
-                        <div class="kpi-label">Pendentes</div>
+                        <div class="icon green">⚖️</div>
+                        <div class="kpi-label">Balanço feito</div>
                     </div>
-                    <div class="kpi-value mt-2"><?= (int)$totalPend ?></div>
-                    <div class="kpi-foot">Aguardando finalização</div>
+                    <div class="kpi-value mt-2"><?= (int)$totalBalancoFeito = (int)($kpis['total_balanco_feito'] ?? 0); ?></div>
+                    <div class="kpi-foot">Pedidos com balanço concluído</div>
                 </div>
             </div>
 

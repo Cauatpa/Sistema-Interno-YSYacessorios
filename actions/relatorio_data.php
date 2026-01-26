@@ -1,4 +1,6 @@
 <?php
+// actions/relatorio_data.php
+
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../helpers/auth.php';
 require_once __DIR__ . '/../helpers/competencia.php';
@@ -33,60 +35,72 @@ if ($limitParam === 'all' || $limitParam === '0' || $limitParam === 0) {
 }
 
 $resp = [
-  'status' => ['finalizados' => 0, 'pendentes' => 0],
+  // ✅ Agora o status é Finalizados + Balanço feito (como seu relatorio.js está esperando)
+  'status' => ['finalizados' => 0, 'balanco_feito' => 0],
+
+  // ✅ Mantém Alertas igual
   'alertas' => ['sem_estoque' => 0, 'balanco' => 0],
+
+  // ✅ Mantém gráficos
   'dias' => ['labels' => [], 'values' => []],
   'top_produtos' => ['labels' => [], 'values' => []],
+
+  // ✅ Mantém solicitantes (pedidos + itens entregues)
   'por_solicitante' => ['labels' => [], 'pedidos' => [], 'itens' => []],
 
+  // ✅ Se você quiser usar depois em cards/indicadores, já vai pronto
+  'balanco' => ['pendente' => 0, 'feito' => 0],
 ];
 
-// 1) Status
+/* ======================================================
+ * 1) STATUS (Finalizados + Balanço feito)
+ * ====================================================== */
 $stmt = $pdo->prepare("
   SELECT
-    COALESCE(SUM(status='finalizado'),0) AS finalizados,
-    COALESCE(SUM(status<>'finalizado'),0) AS pendentes
+    COALESCE(SUM(status = 'finalizado'), 0) AS finalizados,
+    COALESCE(SUM(COALESCE(balanco_feito,0) = 1), 0) AS balanco_feito
   FROM retiradas
   WHERE competencia = ?
     AND deleted_at IS NULL
 ");
 $stmt->execute([$competencia]);
-$st = $stmt->fetch(PDO::FETCH_ASSOC) ?: ['finalizados' => 0, 'pendentes' => 0];
+$st = $stmt->fetch(PDO::FETCH_ASSOC) ?: ['finalizados' => 0, 'balanco_feito' => 0];
 
-// 
+$resp['status'] = [
+  'finalizados'   => (int)($st['finalizados'] ?? 0),
+  'balanco_feito' => (int)($st['balanco_feito'] ?? 0),
+];
+
+/* ======================================================
+ * EXTRA) Balanço (pendente x feito) — útil pra cards
+ * - Pendente: precisa_balanco=1 e ainda não fez
+ * - Feito: balanco_feito=1
+ * ====================================================== */
 $stmt = $pdo->prepare("
   SELECT
-    SUM(precisa_balanco = 1) AS pendente,
-    SUM(balanco_feito = 1) AS feito
+    COALESCE(SUM(precisa_balanco = 1 AND COALESCE(balanco_feito,0) = 0), 0) AS pendente,
+    COALESCE(SUM(COALESCE(balanco_feito,0) = 1), 0) AS feito
   FROM retiradas
   WHERE competencia = ?
     AND deleted_at IS NULL
 ");
 $stmt->execute([$competencia]);
-
-$bal = $stmt->fetch(PDO::FETCH_ASSOC);
+$bal = $stmt->fetch(PDO::FETCH_ASSOC) ?: ['pendente' => 0, 'feito' => 0];
 
 $resp['balanco'] = [
   'pendente' => (int)($bal['pendente'] ?? 0),
   'feito'    => (int)($bal['feito'] ?? 0),
 ];
 
-
-$resp['status'] = [
-  'finalizados' => (int)($st['finalizados'] ?? 0),
-  'pendentes'   => (int)($st['pendentes'] ?? 0),
-  'balanco' => [
-    'pendente' => 0,
-    'feito' => 0
-  ],
-];
-
-
-// 2) Alertas
+/* ======================================================
+ * 2) ALERTAS
+ * - Sem estoque
+ * - Precisa balanço (sem sem_estoque e ainda não feito)
+ * ====================================================== */
 $stmt = $pdo->prepare("
   SELECT
-    COALESCE(SUM(sem_estoque=1),0) AS sem_estoque,
-    COALESCE(SUM(precisa_balanco=1 AND sem_estoque=0),0) AS balanco
+    COALESCE(SUM(sem_estoque = 1), 0) AS sem_estoque,
+    COALESCE(SUM(precisa_balanco = 1 AND sem_estoque = 0 AND COALESCE(balanco_feito,0) = 0), 0) AS balanco
   FROM retiradas
   WHERE competencia = ?
     AND deleted_at IS NULL
@@ -99,7 +113,9 @@ $resp['alertas'] = [
   'balanco'     => (int)($al['balanco'] ?? 0),
 ];
 
-// 3) Por dia
+/* ======================================================
+ * 3) POR DIA
+ * ====================================================== */
 $stmt = $pdo->prepare("
   SELECT DATE(data_pedido) AS dia, COUNT(*) AS total
   FROM retiradas
@@ -119,7 +135,9 @@ foreach ($rows as $r) {
 }
 $resp['dias'] = ['labels' => $labels, 'values' => $values];
 
-// 4) Top produtos (qtd retirada TOTAL) - com limite dinâmico
+/* ======================================================
+ * 4) TOP PRODUTOS (qtd retirada TOTAL) - com limite dinâmico
+ * ====================================================== */
 $sqlTop = "
   SELECT
     produto,
@@ -145,7 +163,11 @@ foreach ($top as $t) {
 }
 $resp['top_produtos'] = ['labels' => $topLabels, 'values' => $topValues];
 
-// 5) Por solicitante (pedidos finalizados + itens ENTREGUES)
+/* ======================================================
+ * 5) POR SOLICITANTE (pedidos finalizados + itens ENTREGUES)
+ * - pedidos: qtd de registros finalizados
+ * - itens: soma de quantidade_retirada
+ * ====================================================== */
 $stmt = $pdo->prepare("
   SELECT
     solicitante,

@@ -22,14 +22,16 @@
     }
 
     // 1) Status (doughnut)
+    // ✅ ÚNICA MUDANÇA: trocar "Pendentes" por "Balanço feito"
+    // ✅ e usar data.status.balanco_feito no lugar de data.status.pendentes
     const elStatus = document.getElementById("chartStatus");
     if (elStatus && data?.status) {
       new Chart(elStatus, {
         type: "doughnut",
         data: {
-          labels: ["Finalizados", "Pendentes"],
+          labels: ["Finalizados", "Balanço feito"],
           datasets: [
-            { data: [data.status.finalizados, data.status.pendentes] },
+            { data: [data.status.finalizados, data.status.balanco_feito] },
           ],
         },
         options: {
@@ -84,6 +86,7 @@
     }
 
     // 4) Top produtos (bar horizontal) - Mostrar mais (+10)
+    // ✅ Mantido 100% igual ao seu
     const elTop = document.getElementById("chartTopProdutos");
     let chartTop = null;
 
