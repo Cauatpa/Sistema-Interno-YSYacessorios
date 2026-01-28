@@ -1,0 +1,121 @@
+/* assets/css/relatorios.css */
+
+body {
+  background: #f7f8fb;
+}
+
+.container {
+  max-width: 1100px;
+}
+
+/* Header */
+.page-title {
+  font-weight: 800;
+  letter-spacing: -0.2px;
+}
+
+.page-sub {
+  font-size: 13px;
+}
+
+/* Card */
+.report-card {
+  border-radius: 14px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.12s ease,
+    border-color 0.12s ease;
+}
+
+.report-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(0, 0, 0, 0.18);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.1);
+}
+
+.report-card.disabled {
+  opacity: 0.72;
+}
+
+.report-card.disabled:hover {
+  transform: none;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.12);
+}
+
+/* Icon bubble */
+.report-icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  background: rgba(13, 110, 253, 0.08);
+  border: 1px solid rgba(13, 110, 253, 0.16);
+}
+
+.report-title {
+  font-weight: 750;
+  letter-spacing: -0.2px;
+}
+
+.report-desc {
+  font-size: 13px;
+  color: rgba(0, 0, 0, 0.62);
+}
+
+/* Ação discreta */
+.report-open {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.55);
+}
+
+.report-open .arrow {
+  transition: transform 0.15s ease;
+}
+
+.report-card:hover .report-open .arrow {
+  transform: translateX(3px);
+}
+
+/* Footer */
+.page-footer {
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.55);
+}
+
+/* Dark mode */
+html[data-bs-theme="dark"] body {
+  background: #0f1115;
+}
+
+html[data-bs-theme="dark"] .report-card {
+  background: #151922;
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.35);
+}
+
+html[data-bs-theme="dark"] .report-card:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+html[data-bs-theme="dark"] .report-desc,
+html[data-bs-theme="dark"] .report-open,
+html[data-bs-theme="dark"] .page-footer {
+  color: rgba(255, 255, 255, 0.65);
+}
+
+html[data-bs-theme="dark"] .report-icon {
+  background: rgba(13, 110, 253, 0.18);
+  border-color: rgba(13, 110, 253, 0.25);
+}

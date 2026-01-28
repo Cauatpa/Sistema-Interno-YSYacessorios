@@ -1,8 +1,8 @@
 <?php
-require 'config/database.php';
+require '../config/database.php';
 
-require_once __DIR__ . '/helpers/auth.php';
-require_once __DIR__ . '/helpers/csrf.php';
+require_once __DIR__ . '/../helpers/auth.php';
+require_once __DIR__ . '/../helpers/csrf.php';
 
 auth_session_start();
 auth_require_role('admin');
@@ -60,8 +60,8 @@ function labelRole(string $role): string
     <!-- Bootstrap -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 
-    <!-- Ícone da aba -->
-    <link rel="icon" type="image/png" href="assets/imgs/Y.png">
+    <link rel="icon" type="image/png" href="../assets/imgs/Y.png">
+    <script src="../assets/js/theme.js" defer></script>
 </head>
 
 <body class="p-3">
@@ -72,13 +72,13 @@ function labelRole(string $role): string
 
             <div class="d-flex gap-2">
 
-                <a href="index.php" class="btn btn-outline-secondary btn-sm">← Voltar</a>
+                <a href="../index.php" class="btn btn-outline-secondary btn-sm">← Voltar</a>
 
                 <button id="btnTheme" class="btn btn-outline-secondary btn-sm">
                     🌙 Tema escuro
                 </button>
 
-                <form method="POST" action="logout.php" class="d-inline">
+                <form method="POST" action="../logout.php" class="d-inline">
                     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token('logout')) ?>">
                     <button type="submit" class="btn btn-outline-secondary btn-sm">Sair</button>
                 </form>
@@ -96,7 +96,7 @@ function labelRole(string $role): string
         <div class="card p-3 mb-3">
             <h5 class="mb-3">➕ Criar novo usuário</h5>
 
-            <form method="POST" action="actions/usuarios_criar.php" class="row g-2">
+            <form method="POST" action="../actions/usuarios_criar.php" class="row g-2">
                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token('usuarios_criar')) ?>">
 
                 <div class="col-12 col-md-4">
@@ -172,7 +172,7 @@ function labelRole(string $role): string
 
                             <td class="text-nowrap">
                                 <!-- Reset senha (gera senha temporária) -->
-                                <form method="POST" action="actions/usuarios_reset_senha.php" class="d-inline">
+                                <form method="POST" action="../actions/usuarios_reset_senha.php" class="d-inline">
                                     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token('usuarios_reset')) ?>">
                                     <input type="hidden" name="id" value="<?= $id ?>">
                                     <button class="btn btn-outline-warning btn-sm"
@@ -191,7 +191,7 @@ function labelRole(string $role): string
                                 </button>
 
                                 <!-- Ativar/Desativar -->
-                                <form method="POST" action="actions/usuarios_toggle.php" class="d-inline">
+                                <form method="POST" action="../actions/usuarios_toggle.php" class="d-inline">
                                     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token('usuarios_toggle')) ?>">
                                     <input type="hidden" name="id" value="<?= $id ?>">
                                     <button class="btn btn-outline-danger btn-sm"
@@ -207,15 +207,17 @@ function labelRole(string $role): string
             </table>
         </div>
 
+        <p class="text-center mt-4 text-muted" style="font-size:13px;">
+            InterYSY • Central de Sistemas
+        </p>
     </div>
 
     <!-- ✅ Modais de trocar senha (um por usuário) -->
     <?php foreach ($users as $u): ?>
-        <?php require __DIR__ . '/modals/modal_trocar_senha_usuario.php'; ?>
+        <?php require __DIR__ . '/../modals/modal_trocar_senha_usuario.php'; ?>
     <?php endforeach; ?>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="assets/js/theme.js" defer></script>
 </body>
 
 </html>

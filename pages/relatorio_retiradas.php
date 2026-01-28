@@ -82,7 +82,7 @@ $percSemEstoque = $totalPedidos > 0 ? round(($totalSemEstoque / $totalPedidos) *
         <!-- Topbar -->
         <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2 mb-3">
             <div>
-                <div class="page-title">📊 Relatório do mês</div>
+                <div class="page-title">📊 Relatório do mês / Controle de Estoque (Retirada)</div>
                 <div class="subtle small">Resumo rápido do desempenho e status das retiradas</div>
             </div>
 
@@ -116,7 +116,7 @@ $percSemEstoque = $totalPedidos > 0 ? round(($totalSemEstoque / $totalPedidos) *
                     <noscript><button class="btn btn-primary">Ver</button></noscript>
                 </form>
 
-                <div class="d-flex justify-content-between justify-content-md-end align-items-center gap-2">
+                <div class="d-flex justify-content-between justify-content-md-end align-items-center gap-2 width-auto w-100">
                     <?php if ($mesFechado): ?>
                         <span class="pill pill-closed">🔒 Mês fechado</span>
                     <?php else: ?>
@@ -273,6 +273,9 @@ $percSemEstoque = $totalPedidos > 0 ? round(($totalSemEstoque / $totalPedidos) *
             </div>
         </div>
 
+        <p class="text-center mt-4 text-muted" style="font-size:13px;">
+            InterYSY • Central de Sistemas
+        </p>
     </div>
 
     <!-- Scripts -->

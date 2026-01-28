@@ -1,0 +1,108 @@
+/* Cards do portal */
+.portal-card {
+  border-radius: 14px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.12s ease,
+    border-color 0.12s ease;
+}
+
+.portal-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(0, 0, 0, 0.18);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.1);
+}
+
+/* Ícone */
+.portal-emoji {
+  font-size: 30px;
+  line-height: 1;
+  width: 44px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: rgba(13, 110, 253, 0.08);
+  border: 1px solid rgba(13, 110, 253, 0.14);
+}
+
+/* Textos */
+.portal-title {
+  font-weight: 700;
+  letter-spacing: -0.2px;
+}
+
+.portal-desc {
+  font-size: 13px;
+  color: rgba(0, 0, 0, 0.62);
+}
+
+/* Setinha */
+.portal-arrow {
+  font-size: 18px;
+  color: rgba(0, 0, 0, 0.35);
+}
+
+/* Badge */
+.portal-badge {
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+/* Disabled */
+.portal-disabled {
+  opacity: 0.72;
+}
+
+.portal-disabled:hover {
+  transform: none;
+  box-shadow: none;
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+/* Dark mode */
+html[data-bs-theme="dark"] .portal-card {
+  background: #151922;
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.45);
+}
+
+html[data-bs-theme="dark"] .portal-desc,
+html[data-bs-theme="dark"] .portal-arrow {
+  color: rgba(255, 255, 255, 0.65);
+}
+
+html[data-bs-theme="dark"] .portal-emoji {
+  background: rgba(13, 110, 253, 0.18);
+  border-color: rgba(13, 110, 253, 0.25);
+}
+
+html[data-bs-theme="dark"] .portal-card:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.portal-open {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.55);
+}
+
+.portal-open-arrow {
+  transition: transform 0.15s ease;
+}
+
+.portal-card:hover .portal-open-arrow {
+  transform: translateX(3px);
+}
+
+/* Dark mode */
+html[data-bs-theme="dark"] .portal-open {
+  color: rgba(255, 255, 255, 0.65);
+}

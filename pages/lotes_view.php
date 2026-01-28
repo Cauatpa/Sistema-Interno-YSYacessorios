@@ -314,6 +314,9 @@ $competencia = (string)($_GET['competencia'] ?? ($competencia ?? ''));
             </tbody>
 
         </table>
+        <p class="text-center mt-4 text-muted" style="font-size:13px;">
+            InterYSY • Central de Sistemas
+        </p>
     </div>
 
     <!-- Paginação -->

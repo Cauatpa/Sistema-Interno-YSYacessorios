@@ -1,8 +1,8 @@
 <?php
-require 'config/database.php';
+require '../config/database.php';
 
-require_once __DIR__ . '/helpers/auth.php';
-require_once __DIR__ . '/helpers/csrf.php';
+require_once __DIR__ . '/../helpers/auth.php';
+require_once __DIR__ . '/../helpers/csrf.php';
 
 auth_session_start();
 auth_require_role('admin');
@@ -30,14 +30,17 @@ function url_with(array $overrides = []): string
 {
     $q = $_GET;
     foreach ($overrides as $k => $v) {
-        if ($v === null) {
-            unset($q[$k]);
-        } else {
-            $q[$k] = $v;
-        }
+        if ($v === null) unset($q[$k]);
+        else $q[$k] = $v;
     }
-    return 'auditoria.php?' . http_build_query($q);
+
+    // sempre aponta pro próprio arquivo (mesmo se renomear/mover)
+    $self = basename(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) ?? 'auditoria.php');
+
+    $qs = http_build_query($q);
+    return $qs ? ($self . '?' . $qs) : $self;
 }
+
 
 /**
  * Config paginação
@@ -180,7 +183,7 @@ $entityOptions = ['retirada', 'fechamento', 'user']; // ajuste se você adiciona
     <title>Auditoria</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="icon" type="image/png" href="assets/imgs/Y.png">
+    <link rel="icon" type="image/png" href="../assets/imgs/Y.png">
 </head>
 
 <body class="p-3">
@@ -190,7 +193,7 @@ $entityOptions = ['retirada', 'fechamento', 'user']; // ajuste se você adiciona
             <h3 class="m-0">🧾 Auditoria (logs)</h3>
 
             <div class="d-flex gap-2">
-                <a href="index.php" class="btn btn-outline-secondary btn-sm">← Voltar</a>
+                <a href="../index.php" class="btn btn-outline-secondary btn-sm">← Voltar</a>
                 <button id="btnTheme" class="btn btn-outline-secondary btn-sm">🌙 Tema escuro</button>
             </div>
         </div>
@@ -250,7 +253,7 @@ $entityOptions = ['retirada', 'fechamento', 'user']; // ajuste se você adiciona
 
                 <div class="col-12 d-flex gap-2">
                     <button class="btn btn-primary">Filtrar</button>
-                    <a class="btn btn-outline-secondary" href="auditoria.php">Limpar</a>
+                    <a class="btn btn-outline-secondary" href="<?= h(basename(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH))) ?>">Limpar</a>
                 </div>
             </div>
         </form>
@@ -368,6 +371,9 @@ $entityOptions = ['retirada', 'fechamento', 'user']; // ajuste se você adiciona
             </nav>
         <?php endif; ?>
 
+        <p class="text-center mt-4 text-muted" style="font-size:13px;">
+            InterYSY • Central de Sistemas
+        </p>
     </div>
 
     <!-- Modais -->
@@ -418,6 +424,7 @@ $entityOptions = ['retirada', 'fechamento', 'user']; // ajuste se você adiciona
                 </div>
             </div>
         </div>
+
     <?php endforeach; ?>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
@@ -449,7 +456,7 @@ $entityOptions = ['retirada', 'fechamento', 'user']; // ajuste se você adiciona
         })();
     </script>
 
-    <script src="assets/js/theme.js" defer></script>
+    <script src="../assets/js/theme.js" defer></script>
 </body>
 
 </html>

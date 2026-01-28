@@ -43,7 +43,7 @@ if (auth_has_role('admin')) {
     $cards[] = [
         'title'   => 'Usuários',
         'desc'    => 'Gerenciar acessos e permissões',
-        'href'    => 'usuarios.php',
+        'href'    => 'pages/usuarios.php',
         'icon'    => '👥',
         'enabled' => true,
     ];
@@ -52,7 +52,7 @@ if (auth_has_role('admin')) {
     $cards[] = [
         'title'   => 'Auditoria',
         'desc'    => 'Logs do sistema e ações dos usuários',
-        'href'    => 'auditoria.php',
+        'href'    => 'pages/auditoria.php',
         'icon'    => '🕵️',
         'enabled' => true,
     ];

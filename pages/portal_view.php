@@ -12,6 +12,7 @@ csrf_session_start();
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="icon" type="image/png" href="assets/imgs/Y.png">
+    <link rel="stylesheet" href="assets/css/central.css">
 </head>
 
 <body class="p-3">
@@ -43,27 +44,55 @@ csrf_session_start();
         <div class="row g-3">
             <?php foreach ($cards as $c): ?>
                 <div class="col-12 col-md-6 col-lg-4">
-                    <?php if ($c['enabled']): ?>
-                        <a href="<?= $c['href'] ?>" class="card h-100 text-decoration-none">
-                            <div class="card-body">
-                                <div style="font-size:28px"><?= $c['icon'] ?></div>
-                                <h5 class="mt-2"><?= htmlspecialchars($c['title']) ?></h5>
-                                <p class="text-muted mb-0"><?= htmlspecialchars($c['desc']) ?></p>
+                    <?php if (!empty($c['enabled'])): ?>
+                        <a href="<?= htmlspecialchars($c['href'] ?? '#') ?>" class="text-decoration-none">
+                            <div class="card h-100 portal-card">
+                                <div class="card-body d-flex flex-column">
+                                    <div class="d-flex align-items-start gap-3">
+                                        <div class="portal-emoji"><?= $c['icon'] ?? '📦' ?></div>
+
+                                        <div class="flex-grow-1">
+                                            <div class="d-flex align-items-center justify-content-between gap-2">
+                                                <h5 class="mb-1 portal-title"><?= htmlspecialchars($c['title'] ?? '') ?></h5>
+                                            </div>
+
+                                            <p class="mb-0 portal-desc">
+                                                <?= htmlspecialchars($c['desc'] ?? '') ?>
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div class="mt-auto pt-3 portal-open">
+                                        <span>Acessar</span>
+                                        <span class="portal-open-arrow">→</span>
+                                    </div>
+                                </div>
                             </div>
                         </a>
                     <?php else: ?>
-                        <div class="card h-100 opacity-75">
-                            <div class="card-body">
-                                <div style="font-size:28px"><?= $c['icon'] ?></div>
-                                <h5 class="mt-2"><?= htmlspecialchars($c['title']) ?></h5>
-                                <p class="text-muted mb-0"><?= htmlspecialchars($c['desc']) ?></p>
-                                <span class="badge bg-secondary mt-2">Em breve</span>
+                        <div class="card h-100 portal-card portal-disabled">
+                            <div class="card-body d-flex flex-column">
+                                <div class="d-flex align-items-start gap-3">
+                                    <div class="portal-emoji"><?= $c['icon'] ?? '⏳' ?></div>
+
+                                    <div class="flex-grow-1">
+                                        <h5 class="mb-1 portal-title"><?= htmlspecialchars($c['title'] ?? '') ?></h5>
+                                        <p class="mb-0 portal-desc">
+                                            <?= htmlspecialchars($c['desc'] ?? '') ?>
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div class="mt-auto pt-3">
+                                    <span class="badge text-bg-secondary">Em breve</span>
+                                </div>
                             </div>
                         </div>
                     <?php endif; ?>
                 </div>
             <?php endforeach; ?>
         </div>
+
 
         <p class="text-center mt-4 text-muted" style="font-size:13px;">
             InterYSY • Central de Sistemas

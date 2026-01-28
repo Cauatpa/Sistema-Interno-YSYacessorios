@@ -540,6 +540,10 @@ $returnUrl = $_SERVER['REQUEST_URI'];
                 </ul>
             </nav>
         </div>
+
+        <p class="text-center mt-4 text-muted" style="font-size:13px;">
+            InterYSY • Central de Sistemas
+        </p>
     <?php endif; ?>
 
     <!-- Modais -->

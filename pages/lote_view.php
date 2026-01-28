@@ -564,6 +564,10 @@ $openItem = ((int)($_GET['open_item'] ?? 0) === 1);
                 <?php endif; ?>
             </tbody>
         </table>
+
+        <p class="text-center mt-4 text-muted" style="font-size:13px;">
+            InterYSY • Central de Sistemas
+        </p>
     </div>
 
     <!-- Paginação -->
