@@ -7,8 +7,18 @@ require_once __DIR__ . '/../helpers/audit.php';
 $u = auth_require_login();
 csrf_session_start();
 
+file_put_contents(__DIR__ . '/../logs_delete_lote.txt', date('c') . " CHEGOU\n", FILE_APPEND);
+
+if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+    http_response_code(405);
+    exit('Método inválido.');
+}
+
+// preserva contexto (mês) ao voltar
+$competencia = trim((string)($_POST['competencia'] ?? ''));
+$compQS = ($competencia !== '') ? ('&competencia=' . urlencode($competencia)) : '';
+
 if (!auth_has_role('admin')) {
-    // log tentativa sem permissão
     audit_log(
         $pdo,
         'delete',
@@ -40,7 +50,7 @@ if (!csrf_validate($_POST['csrf_token'] ?? '', 'lote_delete')) {
         'Falha ao excluir lote (CSRF inválido).'
     );
 
-    header('Location: ../lotes.php?toast=' . urlencode('CSRF inválido.'));
+    header('Location: ../index.php?page=lotes' . $compQS . '&toast=' . urlencode('CSRF inválido.'));
     exit;
 }
 
@@ -59,7 +69,7 @@ if ($loteId <= 0) {
         'Falha ao excluir lote (ID inválido).'
     );
 
-    header('Location: ../lotes.php?toast=' . urlencode('Lote inválido.'));
+    header('Location: ../index.php?page=lotes' . $compQS . '&toast=' . urlencode('Lote inválido.'));
     exit;
 }
 
@@ -89,7 +99,7 @@ if (!$beforeLote) {
         "Falha ao excluir lote #{$loteId} (não encontrado)."
     );
 
-    header('Location: ../lotes.php?toast=' . urlencode('Lote não encontrado.'));
+    header('Location: ../index.php?page=lotes' . $compQS . '&toast=' . urlencode('Lote não encontrado.'));
     exit;
 }
 
@@ -169,7 +179,6 @@ try {
 
     $pdo->commit();
 
-    // auditoria sucesso
     audit_log(
         $pdo,
         'delete',
@@ -187,7 +196,7 @@ try {
         "Excluiu lote #{$loteId} (soft delete)."
     );
 
-    header('Location: ../lotes.php?toast=' . urlencode('Lote excluído.'));
+    header('Location: ../index.php?page=lotes' . $compQS . '&toast=' . urlencode('Lote excluído.'));
     exit;
 } catch (Throwable $e) {
     $pdo->rollBack();
@@ -210,6 +219,6 @@ try {
         "Erro ao excluir lote #{$loteId} (banco)."
     );
 
-    header('Location: ../lotes.php?toast=' . urlencode('Erro ao excluir lote.'));
+    header('Location: ../index.php?page=lotes' . $compQS . '&toast=' . urlencode('Erro ao excluir lote.'));
     exit;
 }

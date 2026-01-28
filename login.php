@@ -6,7 +6,7 @@ auth_session_start();
 
 // Se já estiver logado, manda pra home
 if (auth_user()) {
-    header('Location: index.php');
+    header('Location: index.php?page=portal');
     exit;
 }
 

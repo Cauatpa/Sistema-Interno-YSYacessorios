@@ -22,8 +22,9 @@ $totalPages = isset($totalPages) ? (int)$totalPages : max(1, (int)ceil($total / 
 function page_url(int $p): string
 {
     $q = $_GET;
+    $q['page'] = 'lotes'; // ✅ garante no router
     $q['p'] = $p;
-    return 'lotes.php?' . http_build_query($q);
+    return 'index.php?' . http_build_query($q);
 }
 
 $q = trim((string)($_GET['q'] ?? ''));
@@ -65,7 +66,7 @@ $competencia = (string)($_GET['competencia'] ?? ($competencia ?? ''));
                 <?php endif; ?>
             </div>
 
-            <a href="index.php" class="btn btn-outline-secondary btn-sm">← Voltar</a>
+            <a href="index.php?page=portal" class="btn btn-outline-secondary btn-sm">← Voltar</a>
 
             <button id="btnTheme" class="btn btn-outline-secondary btn-sm">
                 🌙 Tema escuro
@@ -81,7 +82,8 @@ $competencia = (string)($_GET['competencia'] ?? ($competencia ?? ''));
     <!-- Barra: Mês + Novo Lote -->
     <div class="d-flex flex-column flex-md-row gap-2 justify-content-between align-items-stretch mb-3">
 
-        <form method="GET" class="d-flex gap-2 align-items-center">
+        <form method="GET" action="index.php" class="d-flex gap-2 align-items-center">
+            <input type="hidden" name="page" value="lotes"> <!-- ✅ garante no router -->
             <label class="fw-bold">Mês:</label>
 
             <!-- preserva filtros ao trocar mês -->
@@ -115,7 +117,8 @@ $competencia = (string)($_GET['competencia'] ?? ($competencia ?? ''));
     </div>
 
     <!-- Filtros -->
-    <form method="GET" class="card p-2 mb-3">
+    <form method="GET" action="index.php" class="card p-2 mb-3">
+        <input type="hidden" name="page" value="lotes">
         <input type="hidden" name="competencia" value="<?= htmlspecialchars($competencia) ?>">
         <input type="hidden" name="p" value="1">
 
@@ -162,12 +165,13 @@ $competencia = (string)($_GET['competencia'] ?? ($competencia ?? ''));
                 <button class="btn btn-primary w-100" type="submit">Filtrar</button>
 
                 <a class="btn btn-outline-secondary w-100"
-                    href="<?= htmlspecialchars('lotes.php?competencia=' . urlencode($competencia)) ?>">
+                    href="<?= htmlspecialchars('index.php?page=lotes&competencia=' . urlencode($competencia)) ?>">
                     Limpar
                 </a>
             </div>
         </div>
     </form>
+
 
     <!-- Tabela -->
     <div class="table-responsive">
@@ -176,7 +180,6 @@ $competencia = (string)($_GET['competencia'] ?? ($competencia ?? ''));
                 <tr>
                     <th>#</th>
                     <th>📦 Código</th>
-                    <!-- <th class="d-none d-md-table-cell">📅 Recebimento</th> -->
                     <th class="d-none d-md-table-cell">🏷 Fornecedor</th>
                     <th>📄 Itens</th>
                     <th>⚠️ Divergências</th>
@@ -216,7 +219,6 @@ $competencia = (string)($_GET['competencia'] ?? ($competencia ?? ''));
                         $div = (int)($l['divergencias'] ?? 0);
                     ?>
 
-                        <!-- Lote -->
                         <tr data-id="<?= $id ?>">
                             <td><?= $id ?></td>
 
@@ -226,7 +228,6 @@ $competencia = (string)($_GET['competencia'] ?? ($competencia ?? ''));
                                     <div class="text-muted small"><?= htmlspecialchars((string)$l['observacoes']) ?></div>
                                 <?php endif; ?>
                             </td>
-
 
                             <td class="d-none d-md-table-cell">
                                 <?= htmlspecialchars((string)($l['fornecedor'] ?? '—')) ?>
@@ -246,7 +247,6 @@ $competencia = (string)($_GET['competencia'] ?? ($competencia ?? ''));
 
                             <td class="d-none d-md-table-cell"><?= htmlspecialchars($criadoPor) ?></td>
 
-                            <!-- Ações -->
                             <td>
                                 <div class="d-flex flex-column align-items-center gap-1" style="min-width: 140px;">
 
@@ -273,6 +273,7 @@ $competencia = (string)($_GET['competencia'] ?? ($competencia ?? ''));
                                             onsubmit="return confirm('Tem certeza que deseja EXCLUIR este lote? Essa ação não pode ser desfeita.');">
                                             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token('lote_delete')) ?>">
                                             <input type="hidden" name="lote_id" value="<?= (int)$id ?>">
+                                            <input type="hidden" name="competencia" value="<?= htmlspecialchars($competencia) ?>"> <!-- ✅ preserva -->
                                             <button type="submit" class="btn btn-outline-danger btn-sm w-100 text-center">
                                                 🗑 Excluir
                                             </button>

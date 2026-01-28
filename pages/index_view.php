@@ -84,23 +84,16 @@ $returnUrl = $_SERVER['REQUEST_URI'];
                 <?php endif; ?>
             </div>
 
-            <?php if ($canAdmin): ?>
-                <a href="usuarios.php" class="btn btn-outline-primary btn-sm">Usuários</a>
-            <?php endif; ?>
+            <a href="index.php" class="btn btn-outline-secondary btn-sm">← Voltar</a>
 
-            <?php if ($canOperate || $canAdmin): ?>
+            <a href="/InterYSY/relatorio.php?competencia=<?= urlencode($competencia) ?>"
+                class="btn btn-outline-success btn-sm">Relatório</a>
+
+            <?php if (auth_has_role('operador') || auth_has_role('admin')): ?>
                 <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalMinhaSenha">
                     🔑 Minha senha
                 </button>
-
-                <a href="lotes.php" class="btn btn-outline-primary btn-sm">📦 Lotes</a>
             <?php endif; ?>
-
-            <?php if ($canAdmin): ?>
-                <a href="auditoria.php" class="btn btn-outline-success btn-sm">Auditoria</a>
-            <?php endif; ?>
-
-            <a href="relatorio.php?competencia=<?= htmlspecialchars($competencia) ?>" class="btn btn-outline-success btn-sm">Relatório</a>
 
             <button id="btnTheme" class="btn btn-outline-secondary btn-sm">
                 🌙 Tema escuro
@@ -172,7 +165,9 @@ $returnUrl = $_SERVER['REQUEST_URI'];
         <!-- ======================
         Pesquisa + Filtros (somente PC)
         ====================== -->
-        <form method="GET" class="card p-2 mb-3">
+        <form method="GET" action="index.php" class="card p-2 mb-3">
+            <input type="hidden" name="page" value="retiradas">
+
             <input type="hidden" name="p" value="1">
             <input type="hidden" name="competencia" value="<?= htmlspecialchars($competencia) ?>">
             <input type="hidden" name="filtro" value="<?= htmlspecialchars($filtro) ?>">
@@ -245,6 +240,7 @@ $returnUrl = $_SERVER['REQUEST_URI'];
 
                     <a class="btn btn-outline-secondary w-100"
                         href="<?= htmlspecialchars(url_com_query('index.php', $_GET, [
+                                    'page' => 'retiradas',   // ✅ mantém o módulo
                                     'filtro' => 'todos',
                                     'q' => null,
                                     'tipo' => null,
@@ -258,11 +254,10 @@ $returnUrl = $_SERVER['REQUEST_URI'];
                                 ])) ?>">
                         Limpar
                     </a>
+
                 </div>
             </div>
         </form>
-
-
     </div>
 
     <!-- Barra superior: Mês + Fechar/Reabrir mês -->
@@ -394,6 +389,7 @@ $returnUrl = $_SERVER['REQUEST_URI'];
             </thead>
 
             <tbody>
+                <!-- Linhas da tabela -->
                 <?php if (empty($retiradas)): ?>
                     <tr>
                         <td colspan="10" class="text-muted py-4">

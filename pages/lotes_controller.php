@@ -26,11 +26,12 @@ $dataIni = (string)($_GET['data_ini'] ?? '');
 $dataFim = (string)($_GET['data_fim'] ?? '');
 
 // ---------------------
-// Meses disponíveis
+// Meses disponíveis (somente lotes ativos)
 // ---------------------
 $stmtMeses = $pdo->query("
     SELECT DISTINCT competencia
     FROM lotes
+    WHERE deleted_at IS NULL
     ORDER BY competencia DESC
 ");
 $mesesDisponiveis = $stmtMeses->fetchAll(PDO::FETCH_COLUMN);
@@ -38,7 +39,10 @@ $mesesDisponiveis = $stmtMeses->fetchAll(PDO::FETCH_COLUMN);
 // ---------------------
 // WHERE dinâmico
 // ---------------------
-$where = ['l.competencia = ?'];
+$where = [
+    'l.deleted_at IS NULL', // ✅ importante pro soft delete
+    'l.competencia = ?'
+];
 $params = [$competencia];
 
 if ($q !== '') {
@@ -94,7 +98,7 @@ $sql = "
     SELECT
         l.*,
 
-        u.nome   AS criado_por_nome,
+        u.nome    AS criado_por_nome,
         u.usuario AS criado_por_usuario,
 
         COUNT(li.id) AS itens_total,
@@ -108,7 +112,11 @@ $sql = "
 
     FROM lotes l
     LEFT JOIN users u ON u.id = l.criado_por
-    LEFT JOIN lote_itens li ON li.lote_id = l.id
+
+    -- ✅ filtra itens ativos pra não contar deletados
+    LEFT JOIN lote_itens li
+           ON li.lote_id = l.id
+          AND li.deleted_at IS NULL
 
     {$whereSql}
 
