@@ -4,9 +4,7 @@
     const competencia = root?.dataset?.competencia;
     if (!competencia) return;
 
-    const url = `./actions/relatorio_data.php?competencia=${encodeURIComponent(
-      competencia,
-    )}`;
+    const url = `../actions/relatorio_data.php?competencia=${encodeURIComponent(competencia)}`;
 
     const res = await fetch(url, { credentials: "same-origin" });
 
@@ -138,9 +136,7 @@
     }
 
     async function fetchTopByLimit(limit) {
-      const url2 = `./actions/relatorio_data.php?competencia=${encodeURIComponent(
-        competencia,
-      )}&limit=${encodeURIComponent(String(limit))}`;
+      const url2 = `../actions/relatorio_data.php?competencia=${encodeURIComponent(competencia)}&limit=${encodeURIComponent(String(limit))}`;
 
       const res2 = await fetch(url2, { credentials: "same-origin" });
       if (!res2.ok) {

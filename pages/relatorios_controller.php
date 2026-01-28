@@ -12,7 +12,7 @@ $cards = [
         'title' => 'Estoque',
         'desc'  => 'Indicadores, retiradas, balanço e status mensal',
         'icon'  => '📦',
-        'href'  => '../relatorio.php',
+        'href'  => '/InterYSY/pages/relatorio_retiradas.php',
         'enabled' => true,
     ],
     [

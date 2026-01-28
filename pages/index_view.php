@@ -86,7 +86,7 @@ $returnUrl = $_SERVER['REQUEST_URI'];
 
             <a href="index.php" class="btn btn-outline-secondary btn-sm">← Voltar</a>
 
-            <a href="/InterYSY/relatorio.php?competencia=<?= urlencode($competencia) ?>"
+            <a href="/InterYSY/pages/relatorio_retiradas.php?competencia=<?= urlencode($competencia) ?>"
                 class="btn btn-outline-success btn-sm">Relatório</a>
 
             <?php if (auth_has_role('operador') || auth_has_role('admin')): ?>
