@@ -372,7 +372,7 @@ $returnUrl = $_SERVER['REQUEST_URI'];
         <table class="table table-bordered table-striped text-center align-middle">
             <thead class="">
                 <tr>
-                    <th>🕒 Pedido</th>
+                    <th class="d-none d-md-table-cell">🕒 Pedido</th>
                     <th>📦 Produto</th>
                     <th>🔢 Quantidades</th>
 
@@ -412,7 +412,9 @@ $returnUrl = $_SERVER['REQUEST_URI'];
                             data-retirada-id="<?= $id ?>"
                             data-pendente="<?= ($isPendente ? '1' : '0') ?>"
                             data-status="<?= htmlspecialchars((string)($r['status'] ?? '')) ?>">
-                            <td><?= date('d/m H:i', strtotime((string)$r['data_pedido'])) ?></td>
+                            <td class="d-none d-md-table-cell">
+                                <?= date('d/m H:i', strtotime((string)$r['data_pedido'])) ?>
+                            </td>
                             <td><strong><?= htmlspecialchars((string)$r['produto']) ?></strong></td>
                             <td class="text-start">
                                 <div class="fw-semibold">Solicitado: <?= (int)($r['quantidade_solicitada'] ?? 0) ?></div>
