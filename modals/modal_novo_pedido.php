@@ -44,6 +44,7 @@
                         </div>
                     </div>
 
+                    <!-- Lógica de sincronia entre checkboxes de status especiais -->
                     <div class="mb-3">
                         <label class="form-label">Tipo</label>
 
@@ -433,6 +434,51 @@
                     });
                 })();
             </script>
+
+            <!-- Lógica de sincronia entre checkboxes de status especiais -->
+            <script>
+                (() => {
+                    const modal = document.getElementById("modalNovoPedido");
+                    if (!modal) return;
+
+                    const chkSem = modal.querySelector("#chkSemEstoque");
+                    const chkBal = modal.querySelector("#chkPrecisaBalanco");
+                    const chkFeito = modal.querySelector("#chkBalancoFeito");
+
+                    if (!chkSem || !chkBal) return;
+
+                    function syncStatus() {
+                        // 🔴 SEM ESTOQUE domina tudo
+                        if (chkSem.checked) {
+                            chkBal.checked = false;
+                            chkBal.disabled = true;
+
+                            if (chkFeito) {
+                                chkFeito.checked = false;
+                                chkFeito.disabled = true;
+                            }
+                            return;
+                        }
+
+                        // libera quando NÃO é sem estoque
+                        chkBal.disabled = false;
+                        if (chkFeito) chkFeito.disabled = false;
+
+                        // 🟡 Precisa balanço não pode coexistir com balanço feito
+                        if (chkBal.checked && chkFeito) {
+                            chkFeito.checked = false;
+                        }
+                    }
+
+                    chkSem.addEventListener("change", syncStatus);
+                    chkBal.addEventListener("change", syncStatus);
+                    chkFeito?.addEventListener("change", syncStatus);
+
+                    // aplica ao abrir modal (edição)
+                    syncStatus();
+                })();
+            </script>
+
         </div>
     </div>
 </div>

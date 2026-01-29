@@ -6,7 +6,6 @@ require_once __DIR__ . '/../helpers/validation.php';
 require_once __DIR__ . '/../services/fechamento.php';
 
 auth_session_start();
-// verifica se está logado
 auth_require_login();
 
 $competencia = (string)($_GET['competencia'] ?? competencia_atual());
@@ -29,19 +28,121 @@ $mesFechado = mes_esta_fechado($pdo, $competencia);
 $stmt = $pdo->prepare("
     SELECT
         COUNT(*) AS total_pedidos,
-        COALESCE(SUM(quantidade_solicitada), 0) AS total_itens_solicitados,
-        COALESCE(SUM(CASE WHEN status = 'finalizado' THEN 1 ELSE 0 END), 0) AS total_finalizados,
-        COALESCE(SUM(CASE WHEN status <> 'finalizado' THEN 1 ELSE 0 END), 0) AS total_pendentes,
+        COALESCE(SUM(COALESCE(quantidade_solicitada,0)), 0) AS total_itens_solicitados,
+        COALESCE(SUM(COALESCE(quantidade_retirada,0)), 0) AS total_itens_retirados,
+
+        -- Sem estoque (contagem)
         COALESCE(SUM(CASE WHEN sem_estoque = 1 THEN 1 ELSE 0 END), 0) AS total_sem_estoque,
-        COALESCE(SUM(CASE WHEN precisa_balanco = 1 AND sem_estoque = 0 AND COALESCE(balanco_feito,0) = 0 THEN 1 ELSE 0 END), 0) AS total_balanco,
-        COALESCE(SUM(CASE WHEN balanco_feito = 1 THEN 1 ELSE 0 END), 0) AS total_balanco_feito,
-        COALESCE(SUM(COALESCE(quantidade_retirada, 0)), 0) AS total_itens_retirados
+
+        -- Precisa balanço (contagem) - somente quando não é sem estoque e ainda não fez balanço
+        COALESCE(SUM(
+            CASE
+                WHEN precisa_balanco = 1
+                 AND sem_estoque = 0
+                 AND COALESCE(balanco_feito,0) = 0
+                THEN 1 ELSE 0
+            END
+        ), 0) AS total_balanco,
+
+        -- Balanço feito (contagem)
+        COALESCE(SUM(CASE WHEN COALESCE(balanco_feito,0) = 1 THEN 1 ELSE 0 END), 0) AS total_balanco_feito,
+
+        -- Finalizados (contagem)
+        COALESCE(SUM(
+            CASE
+                WHEN sem_estoque = 0
+                 AND NOT (precisa_balanco = 1 AND COALESCE(balanco_feito,0) = 0)
+                 AND TRIM(LOWER(COALESCE(status,''))) = 'finalizado'
+                THEN 1 ELSE 0
+            END
+        ), 0) AS total_finalizados,
+
+        -- Pendentes (contagem)
+        COALESCE(SUM(
+            CASE
+                WHEN NOT (
+                    sem_estoque = 1
+                    OR (precisa_balanco = 1 AND sem_estoque = 0 AND COALESCE(balanco_feito,0) = 0)
+                    OR (
+                        sem_estoque = 0
+                        AND NOT (precisa_balanco = 1 AND COALESCE(balanco_feito,0) = 0)
+                        AND TRIM(LOWER(COALESCE(status,''))) = 'finalizado'
+                    )
+                )
+                THEN 1 ELSE 0
+            END
+        ), 0) AS total_pendentes,
+
+        -- =========================
+        -- ITENS POR CARD (PEDIDOS e ENTREGUES)
+        -- =========================
+
+        -- Sem estoque
+        COALESCE(SUM(CASE WHEN sem_estoque = 1 THEN COALESCE(quantidade_solicitada,0) ELSE 0 END), 0) AS itens_sem_estoque_pedidos,
+        COALESCE(SUM(CASE WHEN sem_estoque = 1 THEN COALESCE(quantidade_retirada,0)    ELSE 0 END), 0) AS itens_sem_estoque_entregues,
+
+        -- Precisa balanço (aberto)
+        COALESCE(SUM(
+            CASE
+                WHEN precisa_balanco = 1
+                 AND sem_estoque = 0
+                 AND COALESCE(balanco_feito,0) = 0
+                THEN COALESCE(quantidade_solicitada,0) ELSE 0
+            END
+        ), 0) AS itens_precisa_balanco_pedidos,
+        COALESCE(SUM(
+            CASE
+                WHEN precisa_balanco = 1
+                 AND sem_estoque = 0
+                 AND COALESCE(balanco_feito,0) = 0
+                THEN COALESCE(quantidade_retirada,0) ELSE 0
+            END
+        ), 0) AS itens_precisa_balanco_entregues,
+
+        -- Finalizados
+        COALESCE(SUM(
+            CASE
+                WHEN sem_estoque = 0
+                 AND NOT (precisa_balanco = 1 AND COALESCE(balanco_feito,0) = 0)
+                 AND TRIM(LOWER(COALESCE(status,''))) = 'finalizado'
+                THEN COALESCE(quantidade_solicitada,0) ELSE 0
+            END
+        ), 0) AS itens_finalizados_pedidos,
+        COALESCE(SUM(
+            CASE
+                WHEN sem_estoque = 0
+                 AND NOT (precisa_balanco = 1 AND COALESCE(balanco_feito,0) = 0)
+                 AND TRIM(LOWER(COALESCE(status,''))) = 'finalizado'
+                THEN COALESCE(quantidade_retirada,0) ELSE 0
+            END
+        ), 0) AS itens_finalizados_entregues,
+
+        -- Outros (diagnóstico)
+        COALESCE(SUM(
+            CASE
+                WHEN NOT (
+                    sem_estoque = 1
+                    OR (precisa_balanco = 1 AND sem_estoque = 0 AND COALESCE(balanco_feito,0) = 0)
+                    OR (
+                        sem_estoque = 0
+                        AND NOT (precisa_balanco = 1 AND COALESCE(balanco_feito,0) = 0)
+                        AND TRIM(LOWER(COALESCE(status,''))) = 'finalizado'
+                    )
+                )
+                THEN COALESCE(quantidade_retirada,0) ELSE 0
+            END
+        ), 0) AS itens_outros
+
     FROM retiradas
     WHERE competencia = ?
       AND deleted_at IS NULL
 ");
+
+
 $stmt->execute([$competencia]);
 $kpis = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+
+$itensOutros = (int)($kpis['itens_outros'] ?? 0);
 
 function h($v): string
 {
@@ -51,14 +152,41 @@ function h($v): string
 $totalPedidos      = (int)($kpis['total_pedidos'] ?? 0);
 $totalItensSolic   = (int)($kpis['total_itens_solicitados'] ?? 0);
 $totalRetirados    = (int)($kpis['total_itens_retirados'] ?? 0);
+
 $totalFinal        = (int)($kpis['total_finalizados'] ?? 0);
 $totalPend         = (int)($kpis['total_pendentes'] ?? 0);
+
 $totalSemEstoque   = (int)($kpis['total_sem_estoque'] ?? 0);
 $totalBalanco      = (int)($kpis['total_balanco'] ?? 0);
+$totalBalancoFeito = (int)($kpis['total_balanco_feito'] ?? 0);
 
+$itensSemEstoquePedidos   = (int)($kpis['itens_sem_estoque_pedidos'] ?? 0);
+$itensSemEstoqueEntregues = (int)($kpis['itens_sem_estoque_entregues'] ?? 0);
+
+$itensBalancoPedidos      = (int)($kpis['itens_precisa_balanco_pedidos'] ?? 0);
+$itensBalancoEntregues    = (int)($kpis['itens_precisa_balanco_entregues'] ?? 0);
+
+$itensFinalPedidos        = (int)($kpis['itens_finalizados_pedidos'] ?? 0);
+$itensFinalEntregues      = (int)($kpis['itens_finalizados_entregues'] ?? 0);
 
 $percFinal      = $totalPedidos > 0 ? round(($totalFinal / $totalPedidos) * 100) : 0;
 $percSemEstoque = $totalPedidos > 0 ? round(($totalSemEstoque / $totalPedidos) * 100) : 0;
+$percBalanco    = $totalPedidos > 0 ? round(($totalBalanco / $totalPedidos) * 100) : 0;
+
+$totalItensSolic = (int)($kpis['total_itens_solicitados'] ?? 0);
+$totalRetirados  = (int)($kpis['total_itens_retirados'] ?? 0);
+
+$diffItens = $totalRetirados - $totalItensSolic;
+
+// helpers visuais
+$diffAbs   = abs($diffItens);
+$diffLabel = $diffItens === 0
+    ? 'Sem diferença'
+    : ($diffItens < 0 ? 'Diferença' : 'Itens excedentes');
+
+$diffClass = $diffItens === 0
+    ? 'text-muted'
+    : ($diffItens < 0 ? 'text-danger' : 'text-success');
 ?>
 <!DOCTYPE html>
 <html lang="pt-br" data-competencia="<?= h($competencia) ?>" data-bs-theme="">
@@ -68,10 +196,7 @@ $percSemEstoque = $totalPedidos > 0 ? round(($totalSemEstoque / $totalPedidos) *
     <title>Relatório do mês</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <!-- ✅ Bootstrap CSS (faltava isso) -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-
-    <!-- Seus estilos -->
     <link rel="stylesheet" href="../assets/css/relatorio.css">
     <link rel="icon" type="image/png" href="../assets/imgs/Y.png">
 </head>
@@ -96,7 +221,6 @@ $percSemEstoque = $totalPedidos > 0 ? round(($totalSemEstoque / $totalPedidos) *
                 </button>
             </div>
         </div>
-
 
         <!-- Header Card (Mês + Status) -->
         <div class="card card-soft p-3 mb-3">
@@ -132,7 +256,9 @@ $percSemEstoque = $totalPedidos > 0 ? round(($totalSemEstoque / $totalPedidos) *
                     Competência selecionada: <strong><?= h($competencia) ?></strong>
                 </div>
                 <div class="small text-muted">
-                    Finalização: <strong><?= (int)$percFinal ?>%</strong> | Sem estoque: <strong><?= (int)$percSemEstoque ?>%</strong>
+                    Finalização: <strong><?= (int)$percFinal ?>%</strong> |
+                    Sem estoque: <strong><?= (int)$percSemEstoque ?>%</strong> |
+                    Precisa balanço: <strong><?= (int)$percBalanco ?>%</strong>
                 </div>
             </div>
         </div>
@@ -157,7 +283,7 @@ $percSemEstoque = $totalPedidos > 0 ? round(($totalSemEstoque / $totalPedidos) *
                         <div class="kpi-label">Itens solicitados</div>
                     </div>
                     <div class="kpi-value mt-2"><?= (int)$totalItensSolic ?></div>
-                    <div class="kpi-foot">Soma de quantidade_solicitada</div>
+                    <div class="kpi-foot">Soma de quantidade de itens</div>
                 </div>
             </div>
 
@@ -168,7 +294,14 @@ $percSemEstoque = $totalPedidos > 0 ? round(($totalSemEstoque / $totalPedidos) *
                         <div class="kpi-label">Itens retirados</div>
                     </div>
                     <div class="kpi-value mt-2"><?= (int)$totalRetirados ?></div>
-                    <div class="kpi-foot">Soma de quantidade_retirada</div>
+                    <div class="kpi-foot d-flex justify-content-between align-items-center">
+                        <span>Soma de quantidade de itens</span>
+
+                        <span class="<?= $diffClass ?> small">
+                            <?= $diffLabel ?>:
+                            <strong><?= number_format($diffAbs, 0, ',', '.') ?></strong>
+                        </span>
+                    </div>
                 </div>
             </div>
 
@@ -178,7 +311,7 @@ $percSemEstoque = $totalPedidos > 0 ? round(($totalSemEstoque / $totalPedidos) *
                         <div class="icon green">⚖️</div>
                         <div class="kpi-label">Balanço feito</div>
                     </div>
-                    <div class="kpi-value mt-2"><?= (int)$totalBalancoFeito = (int)($kpis['total_balanco_feito'] ?? 0); ?></div>
+                    <div class="kpi-value mt-2"><?= (int)$totalBalancoFeito ?></div>
                     <div class="kpi-foot">Pedidos com balanço concluído</div>
                 </div>
             </div>
@@ -190,7 +323,11 @@ $percSemEstoque = $totalPedidos > 0 ? round(($totalSemEstoque / $totalPedidos) *
                         <div class="kpi-label">Sem estoque</div>
                     </div>
                     <div class="kpi-value mt-2"><?= (int)$totalSemEstoque ?></div>
-                    <div class="kpi-foot"><?= (int)$percSemEstoque ?>% do total</div>
+                    <div class="kpi-foot">
+                        <?= (int)$percSemEstoque ?>% do total
+                        <span class="ms-2 text-muted">• Pedidos: <?= number_format($itensSemEstoquePedidos, 0, ',', '.') ?></span>
+                        <span class="ms-2 text-muted">• Entregues: <?= number_format($itensSemEstoqueEntregues, 0, ',', '.') ?></span>
+                    </div>
                 </div>
             </div>
 
@@ -201,7 +338,11 @@ $percSemEstoque = $totalPedidos > 0 ? round(($totalSemEstoque / $totalPedidos) *
                         <div class="kpi-label">Precisa balanço</div>
                     </div>
                     <div class="kpi-value mt-2"><?= (int)$totalBalanco ?></div>
-                    <div class="kpi-foot">Balanço (sem sem_estoque)</div>
+                    <div class="kpi-foot">
+                        <?= (int)$percBalanco ?>% do total
+                        <span class="ms-2 text-muted">• Pedidos: <?= number_format($itensBalancoPedidos, 0, ',', '.') ?></span>
+                        <span class="ms-2 text-muted">• Entregues: <?= number_format($itensBalancoEntregues, 0, ',', '.') ?></span>
+                    </div>
                 </div>
             </div>
 
@@ -212,10 +353,24 @@ $percSemEstoque = $totalPedidos > 0 ? round(($totalSemEstoque / $totalPedidos) *
                         <div class="kpi-label">Finalizados</div>
                     </div>
                     <div class="kpi-value mt-2"><?= (int)$totalFinal ?></div>
-                    <div class="kpi-foot"><?= (int)$percFinal ?>% do total</div>
+                    <div class="kpi-foot">
+                        <?= (int)$percFinal ?>% do total
+                        <span class="ms-2 text-muted">• Pedidos: <?= number_format($itensFinalPedidos, 0, ',', '.') ?></span>
+                        <span class="ms-2 text-muted">• Entregues: <?= number_format($itensFinalEntregues, 0, ',', '.') ?></span>
+                    </div>
                 </div>
             </div>
 
+            <!-- ✅ Diagnóstico (opcional, mas recomendo MUITO pra fechar a conta) -->
+            <?php if ($itensOutros > 0): ?>
+                <div class="col-12">
+                    <div class="alert alert-warning small mb-0">
+                        ⚠️ Existem <strong><?= number_format($itensOutros, 0, ',', '.') ?></strong> itens entregues em registros que não estão em
+                        <strong>Sem estoque</strong>, <strong>Precisa balanço</strong> (aberto) ou <strong>Finalizados</strong>.
+                        <span class="text-muted">Isso normalmente acontece quando há pedidos pendentes com quantidade_entregue preenchida.</span>
+                    </div>
+                </div>
+            <?php endif; ?>
         </div>
 
         <!-- Gráficos -->
@@ -278,7 +433,6 @@ $percSemEstoque = $totalPedidos > 0 ? round(($totalSemEstoque / $totalPedidos) *
         </p>
     </div>
 
-    <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script src="../assets/js/relatorio.js" defer></script>

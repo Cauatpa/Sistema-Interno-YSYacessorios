@@ -8,21 +8,39 @@ function redirect_back_with_params(string $fallback, array $params): void
     $return = trim($return);
 
     // fallback seguro
-    if ($return === '' || preg_match('~^https?://~i', $return)) {
+    // - bloqueia http(s) externo
+    // - bloqueia esquema-relative "//dominio.com"
+    // - bloqueia strings com quebras de linha (header injection)
+    if (
+        $return === '' ||
+        preg_match('~^https?://~i', $return) ||
+        str_starts_with($return, '//') ||
+        preg_match('/[\r\n]/', $return)
+    ) {
         $return = $fallback;
     }
 
-    // se vier só "index.php", transforma em /InterYSY/index.php
-    $path = parse_url($return, PHP_URL_PATH) ?: $fallback;
+    // path do destino
+    $path = (string)(parse_url($return, PHP_URL_PATH) ?? '');
+    if ($path === '') {
+        $path = $fallback;
+    }
 
+    // se vier "index.php" ou "pages/....php", transforma em "/InterYSY/index.php"
     if ($path !== '' && $path[0] !== '/') {
         $base = rtrim(dirname(dirname($_SERVER['SCRIPT_NAME'] ?? '/')), '/'); // /InterYSY
         $path = $base . '/' . ltrim($path, '/');
     }
 
-    $query = parse_url($return, PHP_URL_QUERY) ?? '';
-    parse_str($query, $q);
+    // query existente do return
+    $query = (string)(parse_url($return, PHP_URL_QUERY) ?? '');
+    $q = [];
+    if ($query !== '') {
+        parse_str($query, $q);
+        if (!is_array($q)) $q = [];
+    }
 
+    // injeta/override params
     foreach ($params as $k => $v) {
         $q[$k] = $v;
     }

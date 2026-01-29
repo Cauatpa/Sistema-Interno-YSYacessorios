@@ -19,6 +19,13 @@ if (!csrf_validate($_POST['csrf_token'] ?? '', 'balanco_feito')) {
     exit;
 }
 
+$sem_estoque = (int)($_POST['sem_estoque'] ?? 0);
+$precisa_balanco = (int)($_POST['precisa_balanco'] ?? 0);
+if ($sem_estoque === 1) {
+    // não permite
+    exit('Não é possível marcar balanço em pedido sem estoque.');
+}
+
 $id = (int)($_POST['id'] ?? 0);
 if ($id <= 0) {
     if ($isAjax) {

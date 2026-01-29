@@ -273,8 +273,21 @@ audit_log(
     "Editou pedido #{$id} ({$competencia})."
 );
 
-redirect_with_query('../index.php', [
-    'competencia' => $competencia,
+// ✅ volta para a página que abriu o modal (preserva filtros/página)
+// e ainda injeta toast + highlight sem quebrar nada.
+$return = (string)($_POST['return'] ?? '');
+
+// fallback seguro
+if ($return === '') $return = '../index.php';
+
+// proteção simples contra retorno externo
+$path = (string)(parse_url($return, PHP_URL_PATH) ?? '');
+if ($path === '' || str_starts_with($return, 'http://') || str_starts_with($return, 'https://')) {
+    $return = '../index.php';
+}
+
+// injeta/atualiza os params no return
+redirect_with_query($return, [
     'toast' => 'editado',
     'highlight_id' => $id
 ]);

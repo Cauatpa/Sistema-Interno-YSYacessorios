@@ -62,7 +62,14 @@ $stmtDash = $pdo->prepare("
         COUNT(*) AS total,
         SUM(CASE WHEN status <> 'finalizado' THEN 1 ELSE 0 END) AS pendentes,
         SUM(CASE WHEN status = 'finalizado' THEN 1 ELSE 0 END) AS finalizados,
-        SUM(CASE WHEN precisa_balanco = 1 AND sem_estoque = 0 THEN 1 ELSE 0 END) AS balanco,
+        SUM(
+            CASE
+                WHEN precisa_balanco = 1
+                    AND sem_estoque = 0
+                    AND COALESCE(balanco_feito,0) = 0
+                THEN 1 ELSE 0
+            END
+        ) AS balanco,
         SUM(CASE WHEN sem_estoque = 1 THEN 1 ELSE 0 END) AS sem_estoque
     FROM retiradas
     WHERE competencia = ? AND deleted_at IS NULL

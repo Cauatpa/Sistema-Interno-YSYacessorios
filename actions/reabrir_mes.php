@@ -124,7 +124,7 @@ audit_log(
     "Reabriu o mês {$competencia}."
 );
 
-redirect_with_query('../index.php', [
+redirect_back_with_params('../index.php', [
     'competencia' => $competencia,
     'toast' => 'mes_reaberto'
 ]);

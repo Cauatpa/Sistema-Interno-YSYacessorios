@@ -99,7 +99,7 @@ audit_log(
     "Excluiu o pedido #{$id} ({$competencia})."
 );
 
-redirect_with_query('../index.php', [
+redirect_back_with_params('../index.php', [
     'competencia' => $competencia,
     'toast' => 'excluido',
     'highlight_id' => $id

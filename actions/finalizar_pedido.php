@@ -140,7 +140,7 @@ if ($status === 'finalizado') {
         "Retirada #{$id} já estava finalizada."
     );
 
-    redirect_with_query('../index.php', [
+    redirect_back_with_params('../index.php', [
         'competencia' => $competencia,
         'toast' => 'ja_finalizado',
         'highlight_id' => $id
@@ -152,6 +152,13 @@ $qtdSolicitada = (int)($before['quantidade_solicitada'] ?? 0);
 
 $precisa_balanco = (int)($_POST['precisa_balanco'] ?? 0);
 $sem_estoque = (int)($_POST['sem_estoque'] ?? 0);
+
+if ($sem_estoque === 1) {
+    $precisa_balanco = 0;      // ✅ trava balanço
+    $balanco_feito = 0;        // ✅ trava balanço feito
+} else {
+    $balanco_feito = (int)($_POST['balanco_feito'] ?? 0); // se você usa isso nesse form
+}
 
 $rawQtd = $_POST['quantidade_retirada'] ?? null;
 if (is_string($rawQtd) && trim($rawQtd) === '') $rawQtd = null;
@@ -339,5 +346,5 @@ if ($openNextId) {
     $params['open_finalizar_id'] = $openNextId;
 }
 
-redirect_with_query('../index.php', $params);
+redirect_back_with_params('../index.php', $params);
 exit;
