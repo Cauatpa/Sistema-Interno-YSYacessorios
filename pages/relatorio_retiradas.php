@@ -99,7 +99,21 @@ $stmt = $pdo->prepare("
             END
         ), 0) AS itens_precisa_balanco_entregues,
 
-        -- Finalizados
+        -- ✅ Balanço feito (itens)
+        COALESCE(SUM(
+            CASE
+                WHEN COALESCE(balanco_feito,0) = 1
+                THEN COALESCE(quantidade_solicitada,0) ELSE 0
+            END
+        ), 0) AS itens_balanco_feito_pedidos,
+        COALESCE(SUM(
+            CASE
+                WHEN COALESCE(balanco_feito,0) = 1
+                THEN COALESCE(quantidade_retirada,0) ELSE 0
+            END
+        ), 0) AS itens_balanco_feito_entregues,
+
+        -- Finalizados (itens)
         COALESCE(SUM(
             CASE
                 WHEN sem_estoque = 0
@@ -138,9 +152,9 @@ $stmt = $pdo->prepare("
       AND deleted_at IS NULL
 ");
 
-
 $stmt->execute([$competencia]);
 $kpis = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+
 
 $itensOutros = (int)($kpis['itens_outros'] ?? 0);
 
@@ -175,6 +189,9 @@ $percBalanco    = $totalPedidos > 0 ? round(($totalBalanco / $totalPedidos) * 10
 
 $totalItensSolic = (int)($kpis['total_itens_solicitados'] ?? 0);
 $totalRetirados  = (int)($kpis['total_itens_retirados'] ?? 0);
+
+$itensBalancoFeitoPed  = (int)($kpis['itens_balanco_feito_pedidos'] ?? 0);
+$itensBalancoFeitoEnt  = (int)($kpis['itens_balanco_feito_entregues'] ?? 0);
 
 $diffItens = $totalRetirados - $totalItensSolic;
 
@@ -312,7 +329,11 @@ $diffClass = $diffItens === 0
                         <div class="kpi-label">Balanço feito</div>
                     </div>
                     <div class="kpi-value mt-2"><?= (int)$totalBalancoFeito ?></div>
-                    <div class="kpi-foot">Pedidos com balanço concluído</div>
+                    <div class="kpi-foot small text-muted">
+                        <span class="ms-2">• Pedidos: <?= number_format($itensBalancoFeitoPed, 0, ',', '.') ?></span>
+                        <span class="ms-2">• Entregues: <?= number_format($itensBalancoFeitoEnt, 0, ',', '.') ?></span>
+                    </div>
+
                 </div>
             </div>
 

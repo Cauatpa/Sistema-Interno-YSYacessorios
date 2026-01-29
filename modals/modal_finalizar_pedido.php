@@ -56,19 +56,24 @@
                             value="1"
                             id="sem<?= (int)$r['id'] ?>"
                             onchange="
-                                const qtd = document.getElementById('qtdRetirada<?= (int)$r['id'] ?>');
-                                const bal = document.getElementById('balanco<?= (int)$r['id'] ?>');
-                                if (this.checked) {
-                                    if (qtd) { qtd.value = 0; qtd.disabled = true; }
-                                    if (bal) { bal.checked = true; }
-                                } else {
-                                    if (qtd) { qtd.disabled = false; qtd.focus(); }
+                            const qtd = document.getElementById('qtdRetirada<?= (int)$r['id'] ?>');
+                            if (this.checked) {
+                                if (qtd) { 
+                                    qtd.value = 0; 
+                                    qtd.disabled = true; 
                                 }
-                            ">
+                            } else {
+                                if (qtd) { 
+                                    qtd.disabled = false; 
+                                    qtd.focus(); 
+                                }
+                            }
+                        ">
                         <label class="form-check-label fw-semibold" for="sem<?= (int)$r['id'] ?>">
                             ❌ Produto sem estoque
                         </label>
                     </div>
+
 
                     <div class="alert alert-light border py-2 small mt-3 mb-0">
                         Atalhos: <strong>Enter</strong> finaliza • <strong>Shift + Enter</strong> finaliza e abre o próximo

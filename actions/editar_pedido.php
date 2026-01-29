@@ -129,6 +129,28 @@ if (!competencia_valida($competencia)) {
 
 $isFinalizado = ($status === 'finalizado');
 
+// Regra: não pode editar pedidos de meses fechados
+$observacao = trim((string)($_POST['observacao'] ?? ''));
+$estoque_chegou = !empty($_POST['estoque_chegou']) ? 1 : 0;
+
+$sem_estoque = !empty($_POST['sem_estoque']) ? 1 : 0;
+$precisa_balanco = !empty($_POST['precisa_balanco']) ? 1 : 0;
+
+$statusNovo = $statusAtualDoBanco; // busque o status atual antes, ou use $r se já vier no POST
+
+if ($estoque_chegou) {
+    $statusNovo = 'finalizado';
+    $sem_estoque = 0;
+    // $precisa_balanco = 0; // opcional
+    // opcional: se quiser “quantidade_retirada” automaticamente:
+    // $quantidade_retirada = $quantidade_solicitada;
+}
+if ($estoque_chegou && !$sem_estoque) {
+    // ignora tentativa inválida
+    $estoque_chegou = 0;
+}
+
+
 /**
  * Quantidade entregue: só pode editar se finalizado (Opção A)
  */
@@ -273,21 +295,7 @@ audit_log(
     "Editou pedido #{$id} ({$competencia})."
 );
 
-// ✅ volta para a página que abriu o modal (preserva filtros/página)
-// e ainda injeta toast + highlight sem quebrar nada.
-$return = (string)($_POST['return'] ?? '');
-
-// fallback seguro
-if ($return === '') $return = '../index.php';
-
-// proteção simples contra retorno externo
-$path = (string)(parse_url($return, PHP_URL_PATH) ?? '');
-if ($path === '' || str_starts_with($return, 'http://') || str_starts_with($return, 'https://')) {
-    $return = '../index.php';
-}
-
-// injeta/atualiza os params no return
-redirect_with_query($return, [
+redirect_back_with_params('../index.php', [
     'toast' => 'editado',
-    'highlight_id' => $id
+    'highlight_id' => $id,
 ]);

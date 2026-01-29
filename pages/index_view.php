@@ -1,7 +1,7 @@
 <?php
 // Permissões (operador+ e admin)
-$canOperate = auth_has_role('operador'); // operador ou admin
-$canAdmin   = auth_has_role('admin');    // somente admin
+$canOperate = auth_has_role('operador') || auth_has_role('admin'); // operador OU admin
+$canAdmin   = auth_has_role('admin');                               // somente admin
 
 // Usuário logado
 $u = $u ?? [];
