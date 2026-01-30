@@ -1,29 +1,92 @@
 /* assets/css/relatorios.css */
 
-body {
-  background: #f7f8fb;
+/* =========================
+   Tema YSY (tokens)
+   ========================= */
+:root {
+  --ysy-blue: #002855;
+  --ysy-pink: #f5dade;
+
+  /* apoio */
+  --ysy-blue-soft: #1a3d66;
+  --ysy-pink-soft: #f0c6cf;
+
+  /* neutros */
+  --ysy-bg: #f7f8fb;
+  --ysy-card: #ffffff;
+  --ysy-border: rgba(0, 0, 0, 0.12);
+  --ysy-text-muted: rgba(0, 0, 0, 0.62);
+  --ysy-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+  --ysy-shadow-hover: 0 10px 22px rgba(0, 0, 0, 0.1);
 }
 
-.container {
+/* =========================
+   Base
+   ========================= */
+body {
+  background: var(--ysy-bg);
+}
+
+/* ⚠️ Evita mexer no .container padrão do Bootstrap.
+   Se quiser limitar o relatório, use .report-container no HTML */
+.report-container {
   max-width: 1100px;
 }
 
-/* Header */
+/* =========================
+   Header / textos
+   ========================= */
 .page-title {
   font-weight: 800;
   letter-spacing: -0.2px;
+  color: var(--ysy-blue);
 }
 
 .page-sub {
   font-size: 13px;
+  color: var(--ysy-text-muted);
 }
 
-/* Card */
+/* Prefira NÃO aplicar cor global em .fw-semibold (bootstrap usa muito).
+   Se quiser, use classes do relatório como .report-title */
+.report-title,
+.section-title {
+  color: var(--ysy-blue);
+  font-weight: 750;
+  letter-spacing: -0.2px;
+}
+
+/* =========================
+   Pills (mês aberto / fechado)
+   ========================= */
+.pill-open {
+  background: rgba(0, 40, 85, 0.1);
+  color: var(--ysy-blue);
+  border: 1px solid rgba(0, 40, 85, 0.15);
+}
+
+.pill-closed {
+  background: rgba(245, 218, 222, 0.7);
+  color: var(--ysy-blue);
+  border: 1px solid rgba(0, 40, 85, 0.12);
+}
+
+/* =========================
+   Cards gerais do relatório
+   ========================= */
+.card-soft {
+  border-radius: 14px;
+  border: 1px solid var(--ysy-border);
+  background: var(--ysy-card);
+  box-shadow: var(--ysy-shadow);
+}
+
+/* Cards “clicáveis” (lista de relatórios etc.) */
 .report-card {
   border-radius: 14px;
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  background: #fff;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+  border: 1px solid var(--ysy-border);
+  background: var(--ysy-card);
+  box-shadow: var(--ysy-shadow);
   transition:
     transform 0.12s ease,
     box-shadow 0.12s ease,
@@ -33,7 +96,7 @@ body {
 .report-card:hover {
   transform: translateY(-2px);
   border-color: rgba(0, 0, 0, 0.18);
-  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--ysy-shadow-hover);
 }
 
 .report-card.disabled {
@@ -42,11 +105,13 @@ body {
 
 .report-card.disabled:hover {
   transform: none;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
-  border-color: rgba(0, 0, 0, 0.12);
+  box-shadow: var(--ysy-shadow);
+  border-color: var(--ysy-border);
 }
 
-/* Icon bubble */
+/* =========================
+   Ícones KPI / bubbles
+   ========================= */
 .report-icon {
   width: 46px;
   height: 46px;
@@ -55,18 +120,32 @@ body {
   align-items: center;
   justify-content: center;
   font-size: 22px;
-  background: rgba(13, 110, 253, 0.08);
-  border: 1px solid rgba(13, 110, 253, 0.16);
+
+  /* Agora com cara YSY (não azul bootstrap) */
+  background: rgba(0, 40, 85, 0.08);
+  border: 1px solid rgba(0, 40, 85, 0.16);
+  color: var(--ysy-blue);
 }
 
-.report-title {
-  font-weight: 750;
-  letter-spacing: -0.2px;
+/* Seus “icon.*” dos KPIs */
+.icon.green {
+  background: rgba(0, 40, 85, 0.1);
+  color: var(--ysy-blue);
+}
+
+.icon.red {
+  background: rgba(245, 218, 222, 0.85);
+  color: var(--ysy-blue);
+}
+
+.icon.yellow {
+  background: rgba(245, 218, 222, 0.6);
+  color: var(--ysy-blue);
 }
 
 .report-desc {
   font-size: 13px;
-  color: rgba(0, 0, 0, 0.62);
+  color: var(--ysy-text-muted);
 }
 
 /* Ação discreta */
@@ -94,28 +173,137 @@ body {
   color: rgba(0, 0, 0, 0.55);
 }
 
-/* Dark mode */
-html[data-bs-theme="dark"] body {
-  background: #0f1115;
+/* Diferença (você tinha .text-danger forçando azul) */
+.text-danger {
+  color: var(--ysy-blue) !important;
 }
 
-html[data-bs-theme="dark"] .report-card {
-  background: #151922;
-  border-color: rgba(255, 255, 255, 0.12);
-  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.35);
+/* =========================
+   Área dos 3 gráficos
+   ========================= */
+
+/* Use no HTML: <div class="row g-3 mt-1 charts-row"> e cada coluna com "charts-col" */
+@media (min-width: 992px) {
+  .charts-row {
+    display: flex;
+    flex-wrap: nowrap;
+  }
+
+  .charts-row > .charts-col {
+    flex: 0 0 33.3333%;
+    max-width: 33.3333%;
+  }
+}
+
+/* Wrapper para padronizar altura e centralizar canvas */
+.chart-wrapper {
+  height: 240px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chart-wrapper canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* =========================
+   Dark mode (YSY)
+   ========================= */
+html[data-bs-theme="dark"] {
+  --ysy-bg: #0f1115;
+  --ysy-card: #151922;
+  --ysy-border: rgba(255, 255, 255, 0.12);
+  --ysy-text-muted: rgba(255, 255, 255, 0.65);
+  --ysy-shadow: 0 10px 22px rgba(0, 0, 0, 0.35);
+  --ysy-shadow-hover: 0 14px 26px rgba(0, 0, 0, 0.45);
+}
+
+html[data-bs-theme="dark"] body {
+  background: var(--ysy-bg);
 }
 
 html[data-bs-theme="dark"] .report-card:hover {
   border-color: rgba(255, 255, 255, 0.2);
 }
 
-html[data-bs-theme="dark"] .report-desc,
 html[data-bs-theme="dark"] .report-open,
-html[data-bs-theme="dark"] .page-footer {
-  color: rgba(255, 255, 255, 0.65);
+html[data-bs-theme="dark"] .page-footer,
+html[data-bs-theme="dark"] .page-sub,
+html[data-bs-theme="dark"] .report-desc {
+  color: var(--ysy-text-muted);
 }
 
 html[data-bs-theme="dark"] .report-icon {
-  background: rgba(13, 110, 253, 0.18);
-  border-color: rgba(13, 110, 253, 0.25);
+  background: rgba(245, 218, 222, 0.12);
+  border-color: rgba(245, 218, 222, 0.2);
+  color: var(--ysy-pink);
+}
+
+html[data-bs-theme="dark"] .pill-open {
+  background: rgba(245, 218, 222, 0.12);
+  border-color: rgba(245, 218, 222, 0.18);
+  color: var(--ysy-pink);
+}
+
+html[data-bs-theme="dark"] .pill-closed {
+  background: rgba(245, 218, 222, 0.22);
+  border-color: rgba(245, 218, 222, 0.22);
+  color: var(--ysy-pink);
+}
+
+/* =========================
+   DARK MODE (melhor contraste)
+   ========================= */
+html[data-bs-theme="dark"] body {
+  background: #0b0f14 !important;
+}
+
+html[data-bs-theme="dark"] .card-soft {
+  background: #121a24 !important; /* card visível */
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+html[data-bs-theme="dark"] .page-title,
+html[data-bs-theme="dark"] .fw-semibold {
+  color: #e6eef8 !important;
+}
+
+html[data-bs-theme="dark"] .subtle,
+html[data-bs-theme="dark"] .text-muted,
+html[data-bs-theme="dark"] .kpi-foot,
+html[data-bs-theme="dark"] .small {
+  color: rgba(230, 238, 248, 0.72) !important;
+}
+
+html[data-bs-theme="dark"] .kpi-value {
+  color: #ffffff !important;
+}
+
+/* Inputs/Selects no dark */
+html[data-bs-theme="dark"] .form-select,
+html[data-bs-theme="dark"] .form-control {
+  background: #0f1620 !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  color: #e6eef8 !important;
+}
+html[data-bs-theme="dark"] .form-select:focus,
+html[data-bs-theme="dark"] .form-control:focus {
+  border-color: rgba(77, 163, 255, 0.45) !important;
+  box-shadow: 0 0 0 0.2rem rgba(77, 163, 255, 0.15) !important;
+}
+
+/* Mais respiro entre cards (principalmente entre gráficos) */
+.card.card-soft {
+  margin-bottom: 14px;
+  margin-top: 14px;
+}
+
+#chartDias {
+  margin-top: 50px;
+}
+#diasResumo {
+  margin-top: 50px;
 }

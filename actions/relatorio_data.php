@@ -53,43 +53,60 @@ $resp = [
 ];
 
 /* ======================================================
- * 1) STATUS (Finalizados + Balanço feito)
+ * 1) STATUS (Finalizados + Balanço feito + Precisa balanço + Sem estoque)
+ * Regras:
+ * - Sem estoque: sem_estoque=1 E balanco_feito=0
+ * - Precisa balanço: precisa_balanco=1 E sem_estoque=0 E balanco_feito=0
+ * - Balanço feito: balanco_feito=1
+ * - Finalizados: status='finalizado' E sem_estoque=0 E (não precisa balanço aberto)
  * ====================================================== */
 $stmt = $pdo->prepare("
   SELECT
-    COALESCE(SUM(status = 'finalizado'), 0) AS finalizados,
-    COALESCE(SUM(COALESCE(balanco_feito,0) = 1), 0) AS balanco_feito
+    COALESCE(SUM(
+      CASE
+        WHEN COALESCE(balanco_feito,0) = 1 THEN 1
+        ELSE 0
+      END
+    ),0) AS balanco_feito,
+
+    COALESCE(SUM(
+      CASE
+        WHEN COALESCE(sem_estoque,0) = 1
+         AND COALESCE(balanco_feito,0) = 0
+        THEN 1 ELSE 0
+      END
+    ),0) AS sem_estoque,
+
+    COALESCE(SUM(
+      CASE
+        WHEN COALESCE(precisa_balanco,0) = 1
+         AND COALESCE(sem_estoque,0) = 0
+         AND COALESCE(balanco_feito,0) = 0
+        THEN 1 ELSE 0
+      END
+    ),0) AS balanco,
+
+    COALESCE(SUM(
+      CASE
+        WHEN TRIM(LOWER(COALESCE(status,''))) = 'finalizado'
+         AND COALESCE(sem_estoque,0) = 0
+         AND NOT (COALESCE(precisa_balanco,0) = 1 AND COALESCE(balanco_feito,0) = 0)
+        THEN 1 ELSE 0
+      END
+    ),0) AS finalizados
+
   FROM retiradas
   WHERE competencia = ?
     AND deleted_at IS NULL
 ");
 $stmt->execute([$competencia]);
-$st = $stmt->fetch(PDO::FETCH_ASSOC) ?: ['finalizados' => 0, 'balanco_feito' => 0];
+$st = $stmt->fetch(PDO::FETCH_ASSOC) ?: ['finalizados' => 0, 'balanco_feito' => 0, 'balanco' => 0, 'sem_estoque' => 0];
 
 $resp['status'] = [
   'finalizados'   => (int)($st['finalizados'] ?? 0),
   'balanco_feito' => (int)($st['balanco_feito'] ?? 0),
-];
-
-/* ======================================================
- * EXTRA) Balanço (pendente x feito) — útil pra cards
- * - Pendente: precisa_balanco=1 e ainda não fez
- * - Feito: balanco_feito=1
- * ====================================================== */
-$stmt = $pdo->prepare("
-  SELECT
-    COALESCE(SUM(precisa_balanco = 1 AND COALESCE(balanco_feito,0) = 0), 0) AS pendente,
-    COALESCE(SUM(COALESCE(balanco_feito,0) = 1), 0) AS feito
-  FROM retiradas
-  WHERE competencia = ?
-    AND deleted_at IS NULL
-");
-$stmt->execute([$competencia]);
-$bal = $stmt->fetch(PDO::FETCH_ASSOC) ?: ['pendente' => 0, 'feito' => 0];
-
-$resp['balanco'] = [
-  'pendente' => (int)($bal['pendente'] ?? 0),
-  'feito'    => (int)($bal['feito'] ?? 0),
+  'balanco'       => (int)($st['balanco'] ?? 0),       // precisa balanço (aberto)
+  'sem_estoque'   => (int)($st['sem_estoque'] ?? 0),
 ];
 
 /* ======================================================

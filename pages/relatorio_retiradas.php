@@ -219,7 +219,7 @@ $diffClass = $diffItens === 0
 </head>
 
 <body class="p-3 p-md-4">
-    <div class="container">
+    <div class="container report-container">
 
         <!-- Topbar -->
         <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2 mb-3">
@@ -395,63 +395,115 @@ $diffClass = $diffItens === 0
         </div>
 
         <!-- Gráficos -->
-        <div class="row g-3 mt-1">
-            <div class="col-12 col-lg-4">
-                <div class="card card-soft p-3">
+        <div class="row col-12 mb-3 mt-3 charts-row">
+            <div class="col-12 col-lg-4 charts-col">
+                <div class="card card-soft p-3 h-100">
                     <div class="fw-semibold mb-2">Status do mês</div>
-                    <canvas id="chartStatus" height="180"></canvas>
+                    <div class="chart-wrapper">
+                        <canvas id="chartStatus"></canvas>
+                    </div>
                 </div>
             </div>
 
-            <div class="col-12 col-lg-4">
-                <div class="card card-soft p-3">
+            <div class="col-12 col-lg-4 charts-col">
+                <div class="card card-soft p-3 h-100">
                     <div class="fw-semibold mb-2">Alertas</div>
-                    <canvas id="chartAlertas" height="180"></canvas>
+                    <div class="chart-wrapper">
+                        <canvas id="chartAlertas" style="margin-top: 50px;"></canvas>
+                    </div>
                 </div>
             </div>
 
-            <div class="col-12 col-lg-4">
-                <div class="card card-soft p-3">
+            <div class="col-12 col-lg-4 charts-col">
+                <div class="card card-soft p-3 h-100">
                     <div class="fw-semibold mb-2">Pedidos por dia</div>
-                    <canvas id="chartDias" height="180"></canvas>
-                </div>
-            </div>
-
-            <div class="col-12">
-                <div class="card card-soft p-3">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <div class="fw-semibold">Top produtos</div>
-                        <small class="text-muted">mês selecionado</small>
+                    <div class="chart-wrapper">
+                        <canvas id="chartDias" style="margin-top: 50px;"></canvas>
                     </div>
-                    <canvas id="chartTopProdutos" height="220"></canvas>
-                </div>
-            </div>
-
-            <div class="col-12">
-                <div class="card card-soft p-3">
-                    <div class="d-flex flex-wrap gap-2 align-items-center justify-content-between">
-                        <div class="fw-bold">👤 Solicitantes</div>
-
-                        <div class="d-flex gap-2 align-items-center">
-                            <label class="small subtle mb-0">Ver:</label>
-                            <select id="selSolicitante" class="form-select form-select-sm" style="min-width:220px;">
-                                <option value="">Todos</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="mt-3">
-                        <canvas id="chartSolicitantes" height="120"></canvas>
-                    </div>
-
-                    <div id="solicitanteResumo" class="small subtle mt-2"></div>
+                    <!-- <canvas id="chartDias" height="120"></canvas> -->
+                    <div id="diasResumo" class="small text-muted" style="margin-top: 80px; margin-bottom: 0;"></div>
                 </div>
             </div>
         </div>
 
-        <p class="text-center mt-4 text-muted" style="font-size:13px;">
-            InterYSY • Central de Sistemas
-        </p>
+        <div class="col-14 mb-4">
+            <div class="card card-soft p-5">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div class="fw-semibold">Top produtos</div>
+                    <small class="text-muted">mês selecionado</small>
+                </div>
+                <canvas id="chartTopProdutos" height="220"></canvas>
+            </div>
+        </div>
+
+        <div class="col-14 mb-4">
+            <div class="card card-soft p-3">
+                <div class="d-flex flex-wrap gap-2 align-items-center justify-content-between">
+                    <div class="fw-bold">👤 Solicitantes</div>
+
+                    <div class="d-flex gap-2 align-items-center">
+                        <label class="small subtle mb-0">Ver:</label>
+                        <select id="selSolicitante" class="form-select form-select-sm" style="min-width:220px;">
+                            <option value="">Todos</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="chart-wrapper" style="height:360px;">
+                    <canvas id="chartSolicitantes"></canvas>
+                </div>
+
+                <div id="solicitanteResumo" class="small subtle mt-2"></div>
+            </div>
+        </div>
+    </div>
+
+    <p class="text-center mt-4 text-muted" style="font-size:13px;">
+        InterYSY • Central de Sistemas
+    </p>
+    </div>
+
+    <!-- Modal: Detalhe de itens entregues por solicitante -->
+    <div class="modal fade" id="modalSolicitanteItens" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div>
+                        <h5 class="modal-title mb-0">Itens entregues</h5>
+                        <div class="small text-muted" id="modalSolicitanteSub"></div>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+
+                <div class="modal-body">
+                    <div id="modalSolicitanteLoading" class="py-3 text-muted small">Carregando...</div>
+
+                    <div id="modalSolicitanteContent" style="display:none;">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <div class="small text-muted">
+                                Total entregue: <strong id="modalSolicitanteTotal"></strong>
+                            </div>
+                        </div>
+
+                        <div class="table-responsive">
+                            <table class="table table-sm align-middle">
+                                <thead>
+                                    <tr>
+                                        <th>Produto</th>
+                                        <th style="width:120px;">Tipo</th>
+                                        <th style="width:140px;">Entregues</th>
+                                        <th style="width:120px;">Pedidos</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="modalSolicitanteTbody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div id="modalSolicitanteErro" class="alert alert-warning small mb-0" style="display:none;"></div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
