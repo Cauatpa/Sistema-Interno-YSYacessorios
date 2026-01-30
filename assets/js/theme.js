@@ -8,6 +8,11 @@
   if (savedTheme === "dark" || savedTheme === "light") {
     root.setAttribute("data-bs-theme", savedTheme);
   }
+  document.dispatchEvent(
+    new CustomEvent("theme:changed", {
+      detail: { theme: root.getAttribute("data-bs-theme") },
+    }),
+  );
 
   // 2) Atualiza texto do botão
   function updateButton(theme) {
