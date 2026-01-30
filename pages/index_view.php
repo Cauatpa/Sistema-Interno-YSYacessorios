@@ -88,13 +88,6 @@ $returnUrl = $_SERVER['REQUEST_URI'];
 
             <a href="/InterYSY/pages/relatorio_retiradas.php?competencia=<?= urlencode($competencia) ?>"
                 class="btn btn-outline-success btn-sm">Relatório</a>
-
-            <?php if (auth_has_role('operador') || auth_has_role('admin')): ?>
-                <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalMinhaSenha">
-                    🔑 Minha senha
-                </button>
-            <?php endif; ?>
-
             <button id="btnTheme" class="btn btn-outline-secondary btn-sm">
                 🌙 Tema escuro
             </button>
@@ -544,7 +537,7 @@ $returnUrl = $_SERVER['REQUEST_URI'];
         </div>
 
         <p class="text-center mt-4 text-muted" style="font-size:13px;">
-            InterYSY • Central de Sistemas
+            InterYSY • Sistema Interno
         </p>
     <?php endif; ?>
 

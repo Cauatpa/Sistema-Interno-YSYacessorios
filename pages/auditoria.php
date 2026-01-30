@@ -372,7 +372,7 @@ $entityOptions = ['retirada', 'fechamento', 'user']; // ajuste se você adiciona
         <?php endif; ?>
 
         <p class="text-center mt-4 text-muted" style="font-size:13px;">
-            InterYSY • Central de Sistemas
+            InterYSY • Sistema Interno
         </p>
     </div>
 
