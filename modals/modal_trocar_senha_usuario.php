@@ -20,8 +20,8 @@ if ($idUser <= 0) {
 <div class="modal fade" id="modalSenha<?= $idUser ?>" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-fullscreen-sm-down">
         <div class="modal-content">
+            <form method="POST" action="/InterYSY/actions/usuarios_trocar_senha.php" autocomplete="off">
 
-            <form method="POST" action="actions/usuarios_trocar_senha.php" autocomplete="off">
                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token('usuarios_trocar_senha')) ?>">
                 <input type="hidden" name="id" value="<?= (int)$idUser ?>">
 

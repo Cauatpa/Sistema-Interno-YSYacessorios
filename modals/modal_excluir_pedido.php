@@ -4,7 +4,7 @@
 
 <div class="modal fade" id="modalExcluir<?= (int)$r['id'] ?>" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-        <form method="POST" action="actions/excluir_pedido.php" class="modal-content">
+        <form method="POST" action="/InterYSY/actions/excluir_pedido.php" class="modal-content">
             <?php require_once __DIR__ . '/../helpers/csrf.php'; ?>
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token('excluir_pedido')) ?>">
             <input type="hidden" name="return" value="<?= htmlspecialchars($returnUrl) ?>">

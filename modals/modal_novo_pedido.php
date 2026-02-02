@@ -2,7 +2,7 @@
     <div class="modal-dialog modal-dialog-centered modal-fullscreen-sm-down">
         <div class="modal-content">
 
-            <form id="formNovoPedido" action="actions/novo_pedido.php" method="POST" autocomplete="off">
+            <form id="formNovoPedido" action="/InterYSY/actions/novo_pedido.php" method="POST" autocomplete="off">
                 <?php require_once __DIR__ . '/../helpers/csrf.php'; ?>
                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token('novo_pedido')) ?>">
                 <input type="hidden" name="return" value="<?= htmlspecialchars($returnUrl ?? $_SERVER['REQUEST_URI'] ?? 'index.php') ?>">

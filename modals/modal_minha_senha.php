@@ -6,7 +6,7 @@ require_once __DIR__ . '/../helpers/csrf.php';
     <div class="modal-dialog modal-dialog-centered modal-fullscreen-sm-down">
         <div class="modal-content">
 
-            <form method="POST" action="actions/minha_senha.php" autocomplete="off">
+            <form method="POST" action="/InterYSY/actions/minha_senha.php" autocomplete="off">
                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token('minha_senha')) ?>">
 
                 <div class="modal-header">

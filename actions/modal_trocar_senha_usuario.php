@@ -5,7 +5,7 @@
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
 
-            <form method="POST" action="actions/admin_trocar_senha.php">
+            <form method="POST" action="/InterYSY/actions/admin_trocar_senha.php">
                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token('admin_trocar_senha')) ?>">
                 <input type="hidden" name="id" value="<?= (int)$u['id'] ?>">
 

@@ -2,7 +2,7 @@
     <div class="modal-dialog modal-fullscreen-sm-down modal-dialog-centered">
         <div class="modal-content">
 
-            <form action="actions/finalizar_pedido.php" method="POST">
+            <form action="/InterYSY/actions/finalizar_pedido.php" method="POST">
                 <?php require_once __DIR__ . '/../helpers/csrf.php'; ?>
                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token('finalizar_pedido')) ?>">
                 <input type="hidden" name="id" value="<?= (int)$r['id'] ?>">
