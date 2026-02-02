@@ -36,19 +36,20 @@ $tipo        = one_of(trim((string)($_POST['tipo'] ?? '')), ['prata', 'ouro'], '
 $qtdSolic    = int_pos($_POST['quantidade_solicitada'] ?? 0);
 $solicitante = trim((string)($_POST['solicitante'] ?? ''));
 
-// flags do modal
+// flags do modal (1x só, sem duplicar)
 $precisa_balanco = ((int)($_POST['precisa_balanco'] ?? 0) === 1) ? 1 : 0;
 $sem_estoque     = ((int)($_POST['sem_estoque'] ?? 0) === 1) ? 1 : 0;
+$estoque_chegou  = !empty($_POST['estoque_chegou']) ? 1 : 0;
+
+$observacao = trim((string)($_POST['observacao'] ?? ''));
 
 // consistência: sem estoque => balanço
 if ($sem_estoque === 1) $precisa_balanco = 1;
 
 // ✅ REGRA NOVA: se tirou "precisa_balanco", destrava/reset "balanco_feito"
-$resetBalancoFeito = false;
-if ($precisa_balanco === 0) {
-    $resetBalancoFeito = true;
-}
+$resetBalancoFeito = ($precisa_balanco === 0);
 
+// validação básica
 if ($id <= 0 || $produto === '' || $tipo === '' || $qtdSolic <= 0 || $solicitante === '') {
     audit_log(
         $pdo,
@@ -63,6 +64,7 @@ if ($id <= 0 || $produto === '' || $tipo === '' || $qtdSolic <= 0 || $solicitant
             'solicitante' => $solicitante,
             'precisa_balanco' => $precisa_balanco,
             'sem_estoque' => $sem_estoque,
+            'estoque_chegou' => $estoque_chegou,
         ],
         null,
         null,
@@ -82,7 +84,8 @@ $stmt = $pdo->prepare("
         id, competencia, status,
         produto, tipo, quantidade_solicitada, solicitante,
         quantidade_retirada, precisa_balanco, sem_estoque, falta_estoque,
-        balanco_feito, balanco_feito_em
+        balanco_feito, balanco_feito_em,
+        data_finalizacao
     FROM retiradas
     WHERE id = ? AND deleted_at IS NULL
     LIMIT 1
@@ -107,8 +110,9 @@ if (!$beforeRow) {
     exit('Pedido não encontrado.');
 }
 
-$competencia = (string)($beforeRow['competencia'] ?? '');
-$status      = (string)($beforeRow['status'] ?? '');
+$competencia     = (string)($beforeRow['competencia'] ?? '');
+$statusBanco     = (string)($beforeRow['status'] ?? '');
+$semEstoqueBanco = (int)($beforeRow['sem_estoque'] ?? 0);
 
 if (!competencia_valida($competencia)) {
     audit_log(
@@ -127,36 +131,24 @@ if (!competencia_valida($competencia)) {
     exit('Competência inválida no registro.');
 }
 
-$isFinalizado = ($status === 'finalizado');
+$isFinalizadoBanco = ($statusBanco === 'finalizado');
 
-// Regra: não pode editar pedidos de meses fechados
-$observacao = trim((string)($_POST['observacao'] ?? ''));
-$estoque_chegou = !empty($_POST['estoque_chegou']) ? 1 : 0;
-
-$sem_estoque = !empty($_POST['sem_estoque']) ? 1 : 0;
-$precisa_balanco = !empty($_POST['precisa_balanco']) ? 1 : 0;
-
-$statusNovo = $statusAtualDoBanco; // busque o status atual antes, ou use $r se já vier no POST
-
-if ($estoque_chegou) {
-    $statusNovo = 'finalizado';
-    $sem_estoque = 0;
-    // $precisa_balanco = 0; // opcional
-    // opcional: se quiser “quantidade_retirada” automaticamente:
-    // $quantidade_retirada = $quantidade_solicitada;
-}
-if ($estoque_chegou && !$sem_estoque) {
-    // ignora tentativa inválida
+/**
+ * ✅ Opção A - consistência
+ * - sem_estoque=1 => status sempre "pedido" (nunca finalizado)
+ * - estoque_chegou só pode se no BANCO estava sem estoque
+ */
+if ($estoque_chegou === 1 && $semEstoqueBanco !== 1) {
+    // tentativa inválida: não estava marcado como sem estoque no banco
     $estoque_chegou = 0;
 }
 
-
 /**
- * Quantidade entregue: só pode editar se finalizado (Opção A)
+ * Quantidade entregue: só pode editar se finalizado (mantém sua regra)
  */
 $newQtdRet = null;
 
-if ($isFinalizado && array_key_exists('quantidade_retirada', $_POST)) {
+if ($isFinalizadoBanco && array_key_exists('quantidade_retirada', $_POST)) {
     $raw = $_POST['quantidade_retirada'];
 
     // vazio = não altera
@@ -165,11 +157,6 @@ if ($isFinalizado && array_key_exists('quantidade_retirada', $_POST)) {
     } else {
         $newQtdRet = int_nonneg($raw);
     }
-}
-
-// Se finalizado e sem_estoque=1 => quantidade_retirada obrigatoriamente 0
-if ($isFinalizado && $sem_estoque === 1) {
-    $newQtdRet = 0;
 }
 
 /**
@@ -182,21 +169,18 @@ $beforeQtdRet  = array_key_exists('quantidade_retirada', $beforeRow) && $beforeR
     : null;
 
 $effectiveQtdRet = $beforeQtdRet;
-if ($isFinalizado && $newQtdRet !== null) {
+if ($isFinalizadoBanco && $newQtdRet !== null) {
     $effectiveQtdRet = $newQtdRet;
 }
 
-if ($isFinalizado && $effectiveQtdRet !== null) {
+if ($isFinalizadoBanco && $effectiveQtdRet !== null) {
     $falta_estoque = 0;
-    if ($sem_estoque === 1) {
-        $falta_estoque = 1;
-    } else {
-        if ($effectiveQtdRet < $qtdSolic) $falta_estoque = 1;
-    }
+    // se finalizado e retirou menos que solicitado => falta_estoque
+    if ($effectiveQtdRet < $qtdSolic) $falta_estoque = 1;
 }
 
 /**
- * UPDATE dinâmico (inclui qtd_retirada/falta_estoque somente se finalizado e enviado)
+ * UPDATE dinâmico
  */
 $fields = [
     'produto = ?',
@@ -214,7 +198,41 @@ if ($resetBalancoFeito) {
     $fields[] = 'balanco_feito_em = NULL';
 }
 
-if ($isFinalizado && $newQtdRet !== null) {
+/**
+ * ✅ Opção A - persistência no banco
+ * Se sem_estoque=1 => status='pedido', data_finalizacao=NULL,
+ * e zera quantidade_retirada/falta_estoque (pra não existir finalizado+sem_estoque)
+ */
+if ($sem_estoque === 1) {
+    $fields[] = "status = 'pedido'";
+    $fields[] = "data_finalizacao = NULL";
+    $fields[] = "quantidade_retirada = 0";
+    $fields[] = "falta_estoque = 1"; // se quer que "sem estoque" reflita como falta, deixa 1
+}
+
+/**
+ * Se clicou "estoque chegou" e estava sem estoque no banco, finaliza de verdade
+ */
+if ($estoque_chegou === 1) {
+    $fields[] = "status = 'finalizado'";
+    $fields[] = "sem_estoque = 0";
+    $fields[] = "data_finalizacao = NOW()";
+    $fields[] = "quantidade_retirada = ?";
+    $params[] = $qtdSolic;
+
+    $fields[] = "falta_estoque = 0";
+
+    // opcional: ao finalizar por estoque chegou, você pode limpar balanço:
+    $fields[] = "precisa_balanco = 0";
+    $fields[] = "balanco_feito = 0";
+    $fields[] = "balanco_feito_em = NULL";
+}
+
+/**
+ * Se é finalizado no banco e usuário mandou quantidade_retirada, mantém sua regra
+ * (mas só aplica se NÃO estiver sem_estoque=1 e NÃO estiver estoque_chegou=1)
+ */
+if ($isFinalizadoBanco && $newQtdRet !== null && $sem_estoque === 0 && $estoque_chegou === 0) {
     $fields[] = 'quantidade_retirada = ?';
     $params[] = $newQtdRet;
 
@@ -246,7 +264,7 @@ if (!$ok) {
 }
 
 /**
- * Diff (inclui campos novos pra auditoria)
+ * Diff (auditoria)
  */
 $beforeForDiff = [
     'produto' => (string)($beforeRow['produto'] ?? ''),
@@ -259,6 +277,8 @@ $beforeForDiff = [
     'falta_estoque' => (int)($beforeRow['falta_estoque'] ?? 0),
     'balanco_feito' => (int)($beforeRow['balanco_feito'] ?? 0),
     'balanco_feito_em' => $beforeRow['balanco_feito_em'] ?? null,
+    'status' => $statusBanco,
+    'data_finalizacao' => $beforeRow['data_finalizacao'] ?? null,
 ];
 
 $afterForDiff = [
@@ -268,14 +288,49 @@ $afterForDiff = [
     'solicitante' => $solicitante,
     'precisa_balanco' => (int)$precisa_balanco,
     'sem_estoque' => (int)$sem_estoque,
-    'quantidade_retirada' => ($isFinalizado && $newQtdRet !== null) ? (int)$newQtdRet : $beforeForDiff['quantidade_retirada'],
-    'falta_estoque' => ($isFinalizado && $newQtdRet !== null) ? (int)$falta_estoque : (int)$beforeForDiff['falta_estoque'],
+    'quantidade_retirada' => $beforeForDiff['quantidade_retirada'],
+    'falta_estoque' => $beforeForDiff['falta_estoque'],
     'balanco_feito' => $resetBalancoFeito ? 0 : (int)$beforeForDiff['balanco_feito'],
     'balanco_feito_em' => $resetBalancoFeito ? null : $beforeForDiff['balanco_feito_em'],
+    'status' => $beforeForDiff['status'],
+    'data_finalizacao' => $beforeForDiff['data_finalizacao'],
 ];
 
-$keys = ['produto', 'tipo', 'quantidade_solicitada', 'solicitante', 'precisa_balanco', 'sem_estoque', 'balanco_feito', 'balanco_feito_em'];
-if ($isFinalizado) {
+// tenta inferir status/data_finalizacao do pós-update sem requery
+if ($estoque_chegou === 1) {
+    $afterForDiff['status'] = 'finalizado';
+    $afterForDiff['sem_estoque'] = 0;
+    $afterForDiff['quantidade_retirada'] = $qtdSolic;
+    $afterForDiff['falta_estoque'] = 0;
+    $afterForDiff['data_finalizacao'] = 'NOW()';
+} elseif ($sem_estoque === 1) {
+    $afterForDiff['status'] = 'pedido';
+    $afterForDiff['quantidade_retirada'] = 0;
+    $afterForDiff['falta_estoque'] = 1;
+    $afterForDiff['data_finalizacao'] = null;
+} else {
+    // status não mudou via regras, e qtd ret pode ter mudado se finalizado + editou
+    if ($isFinalizadoBanco && $newQtdRet !== null && $estoque_chegou === 0) {
+        $afterForDiff['quantidade_retirada'] = (int)$newQtdRet;
+        $afterForDiff['falta_estoque'] = (int)$falta_estoque;
+    }
+}
+
+$keys = [
+    'produto',
+    'tipo',
+    'quantidade_solicitada',
+    'solicitante',
+    'precisa_balanco',
+    'sem_estoque',
+    'balanco_feito',
+    'balanco_feito_em',
+    'status',
+    'data_finalizacao'
+];
+
+// se for finalizado no banco, inclui também os campos de qtd/falta
+if ($isFinalizadoBanco || $estoque_chegou === 1 || $sem_estoque === 1) {
     $keys[] = 'quantidade_retirada';
     $keys[] = 'falta_estoque';
 }

@@ -447,7 +447,11 @@ $returnUrl = $_SERVER['REQUEST_URI'];
                             <td>
                                 <!-- layout compacto: não quebra fácil -->
                                 <div class="d-grid gap-1" style="min-width: 100px;">
-                                    <?php if ($canOperate && !$mesFechado && !$isFinalizado): ?>
+                                    <?php
+                                    $isSemEstoque = ((int)($r['sem_estoque'] ?? 0) === 1);
+                                    ?>
+
+                                    <?php if (($canOperate || $canAdmin) && !$mesFechado && !$isFinalizado && !$isSemEstoque): ?>
                                         <button
                                             type="button"
                                             class="btn btn-success btn-sm"
@@ -466,6 +470,28 @@ $returnUrl = $_SERVER['REQUEST_URI'];
                                             ⚖️ Fazer balanço
                                         </button>
                                     <?php endif; ?>
+
+                                    <?php
+                                    $isSemEstoque = ((int)($r['sem_estoque'] ?? 0) === 1);
+                                    ?>
+
+                                    <?php if (($canOperate || $canAdmin) && !$mesFechado && !$isFinalizado && $isSemEstoque): ?>
+                                        <form
+                                            method="POST"
+                                            action="/InterYSY/actions/estoque_chegou.php"
+                                            onsubmit="return confirm('Confirmar que o estoque chegou e finalizar este pedido?');">
+                                            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token('estoque_chegou')) ?>">
+                                            <input type="hidden" name="id" value="<?= (int)$r['id'] ?>">
+
+                                            <!-- ✅ volta pra mesma tela (com filtros/página) -->
+                                            <input type="hidden" name="return" value="<?= htmlspecialchars($returnUrl ?? '/InterYSY/index.php') ?>">
+
+                                            <button type="submit" class="btn btn-outline-success btn-sm w-100">
+                                                📦 Estoque chegou
+                                            </button>
+                                        </form>
+                                    <?php endif; ?>
+
 
                                     <?php if ($canAdmin): ?>
                                         <button type="button"

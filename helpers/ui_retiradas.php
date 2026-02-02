@@ -28,11 +28,21 @@ function retirada_status_info(array $r): array
         ];
     }
 
+    // 📦 Estoque preenchido, mas não finalizado
+    if (($r['status'] ?? '') !== 'finalizado' && (int)($r['estoque_preenchido'] ?? 0) === 1) {
+        return [
+            'classe' => '', // sem barra verde
+            'texto'  => '📦 Estoque preenchido',
+        ];
+    }
+
     // ✅ Finalizado normal
     if (($r['status'] ?? '') === 'finalizado') {
+        $fp = (string)($r['finalizado_por'] ?? 'normal');
+
         return [
-            'classe' => 'status-finalizado',
-            'texto'  => '✅ Finalizado',
+            'classe' => '', // ✅ tira o verde da linha
+            'texto'  => ($fp === 'estoque') ? '📦 Estoque preenchido' : '✅ Finalizado',
         ];
     }
 

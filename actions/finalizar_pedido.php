@@ -213,6 +213,25 @@ $falta_estoque = 0;
 if ($qtdSolicitada > 0 && $qtdEntregue < $qtdSolicitada) $falta_estoque = 1;
 if ($sem_estoque === 1) $falta_estoque = 1;
 
+// falta_estoque
+$falta_estoque = 0;
+if ($qtdSolicitada > 0 && $qtdEntregue < $qtdSolicitada) $falta_estoque = 1;
+if ($sem_estoque === 1) $falta_estoque = 1;
+
+// ✅ OPÇÃO A: sem_estoque NÃO FINALIZA
+if ($sem_estoque === 1) {
+    // sem estoque => continua pendente (pedido)
+    $statusNovo = 'pedido';
+    $dataFinalSql = "NULL";
+    $qtdEntregue = 0;
+    $precisa_balanco = 1;   // ✅ consistência com sua regra: sem estoque => precisa balanço
+} else {
+    // finalização real
+    $statusNovo = 'finalizado';
+    $dataFinalSql = "NOW()";
+    // precisa_balanco vem do form normalmente
+}
+
 $update = $pdo->prepare("
     UPDATE retiradas
     SET
@@ -221,18 +240,23 @@ $update = $pdo->prepare("
         precisa_balanco = ?,
         sem_estoque = ?,
         falta_estoque = ?,
-        status = 'finalizado',
-        data_finalizacao = NOW()
+        status = ?,
+        finalizado_por = ?,
+        data_finalizacao = {$dataFinalSql}
     WHERE id = ? AND deleted_at IS NULL
 ");
+
 $ok = $update->execute([
     $qtdEntregue,
     $responsavel_estoque,
     $precisa_balanco ? 1 : 0,
     $sem_estoque ? 1 : 0,
     $falta_estoque ? 1 : 0,
+    $statusNovo,
+    'normal',
     $id
 ]);
+
 
 if (!$ok) {
     audit_log(
@@ -304,6 +328,8 @@ audit_log(
 // ✅ calcula o próximo
 $openNextId = null;
 if ($wantNext) {
+
+    // 1) se o JS mandou um próximo alvo, valida ele (e garante sem_estoque=0)
     if ($nextTargetId > 0) {
         $chk = $pdo->prepare("
             SELECT id
@@ -312,6 +338,7 @@ if ($wantNext) {
               AND competencia = ?
               AND deleted_at IS NULL
               AND status <> 'finalizado'
+              AND sem_estoque = 0
             LIMIT 1
         ");
         $chk->execute([$nextTargetId, $competencia]);
@@ -319,6 +346,7 @@ if ($wantNext) {
         if ($okId) $openNextId = (int)$okId;
     }
 
+    // 2) se não tiver alvo válido, pega o próximo pendente (sem sem_estoque)
     if (!$openNextId) {
         $nextStmt = $pdo->prepare("
             SELECT id
@@ -326,6 +354,7 @@ if ($wantNext) {
             WHERE competencia = ?
               AND deleted_at IS NULL
               AND status <> 'finalizado'
+              AND sem_estoque = 0
               AND id <> ?
             ORDER BY data_pedido ASC, id ASC
             LIMIT 1

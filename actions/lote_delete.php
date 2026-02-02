@@ -7,8 +7,6 @@ require_once __DIR__ . '/../helpers/audit.php';
 $u = auth_require_login();
 csrf_session_start();
 
-file_put_contents(__DIR__ . '/../logs_delete_lote.txt', date('c') . " CHEGOU\n", FILE_APPEND);
-
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
     http_response_code(405);
     exit('Método inválido.');

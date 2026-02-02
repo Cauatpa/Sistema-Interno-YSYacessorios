@@ -121,45 +121,6 @@
                                 ❌ Produto sem estoque
                             </label>
                         </div>
-
-
-                        <div class="form-text">
-                            Você pode deixar ambos desmarcados. Se marcar <strong>sem estoque</strong>, o sistema marca <strong>balanço</strong> automaticamente.
-                        </div>
-
-                        <?php $isSemEstoque = !empty($r['sem_estoque']); ?>
-
-                        <div class="form-check form-switch mb-2">
-                            <input
-                                class="form-check-input"
-                                type="checkbox"
-                                name="estoque_chegou"
-                                value="1"
-                                id="editChegou<?= (int)$r['id'] ?>"
-                                <?= $isSemEstoque ? '' : 'disabled' ?>
-                                onchange="
-                                const sem = document.getElementById('editSem<?= (int)$r['id'] ?>');
-                                const bal = document.getElementById('editBalanco<?= (int)$r['id'] ?>');
-                                if (this.checked) {
-                                    sem.checked = false;     // remove 'sem estoque'
-                                    // bal.checked = false;  // se quiser remover balanço também
-                                }
-                            ">
-                            <label class="form-check-label fw-semibold" for="editChegou<?= (int)$r['id'] ?>">
-                                ✅ Estoque chegou (finalizar pedido)
-                            </label>
-
-                            <?php if (!$isSemEstoque): ?>
-                                <div class="form-text text-muted">
-                                    Disponível apenas para pedidos marcados como <strong>sem estoque</strong>.
-                                </div>
-                            <?php else: ?>
-                                <div class="form-text">
-                                    Ao marcar, o pedido será finalizado e o status de <strong>sem estoque</strong> será removido.
-                                </div>
-                            <?php endif; ?>
-                        </div>
-
                     </div>
 
                 </div>
