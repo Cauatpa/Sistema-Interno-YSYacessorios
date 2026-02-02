@@ -257,8 +257,11 @@ $returnUrl = $_SERVER['REQUEST_URI'];
     <div class="d-flex flex-column flex-md-row gap-2 justify-content-between align-items-stretch mb-3">
 
         <!-- Selecionar competência -->
-        <form method="GET" class="d-flex gap-2 align-items-center">
+        <form method="GET" action="index.php" class="d-flex gap-2 align-items-center">
             <label class="fw-bold">Mês:</label>
+
+            <!-- ✅ ESSENCIAL: mantém na rota correta -->
+            <input type="hidden" name="page" value="retiradas">
 
             <input type="hidden" name="filtro" value="<?= htmlspecialchars($filtro) ?>">
             <input type="hidden" name="q" value="<?= htmlspecialchars($busca) ?>">
@@ -269,11 +272,15 @@ $returnUrl = $_SERVER['REQUEST_URI'];
             <input type="hidden" name="data_ini" value="<?= htmlspecialchars($dataIni) ?>">
             <input type="hidden" name="data_fim" value="<?= htmlspecialchars($dataFim) ?>">
             <input type="hidden" name="per_page" value="<?= (int)$perPage ?>">
-            <input type="hidden" name="p" value="<?= (int)$page ?>">
+
+            <!-- ✅ ao trocar mês, volta para página 1 -->
+            <input type="hidden" name="p" value="1">
 
             <select name="competencia" class="form-select" onchange="this.form.submit()">
                 <?php if (!in_array($competencia, $mesesDisponiveis, true)): ?>
-                    <option value="<?= htmlspecialchars($competencia) ?>" selected><?= htmlspecialchars($competencia) ?> (atual)</option>
+                    <option value="<?= htmlspecialchars($competencia) ?>" selected>
+                        <?= htmlspecialchars($competencia) ?> (atual)
+                    </option>
                 <?php endif; ?>
 
                 <?php foreach ($mesesDisponiveis as $m): ?>

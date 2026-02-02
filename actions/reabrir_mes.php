@@ -8,6 +8,7 @@ require_once __DIR__ . '/../helpers/csrf.php';
 require_once __DIR__ . '/../helpers/competencia.php';
 require_once __DIR__ . '/../helpers/validation.php';
 require_once __DIR__ . '/../helpers/audit.php';
+require_once __DIR__ . '/../helpers/return_redirect.php';
 
 // PhpSpreadsheet (pra remover aba)
 require_once __DIR__ . '/../vendor/autoload.php';
@@ -82,7 +83,7 @@ $chk->execute([$competencia]);
 $before = $chk->fetch(PDO::FETCH_ASSOC) ?: null;
 
 // Reabre (delete do fechamento)
-$stmt = $pdo->prepare("DELETE FROM fechamentos WHERE competencia = ? LIMIT 1");
+$stmt = $pdo->prepare("DELETE FROM fechamentos WHERE competencia = ?");
 $ok = $stmt->execute([$competencia]);
 
 if (!$ok) {
@@ -124,10 +125,27 @@ audit_log(
     "Reabriu o mês {$competencia}."
 );
 
-redirect_back_with_params('../index.php', [
+// =====================
+// ✅ Redirect único e correto (funciona em /InterYSY e em localhost)
+// =====================
+
+// limpa qualquer output antes do header
+if (ob_get_length()) {
+    @ob_end_clean();
+}
+
+// /InterYSY/actions -> /InterYSY
+$scriptDir = rtrim(dirname($_SERVER['SCRIPT_NAME'] ?? ''), '/');
+$baseDir   = preg_replace('#/actions$#', '', $scriptDir);
+
+$qs = http_build_query([
+    'page'        => 'retiradas',
     'competencia' => $competencia,
-    'toast' => 'mes_reaberto'
+    'toast'       => 'mes_reaberto',
 ]);
+
+header('Location: ' . $baseDir . '/index.php?' . $qs);
+exit;
 
 /**
  * Remove a aba "YYYY-MM" do arquivo exports/retiradas_fechadas.xlsx

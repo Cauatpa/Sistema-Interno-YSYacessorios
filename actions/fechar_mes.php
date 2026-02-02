@@ -127,5 +127,5 @@ audit_log(
 );
 
 // volta pra tela do mês fechado
-header('Location: ../index.php?toast=mes_fechado&competencia=' . urlencode($competencia));
+header('Location: ../index.php?page=retiradas&toast=mes_fechado&competencia=' . urlencode($competencia));
 exit;
