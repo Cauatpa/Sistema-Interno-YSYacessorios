@@ -1,7 +1,7 @@
 # 📦 Sistema Interno YSY
 
 Bem-vindo ao **Sistema Interno YSY** 🚀
-Este repositório reúne projetos desenvolvidos para automatizar, padronizar e melhorar os processos internos do e-commerce **YSY Acessórios**, focado em joias e semijoias.
+Este repositório e um projeto com intuito de padronizar e melhorar os processos internos do e-commerce **YSY Acessórios**, focado em semijoias.
 
 O objetivo principal é **reduzir trabalho manual**, **evitar erros operacionais** e **aumentar a produtividade da equipe**, utilizando soluções simples, escaláveis e bem documentadas.
 
@@ -9,7 +9,7 @@ O objetivo principal é **reduzir trabalho manual**, **evitar erros operacionais
 
 ## 📌 Visão Geral do Projeto
 
-Este repositório pode conter **vários subprojetos**, como por exemplo:
+Este sistema pode conter **vários subprojetos**, como por exemplo:
 
 * 📊 Automação de planilhas (Excel)
 * 📦 Controle de estoque
@@ -34,14 +34,12 @@ As tecnologias podem variar conforme o projeto, mas geralmente incluem:
 
 ### 💻 Linguagens
 
-* **Python** → automações, leitura de planilhas, geração de relatórios
 * **PHP** → sistemas web internos (CRUD)
 * **SQL (MySQL / MariaDB)** → banco de dados
 * **HTML / CSS / JavaScript** → interface web
 
 ### 📚 Bibliotecas e Ferramentas
 
-* `pandas` → manipulação de planilhas
 * `openpyxl` → leitura/escrita de arquivos Excel
 * `reportlab` → geração de PDFs
 * `PDO` → conexão segura com banco de dados
@@ -52,10 +50,19 @@ As tecnologias podem variar conforme o projeto, mas geralmente incluem:
 ## ⚙️ Pré-requisitos
 
 * ✔️ Git
-* ✔️ Python 3.10+
 * ✔️ PHP 8+
 * ✔️ MySQL ou MongoDB
 * ✔️ Editor de código (VS Code recomendado)
+
+---
+## 🔧 Variáveis de Ambiente (Recomendado)
+
+Para produção, utilize variáveis de ambiente para configurar credenciais e ambiente:
+
+* `APP_ENV` → `production` (padrão), `development` ou `local`
+* `APP_TIMEZONE` → exemplo: `America/Sao_Paulo`
+* `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASS`
+* `INITIAL_ADMIN_USER`, `INITIAL_ADMIN_PASS`, `INITIAL_ADMIN_NAME` (cria admin inicial se não existir)
 
 ---
 
@@ -80,18 +87,21 @@ Os projetos podem ser executados:
 
 ## 🧭 Roadmap (Planejamento Futuro)
 
-* [ ] Padronização de todos os projetos
-* [ ] Sistema web unificado
-* [ ] Controle de usuários e permissões
-* [ ] Logs automáticos
-* [ ] Dashboard administrativo
+* [X] Padronização de todos os projetos
+* [X] Sistema web unificado
+* [X] Controle de usuários e permissões
+* [X] Logs automáticos
+* [X] Dashboard administrativo
+* [ ] Pagina de atendimento
+* [ ] Dash Board para lotes
+* [ ] Permissões por setor de autuação
 
 ---
 
 ## 👨‍💻 Autor
 
 **Cauã Thurler**
-Desenvolvedor Júnior | Automação de Processos | Sistemas Internos
+Desenvolvedor Full-Stack Júnior | Automação de Processos | Sistemas Internos
 
 Projeto desenvolvido para uso interno da **YSY Acessórios**.
 
