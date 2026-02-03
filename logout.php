@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/config/bootstrap.php';
+bootstrap_app();
 require_once __DIR__ . '/helpers/csrf.php';
 require_once __DIR__ . '/helpers/validation.php';
 

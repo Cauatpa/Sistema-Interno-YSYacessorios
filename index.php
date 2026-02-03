@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/config/bootstrap.php';
+bootstrap_app();
 require_once __DIR__ . '/config/database.php';   // cria $pdo
 require_once __DIR__ . '/helpers/bootstrap_admin.php';
 require_once __DIR__ . '/helpers/auth.php';
@@ -13,10 +15,10 @@ $page = $_GET['page'] ?? 'portal';
 $routes = [
     'portal'   => ['controller' => 'pages/portal_controller.php', 'view' => 'pages/portal_view.php'],
 
-    // ✅ Retiradas (seu "home" atual é o INDEX)
+    // ✅ Retiradas
     'retiradas' => ['controller' => 'pages/index_controller.php', 'view' => 'pages/index_view.php'],
 
-    // ✅ Lotes (você já tem esses arquivos)
+    // ✅ Lotes
     'lotes'    => ['controller' => 'pages/lotes_controller.php', 'view' => 'pages/lotes_view.php'],
 
     // ✅ Auditoria

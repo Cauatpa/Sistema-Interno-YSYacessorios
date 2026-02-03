@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/config/bootstrap.php';
+bootstrap_app();
 require_once __DIR__ . '/config/database.php'; // <- CRIA $pdo
 
 require_once __DIR__ . '/helpers/bootstrap_admin.php';
