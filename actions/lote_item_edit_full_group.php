@@ -59,6 +59,12 @@ $qConfOuroRaw  = trim((string)($_POST['qtd_conferida_ouro'] ?? ''));
 $qConfPrata = ($qConfPrataRaw === '') ? null : (int)$qConfPrataRaw;
 $qConfOuro  = ($qConfOuroRaw  === '') ? null : (int)$qConfOuroRaw;
 
+$conferidoPorPrata = (int)($_POST['conferido_por_prata'] ?? 0);
+$conferidoPorOuro  = (int)($_POST['conferido_por_ouro'] ?? 0);
+
+$conferidoPorPrataDb = $conferidoPorPrata > 0 ? $conferidoPorPrata : null;
+$conferidoPorOuroDb  = $conferidoPorOuro  > 0 ? $conferidoPorOuro  : null;
+
 $situacao = (string)($_POST['situacao'] ?? 'ok');
 $nota = trim((string)($_POST['nota'] ?? ''));
 
@@ -85,15 +91,15 @@ try {
     // UPDATE existente
     $stmtUp = $pdo->prepare("
         UPDATE lote_itens
-        SET produto_id = ?, produto_nome = ?, variacao = ?, qtd_prevista = ?, qtd_conferida = ?, situacao = ?, nota = ?
+        SET produto_id = ?, produto_nome = ?, variacao = ?, qtd_prevista = ?, qtd_conferida = ?, situacao = ?, nota = ?, conferido_por = ?
         WHERE id = ? AND lote_id = ?
         LIMIT 1
     ");
 
     // INSERT novo
     $stmtIns = $pdo->prepare("
-        INSERT INTO lote_itens (lote_id, produto_id, produto_nome, variacao, qtd_prevista, qtd_conferida, situacao, nota)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO lote_itens (lote_id, produto_id, produto_nome, variacao, qtd_prevista, qtd_conferida, situacao, nota, conferido_por)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     ");
 
     // DELETE (quando desmarca)
@@ -109,9 +115,9 @@ try {
 
     if ($temPrata) {
         if ($idPrata > 0) {
-            $stmtUp->execute([$produtoId, $produtoNome, 'Prata', $qPrevPrata, $qConfPrata, $situacao, $notaDb, $idPrata, $loteId]);
+            $stmtUp->execute([$produtoId, $produtoNome, 'Prata', $qPrevPrata, $qConfPrata, $situacao, $notaDb, $conferidoPorPrataDb, $idPrata, $loteId]);
         } else {
-            $stmtIns->execute([$loteId, $produtoId, $produtoNome, 'Prata', $qPrevPrata, $qConfPrata, $situacao, $notaDb]);
+            $stmtIns->execute([$loteId, $produtoId, $produtoNome, 'Prata', $qPrevPrata, $qConfPrata, $situacao, $notaDb, $conferidoPorPrataDb]);
             $idPrata = (int)$pdo->lastInsertId();
         }
     } else {
@@ -131,9 +137,9 @@ try {
 
     if ($temOuro) {
         if ($idOuro > 0) {
-            $stmtUp->execute([$produtoId, $produtoNome, 'Ouro', $qPrevOuro, $qConfOuro, $situacao, $notaDb, $idOuro, $loteId]);
+            $stmtUp->execute([$produtoId, $produtoNome, 'Ouro', $qPrevOuro, $qConfOuro, $situacao, $notaDb, $conferidoPorOuroDb, $idOuro, $loteId]);
         } else {
-            $stmtIns->execute([$loteId, $produtoId, $produtoNome, 'Ouro', $qPrevOuro, $qConfOuro, $situacao, $notaDb]);
+            $stmtIns->execute([$loteId, $produtoId, $produtoNome, 'Ouro', $qPrevOuro, $qConfOuro, $situacao, $notaDb, $conferidoPorOuroDb]);
             $idOuro = (int)$pdo->lastInsertId();
         }
     } else {

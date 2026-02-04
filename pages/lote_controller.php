@@ -118,8 +118,12 @@ if ($recebimentoAtualId > 0) {
 
     // página
     $stmtItens = $pdo->prepare("
-        SELECT li.*
+        SELECT
+            li.*,
+            uconf.nome    AS conferido_por_nome,
+            uconf.usuario AS conferido_por_usuario
         FROM lote_itens li
+        LEFT JOIN users uconf ON uconf.id = li.conferido_por
         WHERE $where
         ORDER BY li.id ASC
         LIMIT $perPage OFFSET $offset
@@ -168,6 +172,28 @@ foreach ($itens as $li) {
     }
 }
 $itensGrouped = array_values($itensGrouped);
+
+// =============================
+// Sugestões para filtros   
+// =============================
+
+// Sugestões (solicitantes)
+$stmtSolic = $pdo->query("
+    SELECT DISTINCT TRIM(solicitante) AS nome
+    FROM retiradas
+    WHERE solicitante IS NOT NULL
+      AND TRIM(solicitante) <> ''
+    ORDER BY nome ASC
+");
+$solicitantes = $stmtSolic->fetchAll(PDO::FETCH_ASSOC);
+
+// Sugestões (usuários)
+$stmtUsers = $pdo->query("
+    SELECT id, nome, usuario
+    FROM users
+    ORDER BY nome ASC, usuario ASC
+");
+$usuarios = $stmtUsers->fetchAll(PDO::FETCH_ASSOC);
 
 // Sugestões (produtos ativos)
 $stmtProd = $pdo->query("

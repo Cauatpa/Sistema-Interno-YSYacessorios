@@ -26,6 +26,9 @@ if ($loteId <= 0) {
     exit;
 }
 
+$conferidoPor = (int)($_POST['conferido_por'] ?? 0);
+$conferidoPorDb = $conferidoPor > 0 ? $conferidoPor : null;
+
 // bloqueia edição se lote fechado
 $stmt = $pdo->prepare("SELECT status FROM lotes WHERE id = ? LIMIT 1");
 $stmt->execute([$loteId]);
@@ -49,12 +52,13 @@ if ($id > 0) {
     if (!in_array($situacao, $allow, true)) $situacao = 'ok';
 
     $stmtU = $pdo->prepare("
-    UPDATE lote_itens
-    SET qtd_conferida = ?, situacao = ?, nota = ?
-    WHERE id = ? AND lote_id = ?
-    LIMIT 1
-  ");
-    $stmtU->execute([$qtd_conferida, $situacao, $nota, $id, $loteId]);
+        UPDATE lote_itens
+        SET qtd_conferida = ?, situacao = ?, nota = ?, conferido_por = ?
+        WHERE id = ? AND lote_id = ?
+        LIMIT 1
+    ");
+    $stmtU->execute([$qtd_conferida, $situacao, $nota, $conferidoPorDb, $id, $loteId]);
+
 
     header('Location: ../lote.php?id=' . $loteId . '&toast=' . urlencode('Item atualizado!') . '&highlight_id=' . $id);
     exit;

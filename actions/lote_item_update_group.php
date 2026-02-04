@@ -27,6 +27,12 @@ $recebimentoId = (int)($_POST['recebimento_id'] ?? 0);
 $idPrata = (int)($_POST['id_prata'] ?? 0);
 $idOuro  = (int)($_POST['id_ouro'] ?? 0);
 
+$conferidoPrata = trim((string)($_POST['conferido_por_prata'] ?? ''));
+$conferidoOuro  = trim((string)($_POST['conferido_por_ouro'] ?? ''));
+
+$conferidoPrataDb = $conferidoPrata !== '' ? $conferidoPrata : null;
+$conferidoOuroDb  = $conferidoOuro  !== '' ? $conferidoOuro  : null;
+
 $qConfPrataRaw = trim((string)($_POST['qtd_conferida_prata'] ?? ''));
 $qConfOuroRaw  = trim((string)($_POST['qtd_conferida_ouro'] ?? ''));
 
@@ -77,13 +83,19 @@ if ($idOuro > 0) {
 // Atualiza 1 ou 2 registros (garantindo lote_id)
 $stmtUp = $pdo->prepare("
     UPDATE lote_itens
-    SET qtd_conferida = ?, situacao = ?, nota = ?
+    SET qtd_conferida = ?, situacao = ?, nota = ?, conferido_por = ?
     WHERE id = ? AND lote_id = ?
     LIMIT 1
 ");
 
-if ($idPrata > 0) $stmtUp->execute([$qConfPrata, $situacao, $notaDb, $idPrata, $loteId]);
-if ($idOuro  > 0) $stmtUp->execute([$qConfOuro,  $situacao, $notaDb, $idOuro,  $loteId]);
+if ($idPrata > 0) {
+    $stmtUp->execute([$qConfPrata, $situacao, $notaDb, $conferidoPrataDb, $idPrata, $loteId]);
+}
+
+if ($idOuro > 0) {
+    $stmtUp->execute([$qConfOuro, $situacao, $notaDb, $conferidoOuroDb, $idOuro, $loteId]);
+}
+
 
 // ---- AFTER
 $afterRows = [];
