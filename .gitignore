@@ -2,3 +2,4 @@ vendor
 .env
 exports/
 env.php
+tests/
