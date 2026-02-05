@@ -104,11 +104,16 @@ try {
     $header = $rows[1] ?? [];
     $map = map_header($header);
 
-    // precisa das 3 colunas
-    foreach (['produto_nome', 'variacao', 'qtd_prevista'] as $req) {
-        if (!isset($map[$req])) {
-            throw new RuntimeException("Cabeçalho inválido. Coluna obrigatória ausente: {$req}");
-        }
+    // aceita 2 formatos:
+    // (1) produto_nome + variacao + qtd_prevista
+    // (2) produto_nome + prata e/ou ouro
+    $hasLong = isset($map['produto_nome'], $map['variacao'], $map['qtd_prevista']);
+    $hasWide = isset($map['produto_nome']) && (isset($map['prata']) || isset($map['ouro']));
+
+    if (!$hasLong && !$hasWide) {
+        throw new RuntimeException(
+            'Cabeçalho inválido. Use (produto_nome, variacao, qtd_prevista) OU (produto_nome, Prata e/ou Ouro).'
+        );
     }
 
     // prepared statements
@@ -146,24 +151,152 @@ try {
         if (!is_array($r)) continue;
 
         $produtoNome = norm_str((string)($r[$map['produto_nome']] ?? ''));
-        $variacaoRaw = norm_str((string)($r[$map['variacao']] ?? ''));
-        $qPrevRaw    = $r[$map['qtd_prevista']] ?? '';
 
-        // pula linha completamente vazia
-        if ($produtoNome === '' && $variacaoRaw === '' && (string)$qPrevRaw === '') {
+        // modelo 2 (wide): pega prata/ouro se existir
+        $qPrataRaw = isset($map['prata']) ? ($r[$map['prata']] ?? '') : '';
+        $qOuroRaw  = isset($map['ouro'])  ? ($r[$map['ouro']] ?? '')  : '';
+
+        // modelo 1 (long): pega variacao/qtd_prevista se existir
+        $variacaoRaw = isset($map['variacao']) ? norm_str((string)($r[$map['variacao']] ?? '')) : '';
+        $qPrevRaw    = isset($map['qtd_prevista']) ? ($r[$map['qtd_prevista']] ?? '') : '';
+
+        // pula linha completamente vazia (considerando os dois modelos)
+        if (
+            $produtoNome === '' &&
+            $variacaoRaw === '' &&
+            (string)$qPrevRaw === '' &&
+            (string)$qPrataRaw === '' &&
+            (string)$qOuroRaw === ''
+        ) {
             continue;
         }
 
         $summary['total_rows']++;
 
+        // acha produto
+        if ($produtoNome === '') {
+            $summary['errors']++;
+            $errors[] = ['line' => $i, 'error' => 'Produto vazio.', 'produto_nome' => $produtoNome];
+            continue;
+        }
+
+        $stmtProd->execute([$produtoNome]);
+        $p = $stmtProd->fetch(PDO::FETCH_ASSOC);
+
+        if (!$p) {
+            if ($onMissing === 'fail') {
+                throw new RuntimeException("Produto não encontrado na linha {$i}: {$produtoNome}");
+            }
+            $summary['skipped']++;
+            $errors[] = ['line' => $i, 'error' => 'Produto não encontrado.', 'produto_nome' => $produtoNome];
+            continue;
+        }
+
+        $produtoId = (int)$p['id'];
+        $produtoNomeDb = (string)$p['nome']; // usa o nome do banco (padrão)
+
+        // ✅ Se for modelo 2 (wide), processa prata/ouro
+        if ($hasWide) {
+            $qPrata = normalize_int($qPrataRaw);
+            $qOuro  = normalize_int($qOuroRaw);
+
+            // se vier número negativo, trata como erro
+            if (($qPrata !== null && $qPrata < 0) || ($qOuro !== null && $qOuro < 0)) {
+                $summary['errors']++;
+                $errors[] = ['line' => $i, 'error' => 'Quantidade negativa.', 'produto_nome' => $produtoNomeDb];
+                continue;
+            }
+
+            // se as duas colunas vierem vazias, não faz nada (linha “em branco” de variações)
+            if ($qPrata === null && $qOuro === null) {
+                $summary['skipped']++;
+                continue;
+            }
+
+            // helper local pra aplicar conflito/insert/update
+            $apply = function (string $variacao, int $qPrev) use (
+                $stmtChkItem,
+                $stmtUpd,
+                $stmtIns,
+                $loteId,
+                $recebimentoId,
+                $produtoId,
+                $produtoNomeDb,
+                $onConflict,
+                &$summary
+            ) {
+                $stmtChkItem->execute([$loteId, $recebimentoId, $produtoId, $variacao]);
+                $existing = $stmtChkItem->fetch(PDO::FETCH_ASSOC);
+
+                if ($existing) {
+                    if ($onConflict === 'ignore') {
+                        $summary['skipped']++;
+                        return;
+                    }
+
+                    $oldPrev = (int)($existing['qtd_prevista'] ?? 0);
+                    $newPrev = $qPrev;
+
+                    if ($onConflict === 'sum') {
+                        $newPrev = $oldPrev + $qPrev;
+                    }
+
+                    // replace = usa $qPrev direto
+                    $stmtUpd->execute([$newPrev, (int)$existing['id'], $loteId]);
+                    $summary['updated']++;
+                } else {
+                    $stmtIns->execute([$loteId, $recebimentoId, $produtoId, $produtoNomeDb, ucfirst($variacao), $qPrev]);
+                    $summary['imported']++;
+                }
+            };
+
+            // Processa cada variação presente
+            if ($qPrata !== null) $apply('prata', $qPrata);
+            if ($qOuro  !== null) $apply('ouro',  $qOuro);
+
+            continue;
+        }
+
+        // ✅ Se não for wide, cai no modelo 1 (long) como já era
         $variacao = normalize_variacao($variacaoRaw);
         $qPrev = normalize_int($qPrevRaw);
 
-        if ($produtoNome === '' || $variacao === '' || $qPrev === null || $qPrev < 0) {
+        if ($variacao === '' || $qPrev === null || $qPrev < 0) {
             $summary['errors']++;
-            $errors[] = ['line' => $i, 'error' => 'Dados inválidos (produto_nome/variacao/qtd_prevista).', 'produto_nome' => $produtoNome, 'variacao' => $variacaoRaw, 'qtd_prevista' => $qPrevRaw];
+            $errors[] = [
+                'line' => $i,
+                'error' => 'Dados inválidos (variacao/qtd_prevista).',
+                'produto_nome' => $produtoNomeDb,
+                'variacao' => $variacaoRaw,
+                'qtd_prevista' => $qPrevRaw
+            ];
             continue;
         }
+
+        // existe item?
+        $stmtChkItem->execute([$loteId, $recebimentoId, $produtoId, $variacao]);
+        $existing = $stmtChkItem->fetch(PDO::FETCH_ASSOC);
+
+        if ($existing) {
+            if ($onConflict === 'ignore') {
+                $summary['skipped']++;
+                continue;
+            }
+
+            $oldPrev = (int)($existing['qtd_prevista'] ?? 0);
+            $newPrev = $qPrev;
+
+            if ($onConflict === 'sum') {
+                $newPrev = $oldPrev + $qPrev;
+            }
+
+            $stmtUpd->execute([$newPrev, (int)$existing['id'], $loteId]);
+            $summary['updated']++;
+        } else {
+            $stmtIns->execute([$loteId, $recebimentoId, $produtoId, $produtoNomeDb, ucfirst($variacao), $qPrev]);
+            $summary['imported']++;
+        }
+
 
         // acha produto
         $stmtProd->execute([$produtoNome]);
@@ -334,6 +467,10 @@ function map_header(array $headerRow): array
         'produto_nome' => ['produto_nome', 'produto', 'nome', 'produto name'],
         'variacao' => ['variacao', 'variação', 'tipo', 'banho', 'material'],
         'qtd_prevista' => ['qtd_prevista', 'quantidade_prevista', 'qtd', 'quantidade', 'qtd_esperada', 'quantidade_esperada'],
+
+        // ✅ modelo 2 (wide)
+        'prata' => ['prata'],
+        'ouro'  => ['ouro'],
     ];
 
     $map = [];

@@ -20,7 +20,7 @@
                 <div class="modal-body">
                     <div class="alert alert-info">
                         <div class="fw-semibold mb-1">Formato esperado (primeira aba):</div>
-                        <code>produto_nome | variacao | qtd_prevista</code>
+                        <code>Produto | Prata | Ouro</code>
                         <div class="small text-muted mt-1">
                             • <strong>variacao</strong>: Prata ou Ouro<br>
                             • <strong>qtd_prevista</strong>: inteiro (>= 0)
