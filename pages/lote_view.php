@@ -196,7 +196,7 @@ $openItem = ((int)($_GET['open_item'] ?? 0) === 1);
 
                                 <button
                                     type="submit"
-                                    class="btn btn-outline-success"
+                                    class="btn btn-outline-primary"
                                     <?= !$temRecebimentoAtual ? 'disabled' : '' ?>
                                     title="<?= !$temRecebimentoAtual ? 'Selecione um recebimento' : '' ?>">
                                     🔄 Puxar conferidos do Tiny
