@@ -186,6 +186,23 @@ $openItem = ((int)($_GET['open_item'] ?? 0) === 1);
                                 data-bs-target="#modalImportXlsx">
                                 📥 Importar XLSX
                             </button>
+
+                            <form method="POST" action="actions/lote_sync_tiny.php" class="d-grid gap-2">
+                                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token('lote_tiny_sync')) ?>">
+                                <input type="hidden" name="lote_id" value="<?= (int)$lote['id'] ?>">
+                                <input type="hidden" name="recebimento_id" value="<?= (int)$recebimentoAtualId ?>">
+
+                                <input type="hidden" name="mode" value="only_null"> <!-- padrão: não sobrescreve -->
+
+                                <button
+                                    type="submit"
+                                    class="btn btn-outline-success"
+                                    <?= !$temRecebimentoAtual ? 'disabled' : '' ?>
+                                    title="<?= !$temRecebimentoAtual ? 'Selecione um recebimento' : '' ?>">
+                                    🔄 Puxar conferidos do Tiny
+                                </button>
+                            </form>
+
                         </div>
                     <?php endif; ?>
 

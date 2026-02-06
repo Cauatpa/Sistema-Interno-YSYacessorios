@@ -22,12 +22,25 @@ $openItem = ((int)($_GET['open_item'] ?? 0) === 1);
                 <div class="row g-2">
                     <div class="col-12">
                         <label class="form-label">Produto</label>
-                        <select id="produtoSelectAdd" name="produto_id" class="form-select" required>
-                            <option value="">Selecione...</option>
+
+                        <input
+                            type="text"
+                            name="produto_nome"
+                            class="form-control"
+                            required
+                            autocomplete="off"
+                            list="datalistProdutos"
+                            placeholder="Digite o nome exatamente como no Tiny (ou selecione da lista)">
+
+                        <datalist id="datalistProdutos">
                             <?php foreach ($produtos as $p): ?>
-                                <option value="<?= (int)$p['id'] ?>"><?= htmlspecialchars((string)$p['nome']) ?></option>
+                                <option value="<?= htmlspecialchars((string)$p['nome']) ?>"></option>
                             <?php endforeach; ?>
-                        </select>
+                        </datalist>
+
+                        <div class="text-muted small mt-1">
+                            Dica: quanto mais igual ao Tiny, melhor o match automático.
+                        </div>
                     </div>
 
                     <div class="col-12">

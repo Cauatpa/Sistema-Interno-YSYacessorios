@@ -63,7 +63,7 @@ if (($f['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
     exit;
 }
 
-$tmpPath = (string)($f['tmp_name'] ?? '');
+$tmpPath  = (string)($f['tmp_name'] ?? '');
 $origName = (string)($f['name'] ?? 'arquivo.xlsx');
 
 if ($tmpPath === '' || !is_file($tmpPath)) {
@@ -94,13 +94,11 @@ try {
     $spreadsheet = IOFactory::load($tmpPath);
     $sheet = $spreadsheet->getSheet(0);
 
-    // pega todas as linhas (array)
     $rows = $sheet->toArray(null, true, true, true);
     if (!$rows || count($rows) < 2) {
         throw new RuntimeException('Planilha vazia ou sem dados.');
     }
 
-    // Detecta cabeçalho (primeira linha)
     $header = $rows[1] ?? [];
     $map = map_header($header);
 
@@ -116,10 +114,17 @@ try {
         );
     }
 
-    // prepared statements
-    $stmtProd = $pdo->prepare("SELECT id, nome FROM produtos WHERE nome = ? LIMIT 1");
+    // Produto (por nome ou nome_norm)
+    $stmtProd = $pdo->prepare("
+        SELECT id, nome
+        FROM produtos
+        WHERE nome = ?
+           OR nome_norm = ?
+        LIMIT 1
+    ");
 
-    $stmtChkItem = $pdo->prepare("
+    // Check existente por produto_id
+    $stmtChkById = $pdo->prepare("
         SELECT id, qtd_prevista
         FROM lote_itens
         WHERE lote_id = ?
@@ -129,11 +134,23 @@ try {
         LIMIT 1
     ");
 
+    // Check existente por nome (quando produto_id é NULL)
+    $stmtChkByNome = $pdo->prepare("
+        SELECT id, qtd_prevista
+        FROM lote_itens
+        WHERE lote_id = ?
+          AND recebimento_id = ?
+          AND produto_id IS NULL
+          AND produto_nome = ?
+          AND variacao = ?
+        LIMIT 1
+    ");
+
     $stmtIns = $pdo->prepare("
         INSERT INTO lote_itens
-          (lote_id, recebimento_id, produto_id, produto_nome, variacao, qtd_prevista, qtd_conferida, situacao, nota)
+            (lote_id, recebimento_id, produto_id, produto_nome, variacao, qtd_prevista, qtd_conferida, situacao, nota)
         VALUES
-          (?, ?, ?, ?, ?, ?, NULL, 'ok', NULL)
+            (?, ?, ?, ?, ?, ?, NULL, 'ok', NULL)
     ");
 
     $stmtUpd = $pdo->prepare("
@@ -145,24 +162,70 @@ try {
 
     $pdo->beginTransaction();
 
+    $apply = function (
+        ?int $produtoId,
+        string $produtoNomeDb,
+        string $variacao,
+        int $qPrev
+    ) use (
+        $stmtChkById,
+        $stmtChkByNome,
+        $stmtUpd,
+        $stmtIns,
+        $loteId,
+        $recebimentoId,
+        $onConflict,
+        &$summary
+    ): void {
+        // check existente
+        if ($produtoId !== null) {
+            $stmtChkById->execute([$loteId, $recebimentoId, $produtoId, $variacao]);
+            $existing = $stmtChkById->fetch(PDO::FETCH_ASSOC);
+        } else {
+            $stmtChkByNome->execute([$loteId, $recebimentoId, $produtoNomeDb, $variacao]);
+            $existing = $stmtChkByNome->fetch(PDO::FETCH_ASSOC);
+        }
+
+        if ($existing) {
+            if ($onConflict === 'ignore') {
+                $summary['skipped']++;
+                return;
+            }
+
+            $oldPrev = (int)($existing['qtd_prevista'] ?? 0);
+            $newPrev = $qPrev;
+
+            if ($onConflict === 'sum') {
+                $newPrev = $oldPrev + $qPrev;
+            }
+            // replace => $qPrev direto
+
+            $stmtUpd->execute([$newPrev, (int)$existing['id'], $loteId]);
+            $summary['updated']++;
+            return;
+        }
+
+        // insert
+        $stmtIns->execute([$loteId, $recebimentoId, $produtoId, $produtoNomeDb, ucfirst($variacao), $qPrev]);
+        $summary['imported']++;
+    };
+
     // percorre a partir da linha 2
-    for ($i = 2; $i <= count($rows); $i++) {
+    $max = count($rows);
+    for ($i = 2; $i <= $max; $i++) {
         $r = $rows[$i] ?? null;
         if (!is_array($r)) continue;
 
-        $produtoNome = norm_str((string)($r[$map['produto_nome']] ?? ''));
+        $produtoNomeXlsx = norm_str((string)($r[$map['produto_nome']] ?? ''));
 
-        // modelo 2 (wide): pega prata/ouro se existir
         $qPrataRaw = isset($map['prata']) ? ($r[$map['prata']] ?? '') : '';
         $qOuroRaw  = isset($map['ouro'])  ? ($r[$map['ouro']] ?? '')  : '';
 
-        // modelo 1 (long): pega variacao/qtd_prevista se existir
         $variacaoRaw = isset($map['variacao']) ? norm_str((string)($r[$map['variacao']] ?? '')) : '';
         $qPrevRaw    = isset($map['qtd_prevista']) ? ($r[$map['qtd_prevista']] ?? '') : '';
 
-        // pula linha completamente vazia (considerando os dois modelos)
         if (
-            $produtoNome === '' &&
+            $produtoNomeXlsx === '' &&
             $variacaoRaw === '' &&
             (string)$qPrevRaw === '' &&
             (string)$qPrataRaw === '' &&
@@ -173,91 +236,53 @@ try {
 
         $summary['total_rows']++;
 
-        // acha produto
-        if ($produtoNome === '') {
+        if ($produtoNomeXlsx === '') {
             $summary['errors']++;
-            $errors[] = ['line' => $i, 'error' => 'Produto vazio.', 'produto_nome' => $produtoNome];
+            $errors[] = ['line' => $i, 'error' => 'Produto vazio.'];
             continue;
         }
 
-        $stmtProd->execute([$produtoNome]);
+        // tenta achar no banco
+        $produtoNomeNorm = norm_prod($produtoNomeXlsx);
+        $stmtProd->execute([$produtoNomeXlsx, $produtoNomeNorm]);
         $p = $stmtProd->fetch(PDO::FETCH_ASSOC);
 
-        if (!$p) {
+        $produtoId = null;
+        $produtoNomeDb = $produtoNomeXlsx; // se não existir, mantém como veio do XLSX (bom p/ Tiny)
+
+        if ($p) {
+            $produtoId = (int)$p['id'];
+            $produtoNomeDb = (string)$p['nome'];
+        } else {
             if ($onMissing === 'fail') {
-                throw new RuntimeException("Produto não encontrado na linha {$i}: {$produtoNome}");
+                throw new RuntimeException("Produto não encontrado na linha {$i}: {$produtoNomeXlsx}");
             }
-            $summary['skipped']++;
-            $errors[] = ['line' => $i, 'error' => 'Produto não encontrado.', 'produto_nome' => $produtoNome];
-            continue;
+            // onMissing=skip -> ainda importamos com produto_id NULL (para funcionar com Tiny)
         }
 
-        $produtoId = (int)$p['id'];
-        $produtoNomeDb = (string)$p['nome']; // usa o nome do banco (padrão)
-
-        // ✅ Se for modelo 2 (wide), processa prata/ouro
+        // ===== Modelo WIDE =====
         if ($hasWide) {
             $qPrata = normalize_int($qPrataRaw);
             $qOuro  = normalize_int($qOuroRaw);
 
-            // se vier número negativo, trata como erro
             if (($qPrata !== null && $qPrata < 0) || ($qOuro !== null && $qOuro < 0)) {
                 $summary['errors']++;
                 $errors[] = ['line' => $i, 'error' => 'Quantidade negativa.', 'produto_nome' => $produtoNomeDb];
                 continue;
             }
 
-            // se as duas colunas vierem vazias, não faz nada (linha “em branco” de variações)
             if ($qPrata === null && $qOuro === null) {
                 $summary['skipped']++;
                 continue;
             }
 
-            // helper local pra aplicar conflito/insert/update
-            $apply = function (string $variacao, int $qPrev) use (
-                $stmtChkItem,
-                $stmtUpd,
-                $stmtIns,
-                $loteId,
-                $recebimentoId,
-                $produtoId,
-                $produtoNomeDb,
-                $onConflict,
-                &$summary
-            ) {
-                $stmtChkItem->execute([$loteId, $recebimentoId, $produtoId, $variacao]);
-                $existing = $stmtChkItem->fetch(PDO::FETCH_ASSOC);
-
-                if ($existing) {
-                    if ($onConflict === 'ignore') {
-                        $summary['skipped']++;
-                        return;
-                    }
-
-                    $oldPrev = (int)($existing['qtd_prevista'] ?? 0);
-                    $newPrev = $qPrev;
-
-                    if ($onConflict === 'sum') {
-                        $newPrev = $oldPrev + $qPrev;
-                    }
-
-                    // replace = usa $qPrev direto
-                    $stmtUpd->execute([$newPrev, (int)$existing['id'], $loteId]);
-                    $summary['updated']++;
-                } else {
-                    $stmtIns->execute([$loteId, $recebimentoId, $produtoId, $produtoNomeDb, ucfirst($variacao), $qPrev]);
-                    $summary['imported']++;
-                }
-            };
-
-            // Processa cada variação presente
-            if ($qPrata !== null) $apply('prata', $qPrata);
-            if ($qOuro  !== null) $apply('ouro',  $qOuro);
+            if ($qPrata !== null) $apply($produtoId, $produtoNomeDb, 'prata', $qPrata);
+            if ($qOuro  !== null) $apply($produtoId, $produtoNomeDb, 'ouro',  $qOuro);
 
             continue;
         }
 
-        // ✅ Se não for wide, cai no modelo 1 (long) como já era
+        // ===== Modelo LONG =====
         $variacao = normalize_variacao($variacaoRaw);
         $qPrev = normalize_int($qPrevRaw);
 
@@ -273,77 +298,13 @@ try {
             continue;
         }
 
-        // existe item?
-        $stmtChkItem->execute([$loteId, $recebimentoId, $produtoId, $variacao]);
-        $existing = $stmtChkItem->fetch(PDO::FETCH_ASSOC);
-
-        if ($existing) {
-            if ($onConflict === 'ignore') {
-                $summary['skipped']++;
-                continue;
-            }
-
-            $oldPrev = (int)($existing['qtd_prevista'] ?? 0);
-            $newPrev = $qPrev;
-
-            if ($onConflict === 'sum') {
-                $newPrev = $oldPrev + $qPrev;
-            }
-
-            $stmtUpd->execute([$newPrev, (int)$existing['id'], $loteId]);
-            $summary['updated']++;
-        } else {
-            $stmtIns->execute([$loteId, $recebimentoId, $produtoId, $produtoNomeDb, ucfirst($variacao), $qPrev]);
-            $summary['imported']++;
-        }
-
-
-        // acha produto
-        $stmtProd->execute([$produtoNome]);
-        $p = $stmtProd->fetch(PDO::FETCH_ASSOC);
-
-        if (!$p) {
-            if ($onMissing === 'fail') {
-                throw new RuntimeException("Produto não encontrado na linha {$i}: {$produtoNome}");
-            }
-            $summary['skipped']++;
-            $errors[] = ['line' => $i, 'error' => 'Produto não encontrado.', 'produto_nome' => $produtoNome];
-            continue;
-        }
-
-        $produtoId = (int)$p['id'];
-        $produtoNomeDb = (string)$p['nome']; // usa o nome do banco (padrão)
-
-        // existe item?
-        $stmtChkItem->execute([$loteId, $recebimentoId, $produtoId, $variacao]);
-        $existing = $stmtChkItem->fetch(PDO::FETCH_ASSOC);
-
-        if ($existing) {
-            if ($onConflict === 'ignore') {
-                $summary['skipped']++;
-                continue;
-            }
-
-            $oldPrev = (int)($existing['qtd_prevista'] ?? 0);
-            $newPrev = $qPrev;
-
-            if ($onConflict === 'sum') {
-                $newPrev = $oldPrev + $qPrev;
-            }
-
-            $stmtUpd->execute([$newPrev, (int)$existing['id'], $loteId]);
-            $summary['updated']++;
-        } else {
-            $stmtIns->execute([$loteId, $recebimentoId, $produtoId, $produtoNomeDb, ucfirst($variacao), $qPrev]);
-            $summary['imported']++;
-        }
+        $apply($produtoId, $produtoNomeDb, $variacao, $qPrev);
     }
 
     $pdo->commit();
 
     csrf_rotate('lote_import_xlsx');
 
-    // auditoria
     audit_log(
         $pdo,
         'import',
@@ -364,7 +325,6 @@ try {
         "Importou XLSX no lote #{$loteId} (rec {$recebimentoId}) — imp: {$summary['imported']} | upd: {$summary['updated']} | skip: {$summary['skipped']} | err: {$summary['errors']}."
     );
 
-    // toast compacto
     $toast = "Importado: {$summary['imported']} | Atualizados: {$summary['updated']} | Ignorados: {$summary['skipped']} | Erros: {$summary['errors']}";
     header('Location: ../lote.php?id=' . $loteId . '&edit=1&recebimento_id=' . $recebimentoId . '&toast=' . urlencode($toast));
     exit;
@@ -415,11 +375,9 @@ function normalize_variacao(string $v): string
 {
     $v = mb_strtolower(norm_str($v), 'UTF-8');
 
-    // aceita: prata/ouro, p/o, etc
     if ($v === 'prata' || $v === 'p') return 'prata';
-    if ($v === 'ouro' || $v === 'o') return 'ouro';
+    if ($v === 'ouro'  || $v === 'o') return 'ouro';
 
-    // aceita "banho ouro" etc (se vier sujo)
     if (str_contains($v, 'prata')) return 'prata';
     if (str_contains($v, 'ouro')) return 'ouro';
 
@@ -428,7 +386,6 @@ function normalize_variacao(string $v): string
 
 function normalize_int($raw): ?int
 {
-    // PhpSpreadsheet pode trazer número como float/int ou string
     if (is_int($raw)) return $raw;
     if (is_float($raw)) return (int)round($raw);
 
@@ -436,25 +393,29 @@ function normalize_int($raw): ?int
         $raw = trim($raw);
         if ($raw === '') return null;
 
-        // troca vírgula por ponto e remove lixo
         $raw = str_replace(',', '.', $raw);
-        // pega somente parte numérica
-        if (!preg_match('/^-?\d+(\.\d+)?$/', $raw)) {
-            return null;
-        }
+        if (!preg_match('/^-?\d+(\.\d+)?$/', $raw)) return null;
+
         return (int)round((float)$raw);
     }
 
     return null;
 }
 
-/**
- * Mapeia cabeçalho (linha 1) para colunas obrigatórias.
- * Aceita nomes alternativos.
- */
+function norm_prod(string $s): string
+{
+    $s = mb_strtolower(trim($s), 'UTF-8');
+    $s = preg_replace('/\s+/', ' ', $s) ?? $s;
+
+    $t = @iconv('UTF-8', 'ASCII//TRANSLIT', $s);
+    if (is_string($t) && $t !== '') $s = $t;
+
+    $s = preg_replace('/[^a-z0-9 ]/', '', $s) ?? $s;
+    return trim($s);
+}
+
 function map_header(array $headerRow): array
 {
-    // $headerRow vem como ['A' => 'Produto', 'B' => 'Variação', ...]
     $normalized = [];
     foreach ($headerRow as $col => $name) {
         $n = mb_strtolower(trim((string)$name), 'UTF-8');
@@ -462,19 +423,15 @@ function map_header(array $headerRow): array
         $normalized[$col] = $n;
     }
 
-    // aliases aceitos
     $aliases = [
-        'produto_nome' => ['produto_nome', 'produto', 'nome', 'produto name'],
+        'produto_nome' => ['produto_nome', 'produto', 'nome', 'produto_name'],
         'variacao' => ['variacao', 'variação', 'tipo', 'banho', 'material'],
         'qtd_prevista' => ['qtd_prevista', 'quantidade_prevista', 'qtd', 'quantidade', 'qtd_esperada', 'quantidade_esperada'],
-
-        // ✅ modelo 2 (wide)
         'prata' => ['prata'],
         'ouro'  => ['ouro'],
     ];
 
     $map = [];
-
     foreach ($aliases as $key => $alts) {
         foreach ($normalized as $col => $n) {
             if (in_array($n, $alts, true)) {
