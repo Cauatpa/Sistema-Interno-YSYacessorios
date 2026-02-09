@@ -1,11 +1,15 @@
 <?php
-require '../config/database.php';
+require_once __DIR__ . '/../config/database.php';
 
 require_once __DIR__ . '/../helpers/auth.php';
 require_once __DIR__ . '/../helpers/csrf.php';
 
 auth_session_start();
 auth_require_role('admin');
+
+// Base do projeto (ex: /InterYSY)
+$script = $_SERVER['SCRIPT_NAME'] ?? '';           // /InterYSY/pages/usuarios.php
+$base   = rtrim(dirname(dirname($script)), '/\\'); // /InterYSY
 
 $toast = $_GET['toast'] ?? '';
 $senhaGerada = $_GET['senha'] ?? '';
@@ -28,7 +32,7 @@ function badgeRole(string $role): string
         'admin'        => 'bg-danger',
         'operador'     => 'bg-primary',
         'visualizador' => 'bg-secondary',
-        'leitura'      => 'bg-secondary', // compat retro
+        'leitura'      => 'bg-secondary',
         default        => 'bg-secondary',
     };
 }
@@ -44,8 +48,8 @@ function labelRole(string $role): string
         'admin'        => 'admin',
         'operador'     => 'operador',
         'visualizador' => 'leitor',
-        'leitura'      => 'leitor', // compat retro
-        default        => $role !== '' ? $role : '—', // mostra o que veio pra facilitar debug
+        'leitura'      => 'leitor',
+        default        => $role !== '' ? $role : '—',
     };
 }
 ?>
@@ -60,8 +64,8 @@ function labelRole(string $role): string
     <!-- Bootstrap -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 
-    <link rel="icon" type="image/png" href="../assets/imgs/Y.png">
-    <script src="../assets/js/theme.js" defer></script>
+    <link rel="icon" type="image/png" href="<?= htmlspecialchars($base) ?>/assets/imgs/Y.png">
+    <script src="<?= htmlspecialchars($base) ?>/assets/js/theme.js" defer></script>
 </head>
 
 <body class="p-3">
@@ -72,13 +76,13 @@ function labelRole(string $role): string
 
             <div class="d-flex gap-2">
 
-                <a href="/InterYSY/index.php" class="btn btn-outline-secondary btn-sm">← Voltar</a>
+                <a href="<?= htmlspecialchars($base) ?>/index.php" class="btn btn-outline-secondary btn-sm">← Voltar</a>
 
                 <button id="btnTheme" class="btn btn-outline-secondary btn-sm">
                     🌙 Tema escuro
                 </button>
 
-                <form method="POST" action="/InterYSY/logout.php" class="d-inline">
+                <form method="POST" action="<?= htmlspecialchars($base) ?>/logout.php" class="d-inline">
                     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token('logout')) ?>">
                     <button type="submit" class="btn btn-outline-secondary btn-sm">Sair</button>
                 </form>
@@ -96,7 +100,7 @@ function labelRole(string $role): string
         <div class="card p-3 mb-3">
             <h5 class="mb-3">➕ Criar novo usuário</h5>
 
-            <form method="POST" action="/InterYSY/actions/usuarios_criar.php" class="row g-2">
+            <form method="POST" action="<?= htmlspecialchars($base) ?>/actions/usuarios_criar.php" class="row g-2">
                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token('usuarios_criar')) ?>">
 
                 <div class="col-12 col-md-4">
@@ -172,7 +176,7 @@ function labelRole(string $role): string
 
                             <td class="text-nowrap">
                                 <!-- Reset senha (gera senha temporária) -->
-                                <form method="POST" action="/InterYSY/actions/usuarios_reset_senha.php" class="d-inline">
+                                <form method="POST" action="<?= htmlspecialchars($base) ?>/actions/usuarios_reset_senha.php" class="d-inline">
                                     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token('usuarios_reset')) ?>">
                                     <input type="hidden" name="id" value="<?= $id ?>">
                                     <button class="btn btn-outline-warning btn-sm"
@@ -191,7 +195,7 @@ function labelRole(string $role): string
                                 </button>
 
                                 <!-- Ativar/Desativar -->
-                                <form method="POST" action="/InterYSY/actions/usuarios_toggle.php" class="d-inline">
+                                <form method="POST" action="<?= htmlspecialchars($base) ?>/actions/usuarios_toggle.php" class="d-inline">
                                     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token('usuarios_toggle')) ?>">
                                     <input type="hidden" name="id" value="<?= $id ?>">
                                     <button class="btn btn-outline-danger btn-sm"
@@ -214,7 +218,7 @@ function labelRole(string $role): string
 
     <!-- ✅ Modais de trocar senha (um por usuário) -->
     <?php foreach ($users as $u): ?>
-        <?php require __DIR__ . '/../modals/modal_trocar_senha_usuario.php';; ?>
+        <?php require __DIR__ . '/../modals/modal_trocar_senha_usuario.php'; ?>
     <?php endforeach; ?>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>

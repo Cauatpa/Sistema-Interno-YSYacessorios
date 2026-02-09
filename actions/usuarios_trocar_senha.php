@@ -1,6 +1,6 @@
 <?php
 
-require '../config/database.php';
+require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../helpers/auth.php';
 require_once __DIR__ . '/../helpers/csrf.php';
 require_once __DIR__ . '/../helpers/user_password.php';
@@ -18,12 +18,25 @@ if (!csrf_validate($_POST['csrf_token'] ?? null, 'usuarios_trocar_senha')) {
 }
 
 $id = (int)($_POST['id'] ?? 0);
-$senha = trim($_POST['senha'] ?? '');
+$senha = trim((string)($_POST['senha'] ?? ''));
+$senhaConfirm = trim((string)($_POST['senha_confirm'] ?? ''));
 
-if ($id <= 0 || $senha === '') {
+if ($id <= 0 || $senha === '' || $senhaConfirm === '') {
     audit_log($pdo, 'change_password', 'user', $id > 0 ? $id : null, ['reason' => 'validation_error', 'id' => $id], null, null, false, 'validation_error', 'Falha ao trocar senha (validação).');
     http_response_code(400);
     exit('Dados inválidos.');
+}
+
+if ($senha !== $senhaConfirm) {
+    audit_log($pdo, 'change_password', 'user', $id, ['reason' => 'password_mismatch'], null, null, false, 'password_mismatch', "Falha ao trocar senha do usuário #{$id} (confirmação não confere).");
+    http_response_code(400);
+    exit('As senhas não conferem.');
+}
+
+if (mb_strlen($senha) < 8) {
+    audit_log($pdo, 'change_password', 'user', $id, ['reason' => 'password_too_short'], null, null, false, 'password_too_short', "Falha ao trocar senha do usuário #{$id} (senha curta).");
+    http_response_code(400);
+    exit('A senha deve ter no mínimo 8 caracteres.');
 }
 
 // before “safe” (não pega hash/senha)
@@ -54,5 +67,9 @@ audit_log(
     "Alterou a senha do usuário #{$id} (@{$before['usuario']})."
 );
 
-header('Location: ../usuarios.php?toast=senha_alterada');
+// Base do projeto (ex: /InterYSY)
+$script = $_SERVER['SCRIPT_NAME'] ?? '';           // /InterYSY/actions/usuarios_trocar_senha.php
+$base   = rtrim(dirname(dirname($script)), '/\\'); // /InterYSY
+
+header('Location: ' . $base . '/pages/usuarios.php?toast=' . urlencode('senha_alterada'));
 exit;

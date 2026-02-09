@@ -1,10 +1,6 @@
 <?php
-// Este arquivo é incluído dentro do foreach ($users as $u) no usuarios.php
-// Então a variável $u existe aqui.
-
 require_once __DIR__ . '/../helpers/csrf.php';
 
-// garante sessão para gerar/ler token com consistência
 csrf_session_start();
 
 $idUser = (int)($u['id'] ?? 0);
@@ -12,16 +8,20 @@ $nomeUser = (string)($u['nome'] ?? '');
 $usuarioLogin = (string)($u['usuario'] ?? '');
 
 if ($idUser <= 0) {
-    // evita renderizar modal inválido caso venha dado quebrado
     return;
 }
+
+// Usa $base vindo do usuarios.php (include compartilha escopo)
+$action = (isset($base) && $base !== '')
+    ? ($base . '/actions/usuarios_trocar_senha.php')
+    : '../actions/usuarios_trocar_senha.php';
 ?>
 
-<div class="modal fade" id="modalSenha<?= $idUser ?>" tabindex="-1" aria-hidden="true">
+<div class="modal fade" id="modalSenha<?= (int)$idUser ?>" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-fullscreen-sm-down">
         <div class="modal-content">
-            <form method="POST" action="/InterYSY/actions/usuarios_trocar_senha.php" autocomplete="off">
 
+            <form method="POST" action="<?= htmlspecialchars($action) ?>" autocomplete="off">
                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token('usuarios_trocar_senha')) ?>">
                 <input type="hidden" name="id" value="<?= (int)$idUser ?>">
 
@@ -43,6 +43,7 @@ if ($idUser <= 0) {
                             name="senha"
                             class="form-control"
                             minlength="8"
+                            maxlength="72"
                             required
                             autocomplete="new-password">
                         <small class="text-muted">Mínimo 8 caracteres.</small>
@@ -55,6 +56,7 @@ if ($idUser <= 0) {
                             name="senha_confirm"
                             class="form-control"
                             minlength="8"
+                            maxlength="72"
                             required
                             autocomplete="new-password">
                     </div>
@@ -68,7 +70,6 @@ if ($idUser <= 0) {
                         Salvar senha
                     </button>
                 </div>
-
             </form>
 
         </div>
