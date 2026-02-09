@@ -74,6 +74,18 @@ if ($recebimentoAtualId > 0) {
     }
 }
 
+// Baseline: se tiver algum item com tiny_saldo_antes preenchido, é porque o lote já passou por uma baseline (inicialização de estoque) em algum momento. Isso é importante para mostrar avisos na UI e evitar que o usuário faça sync com o Tiny sem querer, sobrescrevendo os saldos antes de ter uma baseline feita.
+$stmtBaseline = $pdo->prepare("
+    SELECT COUNT(*) 
+    FROM lote_itens
+    WHERE lote_id = ?
+      AND recebimento_id = ?
+      AND tiny_saldo_antes IS NOT NULL
+");
+$stmtBaseline->execute([$lote['id'], $recebimentoAtualId]);
+
+$hasBaseline = ((int)$stmtBaseline->fetchColumn() > 0);
+
 // =============================
 // Filtros de itens
 // =============================

@@ -192,15 +192,23 @@ $openItem = ((int)($_GET['open_item'] ?? 0) === 1);
                                 <input type="hidden" name="lote_id" value="<?= (int)$lote['id'] ?>">
                                 <input type="hidden" name="recebimento_id" value="<?= (int)$recebimentoAtualId ?>">
 
-                                <input type="hidden" name="mode" value="only_null"> <!-- padrão: não sobrescreve -->
-
-                                <button
-                                    type="submit"
-                                    class="btn btn-outline-primary"
-                                    <?= !$temRecebimentoAtual ? 'disabled' : '' ?>
-                                    title="<?= !$temRecebimentoAtual ? 'Selecione um recebimento' : '' ?>">
-                                    🔄 Puxar conferidos do Tiny
-                                </button>
+                                <?php if (!$hasBaseline): ?>
+                                    <input type="hidden" name="mode" value="baseline">
+                                    <button
+                                        type="submit"
+                                        class="btn btn-outline-primary"
+                                        <?= !$temRecebimentoAtual ? 'disabled' : '' ?>>
+                                        📌 Registrar estoque inicial (Tiny)
+                                    </button>
+                                <?php else: ?>
+                                    <input type="hidden" name="mode" value="delta">
+                                    <button
+                                        type="submit"
+                                        class="btn btn-outline-success"
+                                        <?= !$temRecebimentoAtual ? 'disabled' : '' ?>>
+                                        🔄 Atualizar conferidos (Tiny)
+                                    </button>
+                                <?php endif; ?>
                             </form>
 
                         </div>
@@ -476,7 +484,7 @@ $openItem = ((int)($_GET['open_item'] ?? 0) === 1);
                                         <!-- Modal edit full -->
                                         <div class="modal fade" id="<?= htmlspecialchars($modalId) ?>" tabindex="-1" aria-hidden="true">
                                             <div class="modal-dialog modal-lg">
-                                                <form method="POST" action="actions/lote_item_edit_full_group.php" class="modal-content">
+                                                <form method="POST" action="actions/lote_item_edit_full_group.php" class="modal-content" autocomplete="off">
                                                     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token('lote_item_edit_full_group')) ?>">
                                                     <input type="hidden" name="lote_id" value="<?= (int)$lote['id'] ?>">
                                                     <input type="hidden" name="id_prata" value="<?= (int)$idPrata ?>">
@@ -489,7 +497,101 @@ $openItem = ((int)($_GET['open_item'] ?? 0) === 1);
                                                     </div>
 
                                                     <div class="modal-body">
-                                                        <!-- ... seu modal continua igual ... -->
+                                                        <div class="row g-3">
+
+                                                            <?php if ($idPrata): ?>
+                                                                <div class="col-12">
+                                                                    <div class="card border p-3">
+                                                                        <div class="d-flex align-items-center justify-content-between mb-2">
+                                                                            <div class="fw-bold">Prata</div>
+                                                                            <span class="text-muted small">#<?= (int)$idPrata ?></span>
+                                                                        </div>
+
+                                                                        <div class="row g-2">
+                                                                            <div class="col-12 col-md-4">
+                                                                                <label class="form-label">Qtd prevista</label>
+                                                                                <input type="number" name="qtd_prevista_prata" class="form-control"
+                                                                                    min="0" value="<?= (int)($prata['qtd_prevista'] ?? 0) ?>">
+                                                                            </div>
+
+                                                                            <div class="col-12 col-md-4">
+                                                                                <label class="form-label">Qtd conferida</label>
+                                                                                <input type="number" name="qtd_conferida_prata" class="form-control"
+                                                                                    min="0" value="<?= htmlspecialchars((string)($prata['qtd_conferida'] ?? '')) ?>">
+                                                                            </div>
+
+                                                                            <div class="col-12 col-md-4">
+                                                                                <label class="form-label">Conferido por</label>
+                                                                                <input type="text" name="conferido_por_prata" class="form-control"
+                                                                                    placeholder="Ex: Josi"
+                                                                                    value="<?= htmlspecialchars((string)($prata['conferido_por'] ?? '')) ?>">
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            <?php endif; ?>
+
+                                                            <?php if ($idOuro): ?>
+                                                                <div class="col-12">
+                                                                    <div class="card border p-3">
+                                                                        <div class="d-flex align-items-center justify-content-between mb-2">
+                                                                            <div class="fw-bold">Ouro</div>
+                                                                            <span class="text-muted small">#<?= (int)$idOuro ?></span>
+                                                                        </div>
+
+                                                                        <div class="row g-2">
+                                                                            <div class="col-12 col-md-4">
+                                                                                <label class="form-label">Qtd prevista</label>
+                                                                                <input type="number" name="qtd_prevista_ouro" class="form-control"
+                                                                                    min="0" value="<?= (int)($ouro['qtd_prevista'] ?? 0) ?>">
+                                                                            </div>
+
+                                                                            <div class="col-12 col-md-4">
+                                                                                <label class="form-label">Qtd conferida</label>
+                                                                                <input type="number" name="qtd_conferida_ouro" class="form-control"
+                                                                                    min="0" value="<?= htmlspecialchars((string)($ouro['qtd_conferida'] ?? '')) ?>">
+                                                                            </div>
+
+                                                                            <div class="col-12 col-md-4">
+                                                                                <label class="form-label">Conferido por</label>
+                                                                                <input type="text" name="conferido_por_ouro" class="form-control"
+                                                                                    placeholder="Ex: Jô"
+                                                                                    value="<?= htmlspecialchars((string)($ouro['conferido_por'] ?? '')) ?>">
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            <?php endif; ?>
+
+                                                            <div class="col-12 col-md-6">
+                                                                <label class="form-label">Situação (igual para ambas)</label>
+                                                                <select name="situacao" class="form-select">
+                                                                    <?php
+                                                                    $opts = [
+                                                                        'ok' => 'OK',
+                                                                        'faltando' => 'Faltando',
+                                                                        'a_mais' => 'A mais',
+                                                                        'banho_trocado' => 'Banho trocado',
+                                                                        'quebra' => 'Quebra',
+                                                                        'outro' => 'Outro'
+                                                                    ];
+                                                                    foreach ($opts as $k => $label):
+                                                                    ?>
+                                                                        <option value="<?= htmlspecialchars($k) ?>" <?= $k === $curSitu ? 'selected' : '' ?>>
+                                                                            <?= htmlspecialchars($label) ?>
+                                                                        </option>
+                                                                    <?php endforeach; ?>
+                                                                </select>
+                                                            </div>
+
+                                                            <div class="col-12 col-md-6">
+                                                                <label class="form-label">Nota (igual para ambas)</label>
+                                                                <input name="nota" class="form-control"
+                                                                    value="<?= htmlspecialchars((string)$curNota) ?>"
+                                                                    placeholder="(opcional)">
+                                                            </div>
+
+                                                        </div>
                                                     </div>
 
                                                     <div class="modal-footer">
@@ -500,153 +602,155 @@ $openItem = ((int)($_GET['open_item'] ?? 0) === 1);
                                             </div>
                                         </div>
 
-                                        <script>
-                                            document.addEventListener('DOMContentLoaded', () => {
-                                                const prata = document.getElementById('<?= htmlspecialchars($modalId) ?>_prata');
-                                                const ouro = document.getElementById('<?= htmlspecialchars($modalId) ?>_ouro');
-                                                const boxPrata = document.getElementById('<?= htmlspecialchars($modalId) ?>_box_prata');
-                                                const boxOuro = document.getElementById('<?= htmlspecialchars($modalId) ?>_box_ouro');
-
-                                                const sync = () => {
-                                                    if (boxPrata) boxPrata.style.display = prata && prata.checked ? '' : 'none';
-                                                    if (boxOuro) boxOuro.style.display = ouro && ouro.checked ? '' : 'none';
-                                                };
-
-                                                prata && prata.addEventListener('change', sync);
-                                                ouro && ouro.addEventListener('change', sync);
-                                                sync();
-                                            });
-                                        </script>
-                                    <?php endif; ?>
-                                </td>
-                            <?php endif; ?>
-                        </tr>
-
-                    <?php endforeach; ?>
-                <?php endif; ?>
-            </tbody>
-        </table>
-
-        <p class="text-center mt-4 text-muted" style="font-size:13px;">
-            InterYSY • Sistema Interno
-        </p>
     </div>
 
-    <!-- Paginação -->
-    <?php if (($totalPages ?? 1) > 1): ?>
-        <nav class="mt-3">
-            <ul class="pagination justify-content-center flex-wrap">
-                <?php
-                $qsBase = $_GET;
-                $qsBase['id'] = (int)$lote['id'];
-                if ($editMode) $qsBase['edit'] = 1;
-                $qsBase['recebimento_id'] = (int)$recebimentoAtualId;
-
-                $mkLink = function (int $p) use ($qsBase) {
-                    $qs = $qsBase;
-                    $qs['page'] = $p;
-                    return 'lote.php?' . http_build_query($qs);
-                };
-
-                $cur = (int)($page ?? 1);
-                ?>
-
-                <li class="page-item <?= $cur <= 1 ? 'disabled' : '' ?>">
-                    <a class="page-link" href="<?= htmlspecialchars($mkLink(max(1, $cur - 1))) ?>">«</a>
-                </li>
-
-                <?php for ($p = max(1, $cur - 2); $p <= min($totalPages, $cur + 2); $p++): ?>
-                    <li class="page-item <?= $p === $cur ? 'active' : '' ?>">
-                        <a class="page-link" href="<?= htmlspecialchars($mkLink($p)) ?>"><?= $p ?></a>
-                    </li>
-                <?php endfor; ?>
-
-                <li class="page-item <?= $cur >= $totalPages ? 'disabled' : '' ?>">
-                    <a class="page-link" href="<?= htmlspecialchars($mkLink(min($totalPages, $cur + 1))) ?>">»</a>
-                </li>
-            </ul>
-
-            <div class="text-center text-muted small">
-                Mostrando <?= count($itens ?? []) ?> de <?= (int)($totalItens ?? 0) ?> itens
-            </div>
-        </nav>
-    <?php endif; ?>
-
-    <?php require_once __DIR__ . '/../modals/lotes/modal_add_item.php'; ?>
-    <?php require_once __DIR__ . '/../modals/lotes/modal_novo_recebimento.php'; ?>
-    <?php require_once __DIR__ . '/../modals/lotes/modal_import_xlsx.php'; ?>
-
-    <!-- Toast -->
-    <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 9999;">
-        <div id="appToast" class="toast align-items-center border-0" role="alert" aria-live="assertive" aria-atomic="true">
-            <div class="d-flex">
-                <div id="appToastBody" class="toast-body"></div>
-                <button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast" aria-label="Fechar"></button>
-            </div>
-        </div>
-    </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="assets/js/app.js" defer></script>
-    <script src="assets/js/theme.js" defer></script>
-
-    <!-- Tom Select -->
-    <script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
-
-    <!-- Tom Select -->
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            const modalEl = document.getElementById('modalAddItem');
-            if (!modalEl) return;
+            const prata = document.getElementById('<?= htmlspecialchars($modalId) ?>_prata');
+            const ouro = document.getElementById('<?= htmlspecialchars($modalId) ?>_ouro');
+            const boxPrata = document.getElementById('<?= htmlspecialchars($modalId) ?>_box_prata');
+            const boxOuro = document.getElementById('<?= htmlspecialchars($modalId) ?>_box_ouro');
 
-            modalEl.addEventListener('shown.bs.modal', () => {
-                const el = document.getElementById('produtoSelectAdd');
-                if (!el) return;
+            const sync = () => {
+                if (boxPrata) boxPrata.style.display = prata && prata.checked ? '' : 'none';
+                if (boxOuro) boxOuro.style.display = ouro && ouro.checked ? '' : 'none';
+            };
 
-                if (!el.tomselect) {
-                    new TomSelect(el, {
-                        plugins: ['clear_button'],
-                        create: false,
-                        maxOptions: 1000,
-                        placeholder: "Digite para buscar...",
-                        allowEmptyOption: true,
-                        searchField: ['text']
-                    });
-                }
-
-                setTimeout(() => el.tomselect?.focus(), 50);
-            });
+            prata && prata.addEventListener('change', sync);
+            ouro && ouro.addEventListener('change', sync);
+            sync();
         });
     </script>
+<?php endif; ?>
+</td>
+<?php endif; ?>
+</tr>
 
-    <!-- ✅ Auto abrir modal quando vier open_item=1 -->
-    <script>
-        (() => {
-            const params = new URLSearchParams(window.location.search);
-            if (!params.has("open_item")) return;
+<?php endforeach; ?>
+<?php endif; ?>
+</tbody>
+</table>
 
-            const modalEl = document.getElementById("modalAddItem");
-            if (!modalEl || !window.bootstrap) return;
+<p class="text-center mt-4 text-muted" style="font-size:13px;">
+    InterYSY • Sistema Interno
+</p>
+</div>
 
-            const modal = new bootstrap.Modal(modalEl);
-            modal.show();
+<!-- Paginação -->
+<?php if (($totalPages ?? 1) > 1): ?>
+    <nav class="mt-3">
+        <ul class="pagination justify-content-center flex-wrap">
+            <?php
+            $qsBase = $_GET;
+            $qsBase['id'] = (int)$lote['id'];
+            if ($editMode) $qsBase['edit'] = 1;
+            $qsBase['recebimento_id'] = (int)$recebimentoAtualId;
 
-            // ✅ remove open_item da URL depois de abrir
-            params.delete("open_item");
-            const newUrl =
-                window.location.pathname +
-                (params.toString() ? "?" + params.toString() : "");
+            $mkLink = function (int $p) use ($qsBase) {
+                $qs = $qsBase;
+                $qs['page'] = $p;
+                return 'lote.php?' . http_build_query($qs);
+            };
 
-            window.history.replaceState({}, document.title, newUrl);
-        })();
-    </script>
+            $cur = (int)($page ?? 1);
+            ?>
 
-    <!-- Datalist de solicitantes -->
-    <datalist id="datalistSolicitantes">
-        <?php foreach ($solicitantes as $s): ?>
-            <option value="<?= htmlspecialchars($s['nome']) ?>"></option>
-        <?php endforeach; ?>
-    </datalist>
+            <li class="page-item <?= $cur <= 1 ? 'disabled' : '' ?>">
+                <a class="page-link" href="<?= htmlspecialchars($mkLink(max(1, $cur - 1))) ?>">«</a>
+            </li>
+
+            <?php for ($p = max(1, $cur - 2); $p <= min($totalPages, $cur + 2); $p++): ?>
+                <li class="page-item <?= $p === $cur ? 'active' : '' ?>">
+                    <a class="page-link" href="<?= htmlspecialchars($mkLink($p)) ?>"><?= $p ?></a>
+                </li>
+            <?php endfor; ?>
+
+            <li class="page-item <?= $cur >= $totalPages ? 'disabled' : '' ?>">
+                <a class="page-link" href="<?= htmlspecialchars($mkLink(min($totalPages, $cur + 1))) ?>">»</a>
+            </li>
+        </ul>
+
+        <div class="text-center text-muted small">
+            Mostrando <?= count($itens ?? []) ?> de <?= (int)($totalItens ?? 0) ?> itens
+        </div>
+    </nav>
+<?php endif; ?>
+
+<?php require_once __DIR__ . '/../modals/lotes/modal_add_item.php'; ?>
+<?php require_once __DIR__ . '/../modals/lotes/modal_novo_recebimento.php'; ?>
+<?php require_once __DIR__ . '/../modals/lotes/modal_import_xlsx.php'; ?>
+
+<!-- Toast -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 9999;">
+    <div id="appToast" class="toast align-items-center border-0" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+            <div id="appToastBody" class="toast-body"></div>
+            <button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast" aria-label="Fechar"></button>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="assets/js/app.js" defer></script>
+<script src="assets/js/theme.js" defer></script>
+
+<!-- Tom Select -->
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
+
+<!-- Tom Select -->
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const modalEl = document.getElementById('modalAddItem');
+        if (!modalEl) return;
+
+        modalEl.addEventListener('shown.bs.modal', () => {
+            const el = document.getElementById('produtoSelectAdd');
+            if (!el) return;
+
+            if (!el.tomselect) {
+                new TomSelect(el, {
+                    plugins: ['clear_button'],
+                    create: false,
+                    maxOptions: 1000,
+                    placeholder: "Digite para buscar...",
+                    allowEmptyOption: true,
+                    searchField: ['text']
+                });
+            }
+
+            setTimeout(() => el.tomselect?.focus(), 50);
+        });
+    });
+</script>
+
+<!-- ✅ Auto abrir modal quando vier open_item=1 -->
+<script>
+    (() => {
+        const params = new URLSearchParams(window.location.search);
+        if (!params.has("open_item")) return;
+
+        const modalEl = document.getElementById("modalAddItem");
+        if (!modalEl || !window.bootstrap) return;
+
+        const modal = new bootstrap.Modal(modalEl);
+        modal.show();
+
+        // ✅ remove open_item da URL depois de abrir
+        params.delete("open_item");
+        const newUrl =
+            window.location.pathname +
+            (params.toString() ? "?" + params.toString() : "");
+
+        window.history.replaceState({}, document.title, newUrl);
+    })();
+</script>
+
+<!-- Datalist de solicitantes -->
+<datalist id="datalistSolicitantes">
+    <?php foreach ($solicitantes as $s): ?>
+        <option value="<?= htmlspecialchars($s['nome']) ?>"></option>
+    <?php endforeach; ?>
+</datalist>
 
 </body>
 
