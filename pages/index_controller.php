@@ -60,7 +60,7 @@ $mesFechado = (bool)$stmtFechado->fetchColumn();
 $stmtDash = $pdo->prepare("
     SELECT
         COUNT(*) AS total,
-        SUM(CASE WHEN status <> 'finalizado' THEN 1 ELSE 0 END) AS pendentes,
+        SUM(CASE WHEN status <> 'finalizado' AND COALESCE(sem_estoque,0) = 0 THEN 1 ELSE 0 END) AS pendentes,
         SUM(CASE WHEN status = 'finalizado' THEN 1 ELSE 0 END) AS finalizados,
         SUM(
             CASE
@@ -88,10 +88,7 @@ $dash = $stmtDash->fetch(PDO::FETCH_ASSOC) ?: [
 // ---------------------
 list($where, $params) = montar_where_retiradas($competencia, $f);
 
-// ✅ PATCH: se o helper ainda não colocou o filtro balanco_feito, a gente aplica aqui
-// (não altera lógica do sistema, só garante o filtro novo)
 if (($f['statusFiltro'] ?? 'todos') === 'balanco_feito') {
-    // evita duplicar se helper já aplicou
     if (stripos($where, 'balanco_feito') === false) {
         $where .= " AND COALESCE(balanco_feito,0) = 1 ";
     }

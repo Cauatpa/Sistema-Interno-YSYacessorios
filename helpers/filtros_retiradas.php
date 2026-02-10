@@ -73,8 +73,10 @@ function montar_where_retiradas(string $competencia, array $f): array
 
     // Dashboard (cards de cima)
     $dash = (string)($f['filtro'] ?? 'todos');
+
     if ($dash === 'pendentes') {
-        $where .= " AND status <> 'finalizado' ";
+        // ✅ URGENTE: pendentes do card NÃO inclui sem_estoque
+        $where .= " AND status <> 'finalizado' AND COALESCE(sem_estoque,0) = 0 ";
     } elseif ($dash === 'finalizados') {
         $where .= " AND status = 'finalizado' ";
     } elseif ($dash === 'balanco') {
@@ -104,7 +106,7 @@ function montar_where_retiradas(string $competencia, array $f): array
     // Status dropdown (select Status)
     $statusFiltro = (string)($f['statusFiltro'] ?? 'todos');
     if ($statusFiltro === 'pendentes') {
-        $where .= " AND status <> 'finalizado' ";
+        $where .= " AND status <> 'finalizado' AND COALESCE(sem_estoque,0) = 0 ";
     } elseif ($statusFiltro === 'finalizados') {
         $where .= " AND status = 'finalizado' ";
     } elseif ($statusFiltro === 'balanco_feito') {

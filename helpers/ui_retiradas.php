@@ -7,8 +7,8 @@ function retirada_status_info(array $r): array
     // ✅ Balanço já realizado (prioridade máxima)
     if (!empty($r['balanco_feito'])) {
         return [
-            'classe' => 'status-finalizado', // ou crie status-balanco-feito se quiser
-            'texto'  => '✅ Balanço feito',
+            'classe' => 'status-finalizado',
+            'texto'  => '⚖️ Balanço feito',
         ];
     }
 
@@ -28,8 +28,8 @@ function retirada_status_info(array $r): array
         ];
     }
 
-    // 📦 Estoque preenchido, mas não finalizado
-    if (($r['status'] ?? '') !== 'finalizado' && (int)($r['estoque_preenchido'] ?? 0) === 1) {
+    // Prioriza o flag estoque_preenchido (controle operacional)
+    if ((int)($r['estoque_preenchido'] ?? 0) === 1) {
         return [
             'classe' => '', // sem barra verde
             'texto'  => '📦 Estoque preenchido',
@@ -57,6 +57,7 @@ function card_class(string $atual, string $meu): string
 {
     return $atual === $meu ? 'border border-2 border-primary shadow-sm' : 'shadow-sm';
 }
+
 // Gera URL com query string baseada em $base + $currentGet + $override
 // - $base: URL base (pode ter query string própria)
 function url_com_query(string $base, array $currentGet, array $override = []): string

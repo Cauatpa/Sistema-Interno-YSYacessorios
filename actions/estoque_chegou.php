@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../helpers/auth.php';
 require_once __DIR__ . '/../helpers/csrf.php';
@@ -33,6 +36,7 @@ $stmt = $pdo->prepare("
         status,
         sem_estoque,
         quantidade_solicitada,
+        quantidade_retirada,
         finalizado_por
     FROM retiradas
     WHERE id = ? AND deleted_at IS NULL
@@ -62,24 +66,36 @@ if ((int)($r['sem_estoque'] ?? 0) !== 1) {
     exit;
 }
 
+/**
+ * ✅ Regra: estoque chegou / estoque preenchido
+ * - vira FINALIZADO (pra não entrar em pendentes)
+ * - sem_estoque vira 0
+ * - entrega NÃO muda (mantém 0 / mantém o que já estiver)
+ * - grava finalizado_por='estoque' para consistência
+ */
 $upd = $pdo->prepare("
     UPDATE retiradas
     SET
         sem_estoque = 0,
+
         estoque_preenchido = 1,
         estoque_preenchido_em = NOW(),
 
-        -- não finaliza aqui!
-        status = 'pedido',
-        data_finalizacao = NULL
+        status = 'finalizado',
+        data_finalizacao = NOW(),
 
-        -- não mexe em quantidade_retirada / falta_estoque
-        -- não mexe em quantidade_retirada = quantidade_solicitada
+        -- ✅ não altera entrega; se estiver NULL, garante 0
+        quantidade_retirada = COALESCE(quantidade_retirada, 0),
+
+        falta_estoque = 0,
+        precisa_balanco = 0,
+        balanco_feito = 0,
+        balanco_feito_em = NULL,
+
+        finalizado_por = 'estoque'
     WHERE id = ? AND deleted_at IS NULL
 ");
-
 $ok = $upd->execute([$id]);
-
 
 if (!$ok) {
     http_response_code(500);
@@ -92,15 +108,29 @@ audit_log(
     'retirada',
     $id,
     ['competencia' => (string)($r['competencia'] ?? '')],
-    ['status' => 'pedido', 'sem_estoque' => 1, 'finalizado_por' => (string)($r['finalizado_por'] ?? 'normal')],
-    ['status' => 'finalizado', 'sem_estoque' => 0, 'finalizado_por' => 'estoque'],
+    [
+        'status' => (string)($r['status'] ?? 'pedido'),
+        'sem_estoque' => (int)($r['sem_estoque'] ?? 0),
+        'finalizado_por' => (string)($r['finalizado_por'] ?? 'normal'),
+        'quantidade_retirada' => $r['quantidade_retirada'] ?? null,
+    ],
+    [
+        'status' => 'finalizado',
+        'sem_estoque' => 0,
+        'finalizado_por' => 'estoque',
+        'quantidade_retirada' => (int)($r['quantidade_retirada'] ?? 0),
+    ],
     true,
     null,
-    "Estoque chegou e pedido foi finalizado (#{$id})."
+    "Estoque chegou e pedido foi finalizado como estoque preenchido (#{$id})."
 );
 
 redirect_back_with_params($return, [
     'toast' => 'estoque_chegou',
-    'highlight_id' => $id
+    'highlight_id' => $id,
+    'filtro' => 'finalizados',   // card de cima
+    'status' => 'todos',         // dropdown (não força)
+    'sem_estoque' => 0,          // checkbox
+    'balanco' => 0,              // checkbox
 ]);
 exit;
