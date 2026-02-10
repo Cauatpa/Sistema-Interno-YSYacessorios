@@ -185,6 +185,102 @@
     }
 
     // =========================================
+    // Modal Alertas (Sem estoque / Precisa balanço)
+    // =========================================
+    const modalAlertaEl = document.getElementById("modalAlertaItens");
+    const bsModalAlerta = modalAlertaEl
+      ? new bootstrap.Modal(modalAlertaEl)
+      : null;
+
+    async function abrirDetalheAlerta(label) {
+      if (!bsModalAlerta) return;
+
+      const tipo = String(label).toLowerCase().includes("estoque")
+        ? "sem_estoque"
+        : "precisa_balanco";
+
+      const title = document.getElementById("modalAlertaTitle");
+      const sub = document.getElementById("modalAlertaSub");
+      const loading = document.getElementById("modalAlertaLoading");
+      const content = document.getElementById("modalAlertaContent");
+      const erro = document.getElementById("modalAlertaErro");
+      const total = document.getElementById("modalAlertaTotal");
+      const totalPedidos = document.getElementById("modalAlertaPedidos");
+      const tbody = document.getElementById("modalAlertaTbody");
+
+      if (
+        !title ||
+        !sub ||
+        !loading ||
+        !content ||
+        !erro ||
+        !total ||
+        !totalPedidos ||
+        !tbody
+      ) {
+        console.warn("Modal de alertas incompleto. Verifique o HTML do modal.");
+        return;
+      }
+
+      title.textContent = label;
+      sub.textContent = `${competencia}`;
+      loading.style.display = "block";
+      content.style.display = "none";
+      erro.style.display = "none";
+      erro.textContent = "";
+      tbody.innerHTML = "";
+      total.textContent = "0";
+      totalPedidos.textContent = "0";
+
+      bsModalAlerta.show();
+
+      try {
+        const urlApi = `../pages/api/alerta_itens.php?competencia=${encodeURIComponent(
+          competencia,
+        )}&tipo=${encodeURIComponent(tipo)}`;
+
+        const r = await fetch(urlApi, {
+          credentials: "same-origin",
+          headers: { Accept: "application/json" },
+        });
+
+        const j = await r.json().catch(() => null);
+
+        if (!r.ok || !j?.ok) {
+          throw new Error(j?.error || "erro_api");
+        }
+
+        total.textContent = fmt(j.total_itens);
+        totalPedidos.textContent = fmt(j.total_pedidos);
+
+        if (!Array.isArray(j.itens) || j.itens.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="4" class="text-muted small">Nenhum item encontrado.</td></tr>`;
+        } else {
+          tbody.innerHTML = j.itens
+            .map(
+              (row) => `
+              <tr>
+                <td>${String(row.produto || "")}</td>
+                <td class="text-muted">${String(row.tipo || "")}</td>
+                <td><strong>${fmt(row.qtd)}</strong></td>
+                <td class="text-muted">${fmt(row.pedidos)}</td>
+              </tr>
+            `,
+            )
+            .join("");
+        }
+
+        loading.style.display = "none";
+        content.style.display = "block";
+      } catch (e) {
+        loading.style.display = "none";
+        erro.style.display = "block";
+        erro.textContent = "Não foi possível carregar os itens desse alerta.";
+        console.error(e);
+      }
+    }
+
+    // =========================================
     // 1) Status (doughnut)
     // =========================================
     function renderStatus() {
@@ -238,7 +334,7 @@
     }
 
     // =========================================
-    // 2) Alertas (bar)
+    // 2) Alertas (bar) - clique abre modal
     // =========================================
     function renderAlertas() {
       const elAlertas = document.getElementById("chartAlertas");
@@ -259,20 +355,27 @@
                 Number(data.alertas.balanco || 0),
               ],
               backgroundColor: [YSY_COLORS.barPink, YSY_COLORS.barBlue],
-              borderRadius: 8,
+              borderRadius: 10,
+              maxBarThickness: 70,
+              categoryPercentage: 0.7,
+              barPercentage: 0.75,
             },
           ],
         },
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          layout: { padding: 10 },
-          plugins: { legend: { display: false } },
-          scales: {
-            x: {
-              grid: { color: chartGrid },
-              ticks: { color: chartText },
+          layout: { padding: { top: 8, right: 10, bottom: 8, left: 10 } },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => ` ${fmt(ctx.raw)}`,
+              },
             },
+          },
+          scales: {
+            x: { grid: { display: false }, ticks: { color: chartText } },
             y: {
               beginAtZero: true,
               grid: { color: chartGrid },
@@ -281,6 +384,46 @@
           },
         },
       });
+
+      // ============================
+      // Clique + cursor (robusto)
+      // ============================
+      if (!elAlertas.dataset.clickBound) {
+        elAlertas.dataset.clickBound = "1";
+
+        elAlertas.addEventListener("mousemove", (evt) => {
+          const chart = charts.alertas;
+          if (!chart) return;
+
+          const points = chart.getElementsAtEventForMode(
+            evt,
+            "nearest",
+            { intersect: true },
+            true,
+          );
+
+          elAlertas.style.cursor = points.length ? "pointer" : "default";
+        });
+
+        elAlertas.addEventListener("click", (evt) => {
+          const chart = charts.alertas;
+          if (!chart) return;
+
+          const points = chart.getElementsAtEventForMode(
+            evt,
+            "nearest",
+            { intersect: true },
+            true,
+          );
+          if (!points.length) return;
+
+          const p = points[0];
+          const label = chart.data.labels?.[p.index];
+          if (!label) return;
+
+          abrirDetalheAlerta(String(label));
+        });
+      }
     }
 
     // =========================================
@@ -329,8 +472,8 @@
               ticks: {
                 color: chartText,
                 autoSkip: true,
-                maxTicksLimit: 8, // ✅ reduz poluição
-                maxRotation: 0, // ✅ não inclina
+                maxTicksLimit: 8,
+                maxRotation: 0,
                 minRotation: 0,
                 callback: function (value) {
                   const label = this.getLabelForValue(value);
@@ -375,7 +518,6 @@
         return;
       }
 
-      // ✅ aumenta a “margem” interna do card (evita número colado / vazando)
       const base = 260;
       const perItem = 22;
       const target = Math.min(1200, Math.max(base, labels.length * perItem));
@@ -404,7 +546,7 @@
           indexAxis: "y",
           responsive: true,
           maintainAspectRatio: false,
-          layout: { padding: { left: 6, right: 18, top: 6, bottom: 6 } }, // ✅ evita “vazar”
+          layout: { padding: { left: 6, right: 18, top: 6, bottom: 6 } },
           plugins: {
             legend: { display: false },
             tooltip: {
@@ -718,9 +860,10 @@
     // =========================================
     // Troca de tema sem recarregar
     // =========================================
+    // Se seu sistema dispara um evento custom, beleza.
     document.addEventListener("theme:changed", () => rebuildAllCharts());
 
-    // fallback: se alguém mudar o atributo sem disparar evento
+    // Fallback: observa mudança do atributo data-bs-theme
     const obs = new MutationObserver(() => rebuildAllCharts());
     obs.observe(document.documentElement, {
       attributes: true,

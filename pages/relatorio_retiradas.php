@@ -463,49 +463,52 @@ $diffClass = $diffItens === 0
     </p>
     </div>
 
-    <!-- Modal: Detalhe de itens entregues por solicitante -->
-    <div class="modal fade" id="modalSolicitanteItens" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <!-- Modal Alertas (Sem estoque / Precisa balanço) -->
+    <div class="modal fade" id="modalAlertaItens" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">
                     <div>
-                        <h5 class="modal-title mb-0">Itens entregues</h5>
-                        <div class="small text-muted" id="modalSolicitanteSub"></div>
+                        <h5 class="modal-title mb-0" id="modalAlertaTitle">Itens</h5>
+                        <div class="text-muted small" id="modalAlertaSub"></div>
                     </div>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
                 </div>
 
                 <div class="modal-body">
-                    <div id="modalSolicitanteLoading" class="py-3 text-muted small">Carregando...</div>
+                    <div id="modalAlertaLoading" class="text-muted small">Carregando...</div>
+                    <div id="modalAlertaErro" class="alert alert-danger small" style="display:none;"></div>
 
-                    <div id="modalSolicitanteContent" style="display:none;">
+                    <div id="modalAlertaContent" style="display:none;">
                         <div class="d-flex justify-content-between align-items-center mb-2">
-                            <div class="small text-muted">
-                                Total entregue: <strong id="modalSolicitanteTotal"></strong>
+                            <div class="text-muted small">
+                                Total itens: <strong id="modalAlertaTotal">0</strong>
+                            </div>
+                            <div class="text-muted small">
+                                Total pedidos: <strong id="modalAlertaPedidos">0</strong>
                             </div>
                         </div>
 
                         <div class="table-responsive">
-                            <table class="table table-sm align-middle">
+                            <table class="table table-sm align-middle mb-0">
                                 <thead>
                                     <tr>
                                         <th>Produto</th>
-                                        <th style="width:120px;">Tipo</th>
-                                        <th style="width:140px;">Entregues</th>
-                                        <th style="width:120px;">Pedidos</th>
+                                        <th class="text-muted">Tipo</th>
+                                        <th>Qtd</th>
+                                        <th class="text-muted">Pedidos</th>
                                     </tr>
                                 </thead>
-                                <tbody id="modalSolicitanteTbody"></tbody>
+                                <tbody id="modalAlertaTbody"></tbody>
                             </table>
                         </div>
                     </div>
-
-                    <div id="modalSolicitanteErro" class="alert alert-warning small mb-0" style="display:none;"></div>
                 </div>
             </div>
         </div>
     </div>
 
+    <!--  -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script src="../assets/js/relatorio.js" defer></script>
