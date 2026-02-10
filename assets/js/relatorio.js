@@ -385,9 +385,6 @@
         },
       });
 
-      // ============================
-      // Clique + cursor (robusto)
-      // ============================
       if (!elAlertas.dataset.clickBound) {
         elAlertas.dataset.clickBound = "1";
 
@@ -806,14 +803,14 @@
       renderAlertas();
       renderDias();
 
-      // Top produtos: recria usando os dados já carregados (sem refetch)
+      // Top produtos: recria usando os dados já carregados
       if (elTop) {
         const topLabels = data.top_produtos?.labels || [];
         const topValues = data.top_produtos?.values || [];
         renderTop(topLabels, topValues);
       }
 
-      // Solicitantes: mantém o filtro atual (se houver)
+      // Solicitantes: mantém o filtro atual
       if (elSol) {
         const current = sel?.value || "";
         renderSolicitantes(current === "Todos" ? "" : current);
@@ -860,10 +857,9 @@
     // =========================================
     // Troca de tema sem recarregar
     // =========================================
-    // Se seu sistema dispara um evento custom, beleza.
     document.addEventListener("theme:changed", () => rebuildAllCharts());
 
-    // Fallback: observa mudança do atributo data-bs-theme
+    // Fallback
     const obs = new MutationObserver(() => rebuildAllCharts());
     obs.observe(document.documentElement, {
       attributes: true,

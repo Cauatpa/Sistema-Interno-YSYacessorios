@@ -18,16 +18,12 @@ if ($competencia === '' || $tipoAlerta === '') {
     exit;
 }
 
-// Regras dos alertas (igual seu dashboard):
-// - "Sem estoque": sem_estoque = 1 (e normalmente balanco_feito=0, se você quiser aplicar)
-// - "Precisa balanço": precisa_balanco=1 AND sem_estoque=0 AND balanco_feito=0
+// Construção dinâmica da cláusula WHERE com base no tipo de alerta
 $where = '';
 $params = [$competencia];
 
 if ($tipoAlerta === 'sem_estoque') {
     $where = "COALESCE(sem_estoque,0) = 1";
-    // Se quiser excluir balanço feito daqui, descomente:
-    // $where .= " AND COALESCE(balanco_feito,0) = 0";
 } elseif ($tipoAlerta === 'precisa_balanco') {
     $where = "COALESCE(precisa_balanco,0) = 1
               AND COALESCE(sem_estoque,0) = 0
