@@ -21,7 +21,8 @@ if (!competencia_valida($competencia)) {
 /**
  * LIMIT do Top Produtos:
  * - default: 10
- * - ?limit=all ou ?limit=0 => "todos" (com teto de segurança)
+ * - ?limit=all ou ?limit=0 => "todos" (com teto de segurança de 500)
+ * - ?limit=5 => top 5
  */
 $limitParam = $_GET['limit'] ?? '10';
 $limit = 10;
@@ -105,14 +106,14 @@ $st = $stmt->fetch(PDO::FETCH_ASSOC) ?: ['finalizados' => 0, 'balanco_feito' => 
 $resp['status'] = [
   'finalizados'   => (int)($st['finalizados'] ?? 0),
   'balanco_feito' => (int)($st['balanco_feito'] ?? 0),
-  'balanco'       => (int)($st['balanco'] ?? 0),       // precisa balanço (aberto)
+  'balanco'       => (int)($st['balanco'] ?? 0),
   'sem_estoque'   => (int)($st['sem_estoque'] ?? 0),
 ];
 
 /* ======================================================
  * 2) ALERTAS
  * - Sem estoque
- * - Precisa balanço (sem sem_estoque e ainda não feito)
+ * - Precisa balanço
  * ====================================================== */
 $stmt = $pdo->prepare("
   SELECT

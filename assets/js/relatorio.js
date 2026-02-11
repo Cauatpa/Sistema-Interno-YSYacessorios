@@ -1,4 +1,3 @@
-// /assets/js/relatorio.js
 (async () => {
   try {
     const root = document.documentElement;
@@ -46,7 +45,7 @@
 
       const YSY_COLORS = isDark
         ? {
-            blue: "#4DA3FF", // azul vivo no dark
+            blue: "#4DA3FF",
             blue2: "#7FA6C7",
             pink: "#F5DADE",
             amber: "#f1aeb8",
@@ -55,7 +54,7 @@
             barBlue: "rgba(77,163,255,.90)",
           }
         : {
-            blue: "#002855", // azul YSY
+            blue: "#002855",
             blue2: "#7FA6C7",
             pink: "#F5DADE",
             amber: "#f1aeb8",
@@ -98,29 +97,25 @@
     };
 
     const shortDate = (iso) => {
-      // "2026-01-15" -> "15/01"
       if (typeof iso !== "string") return String(iso ?? "");
       const p = iso.split("-");
       if (p.length === 3) return `${p[2]}/${p[1]}`;
       return iso;
     };
 
-    // correção para pegar o ponto certo no clique (v2)
     function getHitPoint(chart, evt) {
       if (!chart) return null;
 
-      // Chart.js v3/v4 (modo recomendado)
       if (typeof chart.getElementsAtEventForMode === "function") {
         const points = chart.getElementsAtEventForMode(
           evt,
           "nearest",
-          { intersect: false }, // ✅ não precisa clicar exatamente na barra
+          { intersect: false },
           true,
         );
         return points && points.length ? points[0] : null;
       }
 
-      // Chart.js v2 fallback
       if (typeof chart.getElementAtEvent === "function") {
         const p = chart.getElementAtEvent(evt);
         return p && p.length ? p[0] : null;
@@ -409,7 +404,6 @@
         },
       });
 
-      // bind 1x no canvas
       if (!elAlertas.dataset.clickBound) {
         elAlertas.dataset.clickBound = "1";
 
@@ -784,7 +778,7 @@
             return;
           }
 
-          const di = hit.datasetIndex ?? hit._datasetIndex; // v3/v4 vs v2
+          const di = hit.datasetIndex ?? hit._datasetIndex;
           elSol.style.cursor = Number(di) === 1 ? "pointer" : "default";
         });
 
@@ -793,15 +787,12 @@
           const hit = getHitPoint(chart, evt);
           if (!hit) return;
 
-          const di = hit.datasetIndex ?? hit._datasetIndex; // v3/v4 vs v2
-          if (Number(di) !== 1) return; // só barra rosa
+          const di = hit.datasetIndex ?? hit._datasetIndex;
+          if (Number(di) !== 1) return;
 
-          const idx = hit.index ?? hit._index; // v3/v4 vs v2
+          const idx = hit.index ?? hit._index;
           const solicitante = chart?.data?.labels?.[idx];
           if (!solicitante) return;
-
-          // debug rápido (se quiser ver no console)
-          // console.log("[Solicitantes] clicou em:", solicitante);
 
           abrirDetalheSolicitanteItens(String(solicitante));
         });
