@@ -33,7 +33,7 @@
     };
 
     // =========================================
-    // Tema (SÓ AQUI) — evita duplicar isDark/chartText/etc
+    // Tema
     // =========================================
     function getThemeVars() {
       const isDark =
@@ -105,8 +105,36 @@
       return iso;
     };
 
+    // correção para pegar o ponto certo no clique (v2)
+    function getHitPoint(chart, evt) {
+      if (!chart) return null;
+
+      // Chart.js v3/v4 (modo recomendado)
+      if (typeof chart.getElementsAtEventForMode === "function") {
+        const points = chart.getElementsAtEventForMode(
+          evt,
+          "nearest",
+          { intersect: false }, // ✅ não precisa clicar exatamente na barra
+          true,
+        );
+        return points && points.length ? points[0] : null;
+      }
+
+      // Chart.js v2 fallback
+      if (typeof chart.getElementAtEvent === "function") {
+        const p = chart.getElementAtEvent(evt);
+        return p && p.length ? p[0] : null;
+      }
+      if (typeof chart.getElementsAtEvent === "function") {
+        const p = chart.getElementsAtEvent(evt);
+        return p && p.length ? p[0] : null;
+      }
+
+      return null;
+    }
+
     // =========================================
-    // Modal Solicitante (mantido)
+    // Modal Solicitante
     // =========================================
     const modalEl = document.getElementById("modalSolicitanteItens");
     const bsModalSolicitante = modalEl ? new bootstrap.Modal(modalEl) : null;
@@ -309,10 +337,10 @@
                 Number(data.status.sem_estoque || 0),
               ],
               backgroundColor: [
-                YSY_COLORS.blue, // Finalizados
-                YSY_COLORS.blue2, // Balanço feito
-                YSY_COLORS.amber, // Precisa balanço
-                YSY_COLORS.pink, // Sem estoque
+                YSY_COLORS.blue,
+                YSY_COLORS.blue2,
+                YSY_COLORS.amber,
+                YSY_COLORS.pink,
               ],
               borderColor: chartBorder,
               borderWidth: 2,
@@ -368,11 +396,7 @@
           layout: { padding: { top: 8, right: 10, bottom: 8, left: 10 } },
           plugins: {
             legend: { display: false },
-            tooltip: {
-              callbacks: {
-                label: (ctx) => ` ${fmt(ctx.raw)}`,
-              },
-            },
+            tooltip: { callbacks: { label: (ctx) => ` ${fmt(ctx.raw)}` } },
           },
           scales: {
             x: { grid: { display: false }, ticks: { color: chartText } },
@@ -385,6 +409,7 @@
         },
       });
 
+      // bind 1x no canvas
       if (!elAlertas.dataset.clickBound) {
         elAlertas.dataset.clickBound = "1";
 
@@ -554,18 +579,11 @@
             x: {
               beginAtZero: true,
               grid: { color: chartGrid },
-              ticks: {
-                color: chartText,
-                precision: 0,
-                padding: 6,
-              },
+              ticks: { color: chartText, precision: 0, padding: 6 },
             },
             y: {
               grid: { color: chartGrid },
-              ticks: {
-                color: chartText,
-                autoSkip: false,
-              },
+              ticks: { color: chartText, autoSkip: false },
             },
           },
         },
@@ -755,31 +773,39 @@
           },
         },
       });
+      if (!elSol.dataset.clickBoundSolicitantes) {
+        elSol.dataset.clickBoundSolicitantes = "1";
 
-      // Clique na barra rosa abre modal
-      elSol.onclick = (evt) => {
-        const chart = charts.solicitantes;
-        if (!chart) return;
+        elSol.addEventListener("mousemove", (evt) => {
+          const chart = charts.solicitantes;
+          const hit = getHitPoint(chart, evt);
+          if (!hit) {
+            elSol.style.cursor = "default";
+            return;
+          }
 
-        const points = chart.getElementsAtEventForMode(
-          evt,
-          "nearest",
-          { intersect: true },
-          true,
-        );
-        if (!points.length) return;
+          const di = hit.datasetIndex ?? hit._datasetIndex; // v3/v4 vs v2
+          elSol.style.cursor = Number(di) === 1 ? "pointer" : "default";
+        });
 
-        const p = points[0];
-        const ds = chart.data.datasets?.[p.datasetIndex];
-        const dsLabel = (ds?.label || "").toLowerCase();
-        const solicitante = chart.data.labels?.[p.index];
+        elSol.addEventListener("click", (evt) => {
+          const chart = charts.solicitantes;
+          const hit = getHitPoint(chart, evt);
+          if (!hit) return;
 
-        if (!solicitante) return;
+          const di = hit.datasetIndex ?? hit._datasetIndex; // v3/v4 vs v2
+          if (Number(di) !== 1) return; // só barra rosa
 
-        if (dsLabel.includes("itens") && dsLabel.includes("entreg")) {
+          const idx = hit.index ?? hit._index; // v3/v4 vs v2
+          const solicitante = chart?.data?.labels?.[idx];
+          if (!solicitante) return;
+
+          // debug rápido (se quiser ver no console)
+          // console.log("[Solicitantes] clicou em:", solicitante);
+
           abrirDetalheSolicitanteItens(String(solicitante));
-        }
-      };
+        });
+      }
 
       if (boxResumo) {
         if (!filterName)
@@ -803,14 +829,12 @@
       renderAlertas();
       renderDias();
 
-      // Top produtos: recria usando os dados já carregados
       if (elTop) {
         const topLabels = data.top_produtos?.labels || [];
         const topValues = data.top_produtos?.values || [];
         renderTop(topLabels, topValues);
       }
 
-      // Solicitantes: mantém o filtro atual
       if (elSol) {
         const current = sel?.value || "";
         renderSolicitantes(current === "Todos" ? "" : current);
@@ -859,7 +883,6 @@
     // =========================================
     document.addEventListener("theme:changed", () => rebuildAllCharts());
 
-    // Fallback
     const obs = new MutationObserver(() => rebuildAllCharts());
     obs.observe(document.documentElement, {
       attributes: true,

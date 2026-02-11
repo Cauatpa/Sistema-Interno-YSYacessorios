@@ -463,6 +463,50 @@ $diffClass = $diffItens === 0
     </p>
     </div>
 
+    <!-- Modal Solicitante (Itens entregues ao clicar na barra rosa) -->
+    <div class="modal fade" id="modalSolicitanteItens" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div>
+                        <h5 class="modal-title mb-0">Itens entregues</h5>
+                        <div class="text-muted small" id="modalSolicitanteSub"></div>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+
+                <div class="modal-body">
+                    <div id="modalSolicitanteLoading" class="text-muted small">Carregando...</div>
+                    <div id="modalSolicitanteErro" class="alert alert-danger small" style="display:none;"></div>
+
+                    <div id="modalSolicitanteContent" style="display:none;">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <div class="text-muted small">
+                                Total itens entregues: <strong id="modalSolicitanteTotal">0</strong>
+                            </div>
+                        </div>
+
+                        <div class="table-responsive">
+                            <table class="table table-sm align-middle mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Produto</th>
+                                        <th class="text-muted">Tipo</th>
+                                        <th>Itens entregues</th>
+                                        <th class="text-muted">Pedidos</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="modalSolicitanteTbody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+
     <!-- Modal Alertas (Sem estoque / Precisa balanço) -->
     <div class="modal fade" id="modalAlertaItens" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
