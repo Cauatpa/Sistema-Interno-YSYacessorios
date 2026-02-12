@@ -1,6 +1,8 @@
 <?php
 // pages/lote_controller.php
 
+declare(strict_types=1);
+
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../helpers/auth.php';
 require_once __DIR__ . '/../helpers/csrf.php';
@@ -8,7 +10,7 @@ require_once __DIR__ . '/../helpers/csrf.php';
 $u = auth_require_login();
 csrf_session_start();
 
-$toast = $_GET['toast'] ?? '';
+$toast = (string)($_GET['toast'] ?? '');
 $highlightId = (int)($_GET['highlight_id'] ?? 0);
 
 $id = (int)($_GET['id'] ?? 0);
@@ -28,7 +30,9 @@ $canEdit = $canOperate && $edit;
 // admin tem “poder total” na edição
 $canEditFull = $canAdmin && $edit;
 
+// =============================
 // Cabeçalho do lote
+// =============================
 $stmt = $pdo->prepare("
     SELECT l.*, u.nome AS criado_por_nome, u.usuario AS criado_por_usuario
     FROM lotes l
@@ -66,25 +70,45 @@ if ($recebimentoAtualId <= 0 && !empty($recebimentos)) {
 
 // Valida: recebimento precisa pertencer ao lote
 if ($recebimentoAtualId > 0) {
-    $stmtChk = $pdo->prepare("SELECT COUNT(*) FROM lote_recebimentos WHERE id = ? AND lote_id = ?");
+    $stmtChk = $pdo->prepare("
+        SELECT COUNT(*)
+        FROM lote_recebimentos
+        WHERE id = ? AND lote_id = ?
+    ");
     $stmtChk->execute([$recebimentoAtualId, $id]);
     if ((int)$stmtChk->fetchColumn() <= 0) {
-        // se alguém tentar forçar um recebimento de outro lote
         $recebimentoAtualId = (!empty($recebimentos)) ? (int)$recebimentos[0]['id'] : 0;
     }
 }
 
-// Baseline: se tiver algum item com tiny_saldo_antes preenchido, é porque o lote já passou por uma baseline (inicialização de estoque) em algum momento. Isso é importante para mostrar avisos na UI e evitar que o usuário faça sync com o Tiny sem querer, sobrescrevendo os saldos antes de ter uma baseline feita.
-$stmtBaseline = $pdo->prepare("
-    SELECT COUNT(*) 
-    FROM lote_itens
-    WHERE lote_id = ?
-      AND recebimento_id = ?
-      AND tiny_saldo_antes IS NOT NULL
-");
-$stmtBaseline->execute([$lote['id'], $recebimentoAtualId]);
+// ✅ Recebimento atual (array) — necessário pro modal Editar Lote
+$recebimentoAtual = [];
+if ($recebimentoAtualId > 0 && !empty($recebimentos)) {
+    foreach ($recebimentos as $r) {
+        if ((int)$r['id'] === $recebimentoAtualId) {
+            $recebimentoAtual = $r;
+            break;
+        }
+    }
+    if (!$recebimentoAtual) $recebimentoAtual = $recebimentos[0] ?? [];
+}
 
-$hasBaseline = ((int)$stmtBaseline->fetchColumn() > 0);
+// =============================
+// Baseline (Tiny): existe baseline no recebimento atual?
+// =============================
+$hasBaseline = false;
+
+if ($recebimentoAtualId > 0) {
+    $stmtBaseline = $pdo->prepare("
+        SELECT COUNT(*)
+        FROM lote_itens
+        WHERE lote_id = ?
+          AND recebimento_id = ?
+          AND tiny_saldo_antes IS NOT NULL
+    ");
+    $stmtBaseline->execute([(int)$lote['id'], $recebimentoAtualId]);
+    $hasBaseline = ((int)$stmtBaseline->fetchColumn() > 0);
+}
 
 // =============================
 // Filtros de itens
@@ -105,7 +129,7 @@ $totalItens = 0;
 
 if ($recebimentoAtualId > 0) {
     $where = " li.lote_id = ? AND li.recebimento_id = ? ";
-    $args = [$id, $recebimentoAtualId];
+    $args  = [$id, $recebimentoAtualId];
 
     if ($qProduto !== '') {
         $where .= " AND li.produto_nome LIKE ? ";
@@ -148,30 +172,37 @@ if ($recebimentoAtualId > 0) {
 $totalPages = (int)ceil($totalItens / $perPage);
 if ($totalPages < 1) $totalPages = 1;
 
+// =============================
 // Agrupar para UI: 1 linha por produto, com prata/ouro dentro
+// =============================
 $itensGrouped = [];
+
 foreach ($itens as $li) {
-    $produtoId = (int)($li['produto_id'] ?? 0);
+    $produtoId   = (int)($li['produto_id'] ?? 0);
     $produtoNome = (string)($li['produto_nome'] ?? '');
-    $key = $produtoId > 0 ? ('pid:' . $produtoId) : ('pn:' . mb_strtolower(trim($produtoNome)));
+
+    $key = $produtoId > 0
+        ? ('pid:' . $produtoId)
+        : ('pn:' . mb_strtolower(trim($produtoNome), 'UTF-8'));
 
     if (!isset($itensGrouped[$key])) {
         $itensGrouped[$key] = [
             'produto_id'   => $produtoId,
             'produto_nome' => $produtoNome,
-            'prata' => null,
-            'ouro'  => null,
+            'prata'   => null,
+            'ouro'    => null,
             'situacao' => null,
-            'nota'     => null,
+            'nota'    => null,
         ];
     }
 
-    $variacao = mb_strtolower(trim((string)($li['variacao'] ?? '')));
+    $variacao = mb_strtolower(trim((string)($li['variacao'] ?? '')), 'UTF-8');
     if ($variacao === 'prata') {
         $itensGrouped[$key]['prata'] = $li;
     } elseif ($variacao === 'ouro') {
         $itensGrouped[$key]['ouro'] = $li;
     } else {
+        // fallback antigo
         if ($itensGrouped[$key]['prata'] === null) $itensGrouped[$key]['prata'] = $li;
         else $itensGrouped[$key]['ouro'] = $li;
     }
@@ -183,10 +214,11 @@ foreach ($itens as $li) {
         $itensGrouped[$key]['nota'] = (string)($li['nota'] ?? '');
     }
 }
+
 $itensGrouped = array_values($itensGrouped);
 
 // =============================
-// Sugestões para filtros   
+// Sugestões para filtros
 // =============================
 
 // Sugestões (solicitantes)

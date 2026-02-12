@@ -92,140 +92,197 @@ $openItem = ((int)($_GET['open_item'] ?? 0) === 1);
         </div>
     </div>
 
-    <!-- Card cabeçalho -->
-    <div class="card p-3 mb-3">
-        <div class="row g-3 align-items-start">
+    <!-- Cabeçalho do lote (versão mais profissional) -->
+    <div class="card mb-3 shadow-sm">
+        <div class="card-body p-3 p-lg-4">
+            <div class="row g-3 g-lg-4 align-items-start">
 
-            <!-- ESQUERDA: Fornecedor -->
-            <div class="col-12 col-md-4">
-                <div class="fw-bold">Fornecedor</div>
-                <div><?= htmlspecialchars((string)($lote['fornecedor'] ?? '—')) ?></div>
-            </div>
+                <!-- ESQUERDA -->
+                <div class="col-12 col-lg-7">
 
-            <!-- MEIO: Status -->
-            <div class="col-12 col-md-2">
-                <div class="fw-bold">Status</div>
-                <div>
-                    <span class="badge text-bg-secondary"><?= htmlspecialchars($statusLote) ?></span>
-                </div>
-            </div>
+                    <!-- Linha de chips/meta -->
+                    <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+                        <span class="badge rounded-pill text-bg-light border">
+                            Lote #<?= (int)$lote['id'] ?>
+                        </span>
 
-            <!-- DIREITA: Recebimento + botões -->
-            <div class="col-12 col-md-6">
-                <div class="d-flex flex-column flex-md-row gap-3 align-items-start align-items-md-end justify-content-between">
+                        <span class="badge rounded-pill text-bg-light border">
+                            Competência <?= htmlspecialchars((string)($lote['competencia'] ?? '—')) ?>
+                        </span>
 
-                    <!-- Recebimento atual (dropdown) -->
-                    <div class="flex-grow-1" style="min-width: 260px;">
-                        <div class="fw-bold">Recebimento atual</div>
-
-                        <?php if (!empty($recebimentos)): ?>
-                            <form method="GET" class="mt-1">
-                                <input type="hidden" name="id" value="<?= (int)$lote['id'] ?>">
-                                <?php if ($editMode): ?><input type="hidden" name="edit" value="1"><?php endif; ?>
-
-                                <select name="recebimento_id" class="form-select" onchange="this.form.submit()">
-                                    <?php foreach ($recebimentos as $r): ?>
-                                        <?php
-                                        $rid = (int)$r['id'];
-                                        $dt = !empty($r['data_hora']) ? date('d/m/Y H:i', strtotime((string)$r['data_hora'])) : '—';
-                                        $label = trim((string)($r['volume_label'] ?? ''));
-                                        $txt = $dt . ($label !== '' ? " • {$label}" : '');
-                                        ?>
-                                        <option value="<?= $rid ?>" <?= $rid === (int)$recebimentoAtualId ? 'selected' : '' ?>>
-                                            <?= htmlspecialchars($txt) ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
-
-                                <noscript><button class="btn btn-secondary btn-sm mt-2">OK</button></noscript>
-                            </form>
-
-                            <div class="text-muted small mt-1">
-                                Itens adicionados ficam vinculados ao recebimento selecionado.
-                            </div>
-                        <?php else: ?>
-                            <div class="text-muted mt-1">Nenhum recebimento cadastrado ainda.</div>
-                        <?php endif; ?>
+                        <?php
+                        $st = (string)($statusLote ?? 'aberto');
+                        $stClass = match ($st) {
+                            'aberto'     => 'text-bg-primary',
+                            'conferido'  => 'text-bg-success',
+                            'fechado'    => 'text-bg-dark',
+                            default      => 'text-bg-secondary',
+                        };
+                        ?>
+                        <span class="badge rounded-pill <?= $stClass ?>">
+                            <?= htmlspecialchars($st) ?>
+                        </span>
                     </div>
 
-                    <!-- Botões -->
-                    <?php if ($editMode): ?>
-                        <div class="d-grid gap-2" style="min-width: 220px;">
-
-                            <!-- ADICIONAR ITEM -->
-                            <button
-                                class="btn btn-success"
-                                type="button"
-                                data-bs-toggle="modal"
-                                data-bs-target="#modalAddItem"
-                                <?= !$temRecebimentoAtual ? 'disabled' : '' ?>
-                                title="<?= !$temRecebimentoAtual ? 'Crie ou selecione um recebimento antes de adicionar itens' : '' ?>">
-                                ➕ Item
-                            </button>
-
-                            <!-- NOVO RECEBIMENTO -->
-                            <button
-                                class="btn btn-outline-primary"
-                                type="button"
-                                data-bs-toggle="modal"
-                                data-bs-target="#modalNovoRecebimento">
-                                📦 Recebimento
-                            </button>
-
-                            <?php if (!$temRecebimentoAtual): ?>
-                                <div class="text-muted small text-center">
-                                    Crie um recebimento para liberar a adição de itens.
+                    <!-- Bloco info -->
+                    <div class="border rounded p-3 bg-body-tertiary">
+                        <div class="row g-3">
+                            <div class="col-12 col-md-6">
+                                <div class="text-muted small">Fornecedor</div>
+                                <div class="fw-semibold fs-5">
+                                    <?= htmlspecialchars((string)($lote['fornecedor'] ?? '—')) ?>
                                 </div>
-                            <?php endif; ?>
+                            </div>
 
-                            <!-- IMPORTAR XLSX -->
-                            <button
-                                type="button"
-                                class="btn btn-outline-primary"
-                                data-bs-toggle="modal"
-                                data-bs-target="#modalImportXlsx">
-                                📥 Importar XLSX
-                            </button>
+                            <div class="col-12 col-md-6">
+                                <div class="text-muted small">Código</div>
+                                <div class="fw-semibold">
+                                    <?= htmlspecialchars((string)($lote['codigo'] ?? '—')) ?>
+                                </div>
+                            </div>
 
-                            <form method="POST" action="actions/lote_sync_tiny.php" class="d-grid gap-2">
-                                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token('lote_tiny_sync')) ?>">
-                                <input type="hidden" name="lote_id" value="<?= (int)$lote['id'] ?>">
-                                <input type="hidden" name="recebimento_id" value="<?= (int)$recebimentoAtualId ?>">
-
-                                <?php if (!$hasBaseline): ?>
-                                    <input type="hidden" name="mode" value="baseline">
-                                    <button
-                                        type="submit"
-                                        class="btn btn-outline-primary"
-                                        <?= !$temRecebimentoAtual ? 'disabled' : '' ?>>
-                                        📌 Registrar estoque inicial (Tiny)
-                                    </button>
-                                <?php else: ?>
-                                    <input type="hidden" name="mode" value="delta">
-                                    <button
-                                        type="submit"
-                                        class="btn btn-outline-success"
-                                        <?= !$temRecebimentoAtual ? 'disabled' : '' ?>>
-                                        🔄 Atualizar conferidos (Tiny)
-                                    </button>
-                                <?php endif; ?>
-                            </form>
-
+                            <div class="col-12">
+                                <div class="text-muted small">Observações</div>
+                                <div class="<?= !empty($lote['observacoes']) ? 'text-body' : 'text-muted' ?>">
+                                    <?= !empty($lote['observacoes'])
+                                        ? nl2br(htmlspecialchars((string)$lote['observacoes']))
+                                        : '—'
+                                    ?>
+                                </div>
+                            </div>
                         </div>
-                    <?php endif; ?>
-
+                    </div>
                 </div>
+
+                <!-- DIREITA -->
+                <div class="col-12 col-lg-5">
+                    <div class="d-flex flex-column gap-3">
+
+                        <!-- Recebimento -->
+                        <div class="border rounded p-3">
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <div class="fw-bold">Recebimento atual</div>
+                            </div>
+
+                            <?php if (!empty($recebimentos)): ?>
+                                <form method="GET">
+                                    <input type="hidden" name="id" value="<?= (int)$lote['id'] ?>">
+                                    <?php if (!empty($editMode)): ?>
+                                        <input type="hidden" name="edit" value="1">
+                                    <?php endif; ?>
+
+                                    <select name="recebimento_id" class="form-select" onchange="this.form.submit()">
+                                        <?php foreach ($recebimentos as $r): ?>
+                                            <?php
+                                            $rid = (int)$r['id'];
+                                            $dt = !empty($r['data_hora']) ? date('d/m/Y H:i', strtotime((string)$r['data_hora'])) : '—';
+                                            $label = trim((string)($r['volume_label'] ?? ''));
+                                            $txt = $dt . ($label !== '' ? " • {$label}" : '');
+                                            ?>
+                                            <option value="<?= $rid ?>" <?= $rid === (int)$recebimentoAtualId ? 'selected' : '' ?>>
+                                                <?= htmlspecialchars($txt) ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+
+                                    <div class="text-muted small mt-2">
+                                        Itens adicionados ficam vinculados ao recebimento selecionado.
+                                    </div>
+
+                                    <noscript><button class="btn btn-secondary btn-sm mt-2">OK</button></noscript>
+                                </form>
+                            <?php else: ?>
+                                <div class="text-muted">Nenhum recebimento cadastrado ainda.</div>
+                            <?php endif; ?>
+                        </div>
+
+                        <!-- Ações -->
+                        <?php if (!empty($editMode)): ?>
+                            <div class="border rounded p-3">
+                                <div class="fw-bold mb-2">Ações</div>
+
+                                <div class="row g-2">
+                                    <div class="col-12">
+                                        <button
+                                            class="btn btn-success w-100"
+                                            type="button"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#modalAddItem"
+                                            <?= !$temRecebimentoAtual ? 'disabled' : '' ?>
+                                            title="<?= !$temRecebimentoAtual ? 'Crie ou selecione um recebimento antes de adicionar itens' : '' ?>">
+                                            ➕ Item
+                                        </button>
+                                    </div>
+
+                                    <?php if (auth_has_role('admin')): ?>
+                                        <div class="col-12">
+                                            <button
+                                                type="button"
+                                                class="btn btn-outline-dark w-100"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#modalEditLote">
+                                                ✏️ Editar Lote
+                                            </button>
+                                        </div>
+                                    <?php endif; ?>
+
+                                    <div class="col-6">
+                                        <button
+                                            class="btn btn-outline-primary w-100"
+                                            type="button"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#modalNovoRecebimento">
+                                            📦 Recebimento
+                                        </button>
+                                    </div>
+
+                                    <div class="col-6">
+                                        <button
+                                            type="button"
+                                            class="btn btn-outline-primary w-100"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#modalImportXlsx">
+                                            📥 Importar XLSX
+                                        </button>
+                                    </div>
+
+                                    <div class="col-12">
+                                        <form method="POST" action="actions/lote_sync_tiny.php">
+                                            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token('lote_tiny_sync')) ?>">
+                                            <input type="hidden" name="lote_id" value="<?= (int)$lote['id'] ?>">
+                                            <input type="hidden" name="recebimento_id" value="<?= (int)$recebimentoAtualId ?>">
+
+                                            <?php if (!$hasBaseline): ?>
+                                                <input type="hidden" name="mode" value="baseline">
+                                                <button type="submit" class="btn btn-outline-primary w-100" <?= !$temRecebimentoAtual ? 'disabled' : '' ?>>
+                                                    📌 Registrar estoque inicial (Tiny)
+                                                </button>
+                                            <?php else: ?>
+                                                <input type="hidden" name="mode" value="delta">
+                                                <button type="submit" class="btn btn-outline-primary w-100" <?= !$temRecebimentoAtual ? 'disabled' : '' ?>>
+                                                    🔄 Atualizar conferidos (Tiny)
+                                                </button>
+                                            <?php endif; ?>
+                                        </form>
+                                    </div>
+                                </div>
+
+                                <?php if (!$temRecebimentoAtual): ?>
+                                    <div class="text-muted small text-center mt-2">
+                                        Crie um recebimento para liberar a adição de itens.
+                                    </div>
+                                <?php endif; ?>
+
+                            </div>
+                        <?php endif; ?>
+
+                    </div>
+                </div>
+
             </div>
-
-            <?php if (!empty($lote['observacoes'])): ?>
-                <div class="col-12 pt-2">
-                    <div class="fw-bold">Observações</div>
-                    <div class="text-muted"><?= nl2br(htmlspecialchars((string)$lote['observacoes'])) ?></div>
-                </div>
-            <?php endif; ?>
-
         </div>
     </div>
+
 
     <!-- Filtros de itens -->
     <form method="GET" class="card p-2 mb-3">
@@ -679,6 +736,7 @@ $openItem = ((int)($_GET['open_item'] ?? 0) === 1);
 <?php require_once __DIR__ . '/../modals/lotes/modal_add_item.php'; ?>
 <?php require_once __DIR__ . '/../modals/lotes/modal_novo_recebimento.php'; ?>
 <?php require_once __DIR__ . '/../modals/lotes/modal_import_xlsx.php'; ?>
+<?php require_once __DIR__ . '/../modals/lotes/modal_edit_lote.php'; ?>
 
 <!-- Toast -->
 <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 9999;">
