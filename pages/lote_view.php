@@ -100,7 +100,6 @@ $openItem = ((int)($_GET['open_item'] ?? 0) === 1);
                 <!-- ESQUERDA -->
                 <div class="col-12 col-lg-7">
 
-                    <!-- Linha de chips/meta -->
                     <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
                         <span class="badge rounded-pill text-bg-light border">
                             Lote #<?= (int)$lote['id'] ?>
