@@ -66,13 +66,6 @@ function normaliza_filtros(array $get): array
     ];
 }
 
-/**
- * Monta WHERE + params da listagem.
- * - sempre filtra por competencia
- * - sempre filtra deleted_at IS NULL
- * - balanço NÃO inclui sem_estoque
- * - datas filtram por data_pedido
- */
 function montar_where_retiradas(string $competencia, array $f): array
 {
     $where = " WHERE competencia = ? AND deleted_at IS NULL ";
