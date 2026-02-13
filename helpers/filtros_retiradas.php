@@ -30,9 +30,16 @@ function normaliza_filtros(array $get): array
     $tipoPermitidos = ['todos', 'prata', 'ouro'];
     if (!in_array($tipo, $tipoPermitidos, true)) $tipo = 'todos';
 
-    // ✅ AQUI: permitir balanco_feito
+    // ✅ Status dropdown (select Status) - agora com sem_estoque e estoque_preenchido
     $statusFiltro = (string)($get['status'] ?? 'todos');
-    $statusPermitidos = ['todos', 'pendentes', 'finalizados', 'balanco_feito'];
+    $statusPermitidos = [
+        'todos',
+        'pendentes',
+        'finalizados',
+        'sem_estoque',
+        'estoque_preenchido',
+        'balanco_feito'
+    ];
     if (!in_array($statusFiltro, $statusPermitidos, true)) $statusFiltro = 'todos';
 
     $soBalanco = (int)($get['balanco'] ?? 0);
@@ -75,9 +82,10 @@ function montar_where_retiradas(string $competencia, array $f): array
     $dash = (string)($f['filtro'] ?? 'todos');
 
     if ($dash === 'pendentes') {
-        // ✅ URGENTE: pendentes do card NÃO inclui sem_estoque
+        // ✅ pendentes do card NÃO inclui sem_estoque
         $where .= " AND status <> 'finalizado' AND COALESCE(sem_estoque,0) = 0 ";
     } elseif ($dash === 'finalizados') {
+        // Card "Finalizados": mantém a lógica do sistema (status = finalizado)
         $where .= " AND status = 'finalizado' ";
     } elseif ($dash === 'balanco') {
         // balanço pendente (não inclui sem_estoque)
@@ -105,10 +113,17 @@ function montar_where_retiradas(string $competencia, array $f): array
 
     // Status dropdown (select Status)
     $statusFiltro = (string)($f['statusFiltro'] ?? 'todos');
+
     if ($statusFiltro === 'pendentes') {
         $where .= " AND status <> 'finalizado' AND COALESCE(sem_estoque,0) = 0 ";
     } elseif ($statusFiltro === 'finalizados') {
-        $where .= " AND status = 'finalizado' ";
+        // ✅ aqui é a correção que você pediu:
+        // Finalizados = status finalizado, MAS não trazer os "marcados pra balanço pendente"
+        $where .= " AND status = 'finalizado' AND NOT (precisa_balanco = 1 AND COALESCE(balanco_feito,0) = 0) ";
+    } elseif ($statusFiltro === 'sem_estoque') {
+        $where .= " AND sem_estoque = 1 ";
+    } elseif ($statusFiltro === 'estoque_preenchido') {
+        $where .= " AND COALESCE(estoque_preenchido,0) = 1 ";
     } elseif ($statusFiltro === 'balanco_feito') {
         $where .= " AND COALESCE(balanco_feito,0) = 1 ";
     }
@@ -118,6 +133,7 @@ function montar_where_retiradas(string $competencia, array $f): array
         // Só balanço = pendente
         $where .= " AND precisa_balanco = 1 AND sem_estoque = 0 AND COALESCE(balanco_feito,0) = 0 ";
     }
+
     if ((int)($f['soSemEstoque'] ?? 0) === 1) {
         $where .= " AND sem_estoque = 1 ";
     }

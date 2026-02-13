@@ -33,7 +33,7 @@ $soSemEstoque = $f['soSemEstoque'];
 
 // ✅ GARANTIA: aceita o novo status "balanco_feito" mesmo que o helper ainda não trate
 // (não muda a lógica, só normaliza para evitar "ignorar" o filtro)
-$allowedStatus = ['todos', 'pendentes', 'finalizados', 'balanco_feito'];
+$allowedStatus = ['todos', 'pendentes', 'finalizados', 'sem_estoque', 'estoque_preenchido', 'balanco_feito'];
 if (!in_array((string)$statusFiltro, $allowedStatus, true)) {
     $statusFiltro = 'todos';
     $f['statusFiltro'] = 'todos';

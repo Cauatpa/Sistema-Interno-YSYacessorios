@@ -189,6 +189,8 @@ $returnUrl = $_SERVER['REQUEST_URI'];
                         <option value="todos" <?= $statusFiltro === 'todos' ? 'selected' : '' ?>>Todos</option>
                         <option value="pendentes" <?= $statusFiltro === 'pendentes' ? 'selected' : '' ?>>Pendentes</option>
                         <option value="finalizados" <?= $statusFiltro === 'finalizados' ? 'selected' : '' ?>>Finalizados</option>
+                        <option value="sem_estoque" <?= $statusFiltro === 'sem_estoque' ? 'selected' : '' ?>>Sem Estoque</option>
+                        <option value="estoque_preenchido" <?= $statusFiltro === 'estoque_preenchido' ? 'selected' : '' ?>>Estoque preenchido</option>
                         <option value="balanco_feito" <?= $statusFiltro === 'balanco_feito' ? 'selected' : '' ?>>Balanço feito</option>
                     </select>
                 </div>
