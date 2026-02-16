@@ -94,8 +94,6 @@ if (is_array($tipos) && count($tipos) > 0) {
         http_response_code(400);
         exit('Dados inválidos.');
     }
-
-    // ---- MODO ANTIGO: tipo + quantidade_solicitada
 } else {
     require_fields($_POST, ['tipo', 'quantidade_solicitada']);
 
@@ -130,7 +128,6 @@ if (is_array($tipos) && count($tipos) > 0) {
     $qtdByTipo[$tipo] = $quantidade;
 }
 
-// Não interfere na lógica principal do pedido.
 try {
     // normaliza: trim + remove espaços duplicados + case-insensitive
     $produtoNorm = mb_strtolower(preg_replace('/\s+/', ' ', $produto));
@@ -240,11 +237,6 @@ $params = [
     // destaca o último criado (ou você pode mudar a UI depois pra destacar os 2)
     'highlight_id' => end($createdIds),
 ];
-
-if ($wantNext) {
-    $params['open_novo'] = 1;
-    $params['keep_solicitante'] = $solicitante;
-}
 
 if ($wantNext) {
     $params['open_novo'] = 1;

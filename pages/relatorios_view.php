@@ -122,6 +122,45 @@ $goIndex = $base . '/index.php';
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
+    <!-- Proximo -->
+    <script>
+        (() => {
+            const url = new URL(window.location.href);
+
+            // seu backend usa open_novo=1
+            const openNovo = url.searchParams.get("open_novo");
+
+            if (openNovo === "1") {
+                const el = document.getElementById("modalNovoPedido");
+                if (el && window.bootstrap) {
+                    const m = bootstrap.Modal.getOrCreateInstance(el);
+                    m.show();
+
+                    // opcional: focar no produto ao abrir
+                    setTimeout(() => {
+                        const inpProduto = document.getElementById("inpProduto");
+                        inpProduto?.focus();
+                    }, 200);
+
+                    // opcional: limpar o parâmetro pra não reabrir no F5
+                    url.searchParams.delete("open_novo");
+                    window.history.replaceState({}, "", url.toString());
+                }
+            }
+
+            // opcional: preencher solicitante se você mandou keep_solicitante
+            const keep = url.searchParams.get("keep_solicitante");
+            if (keep) {
+                const inp = document.getElementById("inpSolicitante");
+                if (inp) inp.value = keep;
+                // não removo aqui porque você pode querer manter em refresh,
+                // mas se quiser limpar também, descomenta:
+                // url.searchParams.delete("keep_solicitante");
+                // window.history.replaceState({}, "", url.toString());
+            }
+        })();
+    </script>
+
     <!-- ✅ carrega o theme.js com path garantido -->
     <script src="<?= htmlspecialchars($asset('assets/js/theme.js')) ?>"></script>
 </body>
