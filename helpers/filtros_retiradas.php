@@ -90,7 +90,7 @@ function montar_where_retiradas(string $competencia, array $f): array
     // Busca
     $busca = (string)($f['busca'] ?? '');
     if ($busca !== '') {
-        $where .= " AND (produto LIKE ? OR solicitante LIKE ? OR responsavel_estoque LIKE ?) ";
+        $where .= " AND (produto LIKE ? OR solicitante LIKE ? OR responsavel_estoque LIKE ? OR CAST(id AS CHAR) LIKE ?) ";
         $like = "%{$busca}%";
         $params[] = $like;
         $params[] = $like;

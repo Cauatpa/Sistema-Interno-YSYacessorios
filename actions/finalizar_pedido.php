@@ -35,7 +35,6 @@ if (!csrf_validate($_POST['csrf_token'] ?? null, 'finalizar_pedido')) {
 $id = int_pos($_POST['id'] ?? 0);
 $wantNext = ((int)($_POST['next'] ?? 0) === 1);
 
-// ✅ se o JS mandar, a gente prioriza
 $nextTargetId = int_pos($_POST['next_target_id'] ?? 0);
 
 if ($id <= 0) {
@@ -126,7 +125,6 @@ if (mes_esta_fechado($pdo, $competencia)) {
 }
 
 if ($status === 'finalizado') {
-    // log opcional: tentativa redundante
     audit_log(
         $pdo,
         'finalize',
@@ -154,10 +152,10 @@ $precisa_balanco = (int)($_POST['precisa_balanco'] ?? 0);
 $sem_estoque = (int)($_POST['sem_estoque'] ?? 0);
 
 if ($sem_estoque === 1) {
-    $precisa_balanco = 0;      // ✅ trava balanço
-    $balanco_feito = 0;        // ✅ trava balanço feito
+    $precisa_balanco = 0; // trava balanço no form
+    $balanco_feito = 0;
 } else {
-    $balanco_feito = (int)($_POST['balanco_feito'] ?? 0); // se você usa isso nesse form
+    $balanco_feito = (int)($_POST['balanco_feito'] ?? 0);
 }
 
 $rawQtd = $_POST['quantidade_retirada'] ?? null;
@@ -209,10 +207,6 @@ if ($responsavel_estoque === '') {
     exit('Responsável do estoque é obrigatório.');
 }
 
-$falta_estoque = 0;
-if ($qtdSolicitada > 0 && $qtdEntregue < $qtdSolicitada) $falta_estoque = 1;
-if ($sem_estoque === 1) $falta_estoque = 1;
-
 // falta_estoque
 $falta_estoque = 0;
 if ($qtdSolicitada > 0 && $qtdEntregue < $qtdSolicitada) $falta_estoque = 1;
@@ -220,16 +214,13 @@ if ($sem_estoque === 1) $falta_estoque = 1;
 
 // ✅ OPÇÃO A: sem_estoque NÃO FINALIZA
 if ($sem_estoque === 1) {
-    // sem estoque => continua pendente (pedido)
     $statusNovo = 'pedido';
     $dataFinalSql = "NULL";
     $qtdEntregue = 0;
-    $precisa_balanco = 1;   // ✅ consistência com sua regra: sem estoque => precisa balanço
+    $precisa_balanco = 1; // consistência: sem estoque => precisa balanço
 } else {
-    // finalização real
     $statusNovo = 'finalizado';
     $dataFinalSql = "NOW()";
-    // precisa_balanco vem do form normalmente
 }
 
 $update = $pdo->prepare("
@@ -256,7 +247,6 @@ $ok = $update->execute([
     'normal',
     $id
 ]);
-
 
 if (!$ok) {
     audit_log(
@@ -327,9 +317,10 @@ audit_log(
 
 // ✅ calcula o próximo
 $openNextId = null;
+
 if ($wantNext) {
 
-    // 1) se o JS mandou um próximo alvo, valida ele (e garante sem_estoque=0)
+    // 1) se o JS mandou um próximo alvo, valida ele (garante sem_estoque=0)
     if ($nextTargetId > 0) {
         $chk = $pdo->prepare("
             SELECT id
@@ -338,7 +329,7 @@ if ($wantNext) {
               AND competencia = ?
               AND deleted_at IS NULL
               AND status <> 'finalizado'
-              AND sem_estoque = 0
+              AND COALESCE(sem_estoque,0) = 0
             LIMIT 1
         ");
         $chk->execute([$nextTargetId, $competencia]);
@@ -346,7 +337,7 @@ if ($wantNext) {
         if ($okId) $openNextId = (int)$okId;
     }
 
-    // 2) se não tiver alvo válido, pega o próximo pendente (sem sem_estoque)
+    // 2) se não tiver alvo válido, pega o próximo pendente GLOBAL (independente da página)
     if (!$openNextId) {
         $nextStmt = $pdo->prepare("
             SELECT id
@@ -354,12 +345,11 @@ if ($wantNext) {
             WHERE competencia = ?
               AND deleted_at IS NULL
               AND status <> 'finalizado'
-              AND sem_estoque = 0
-              AND id <> ?
+              AND COALESCE(sem_estoque,0) = 0
             ORDER BY data_pedido ASC, id ASC
             LIMIT 1
         ");
-        $nextStmt->execute([$competencia, $id]);
+        $nextStmt->execute([$competencia]);
         $openNextId = $nextStmt->fetchColumn();
         $openNextId = $openNextId ? (int)$openNextId : null;
     }
@@ -367,12 +357,23 @@ if ($wantNext) {
 
 $params = [
     'competencia' => $competencia,
-    'toast' => 'finalizado',
     'highlight_id' => $id,
 ];
 
-if ($openNextId) {
-    $params['open_finalizar_id'] = $openNextId;
+// ✅ Se clicou em "Próximo"
+if ($wantNext) {
+
+    // Achou próximo → manda abrir
+    if ($openNextId) {
+        $params['toast'] = 'finalizado';
+        $params['open_finalizar_id'] = $openNextId;
+    } else {
+        $params['toast'] = 'acabou_pendentes';
+        $params['no_more_pendentes'] = 1;
+    }
+} else {
+    // Finalizar normal (sem próximo)
+    $params['toast'] = 'finalizado';
 }
 
 redirect_back_with_params('../index.php', $params);

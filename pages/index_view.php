@@ -580,6 +580,32 @@ $returnUrl = $_SERVER['REQUEST_URI'];
     <?php include 'modals/_load_modals.php'; ?>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        (() => {
+            const url = new URL(window.location.href);
+            const openId = url.searchParams.get("open_finalizar_id");
+            const noMore = url.searchParams.get("no_more_pendentes");
+
+            if (noMore === "1") {
+                url.searchParams.delete("no_more_pendentes");
+                url.searchParams.delete("open_finalizar_id");
+                window.history.replaceState({}, "", url.toString());
+                return;
+            }
+
+            if (!openId) return;
+
+            const modalEl = document.getElementById("modalFinalizar" + openId);
+            if (modalEl && window.bootstrap) {
+                bootstrap.Modal.getOrCreateInstance(modalEl).show();
+            }
+
+            // limpa parâmetro pra não reabrir no refresh
+            url.searchParams.delete("open_finalizar_id");
+            window.history.replaceState({}, "", url.toString());
+        })();
+    </script>
+
 
     <!-- Toast UI -->
     <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 9999;">
@@ -594,6 +620,8 @@ $returnUrl = $_SERVER['REQUEST_URI'];
     <script src="assets/js/app.js" defer></script>
     <script src="assets/js/ux_atalhos.js" defer></script>
     <script src="assets/js/theme.js" defer></script>
+
+    <!--  -->
     <script>
         document.addEventListener('click', async (e) => {
             const btn = e.target.closest('[data-balanco]');

@@ -31,8 +31,7 @@ $statusFiltro = $f['statusFiltro'];
 $soBalanco = $f['soBalanco'];
 $soSemEstoque = $f['soSemEstoque'];
 
-// ✅ GARANTIA: aceita o novo status "balanco_feito" mesmo que o helper ainda não trate
-// (não muda a lógica, só normaliza para evitar "ignorar" o filtro)
+// ✅ GARANTIA: aceita os status do select
 $allowedStatus = ['todos', 'pendentes', 'finalizados', 'sem_estoque', 'estoque_preenchido', 'balanco_feito'];
 if (!in_array((string)$statusFiltro, $allowedStatus, true)) {
     $statusFiltro = 'todos';
@@ -88,10 +87,19 @@ $dash = $stmtDash->fetch(PDO::FETCH_ASSOC) ?: [
 // ---------------------
 list($where, $params) = montar_where_retiradas($competencia, $f);
 
+// ✅ PATCH: se o helper ainda não colocou o filtro balanco_feito, a gente aplica aqui (sem duplicar)
 if (($f['statusFiltro'] ?? 'todos') === 'balanco_feito') {
     if (stripos($where, 'balanco_feito') === false) {
         $where .= " AND COALESCE(balanco_feito,0) = 1 ";
     }
+}
+
+$openId = (int)($_GET['open_finalizar_id'] ?? 0);
+if ($openId > 0) {
+    // $where sempre começa com " WHERE .... "
+    // então transformamos em: " WHERE (....) OR (id = ? AND deleted_at IS NULL) "
+    $where = " WHERE (" . preg_replace('/^\s*WHERE\s+/i', '', $where) . ") OR (id = ? AND deleted_at IS NULL) ";
+    $params[] = $openId;
 }
 
 // ---------------------
@@ -121,6 +129,34 @@ $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $retiradas = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+$openId = (int)($_GET['open_finalizar_id'] ?? 0);
+if ($openId > 0) {
+    $found = false;
+    foreach ($retiradas as $rr) {
+        if ((int)($rr['id'] ?? 0) === $openId) {
+            $found = true;
+            break;
+        }
+    }
+
+    if (!$found) {
+        $stmtOpen = $pdo->prepare("
+            SELECT *
+            FROM retiradas
+            WHERE id = ? AND deleted_at IS NULL
+            LIMIT 1
+        ");
+        $stmtOpen->execute([$openId]);
+        $rowOpen = $stmtOpen->fetch(PDO::FETCH_ASSOC);
+
+        if ($rowOpen) {
+            // coloca no começo para garantir que os modais renderizem
+            array_unshift($retiradas, $rowOpen);
+        }
+    }
+}
+
+
 // ======================
 // Sugestões de solicitantes (para autocomplete)
 // ======================
@@ -142,7 +178,6 @@ foreach ($rawSolicitantes as $s) {
         $nome = trim($parte);
         if ($nome === '') continue;
 
-        // chave case-insensitive pra não duplicar "sarah" e "Sarah"
         $k = mb_strtolower($nome);
         if (isset($seen[$k])) continue;
 
@@ -166,6 +201,7 @@ $rawProdutos = $stmtProd->fetchAll(PDO::FETCH_COLUMN) ?: [];
 
 $produtosSugestoes = [];
 $seenProd = [];
+
 foreach ($rawProdutos as $p) {
     $nome = preg_replace('/\s+/', ' ', trim((string)$p));
     if ($nome === '') continue;
