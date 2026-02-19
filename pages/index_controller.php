@@ -87,20 +87,8 @@ $dash = $stmtDash->fetch(PDO::FETCH_ASSOC) ?: [
 // ---------------------
 list($where, $params) = montar_where_retiradas($competencia, $f);
 
-// ✅ PATCH: se o helper ainda não colocou o filtro balanco_feito, a gente aplica aqui (sem duplicar)
-if (($f['statusFiltro'] ?? 'todos') === 'balanco_feito') {
-    if (stripos($where, 'balanco_feito') === false) {
-        $where .= " AND COALESCE(balanco_feito,0) = 1 ";
-    }
-}
-
-$openId = (int)($_GET['open_finalizar_id'] ?? 0);
-if ($openId > 0) {
-    // $where sempre começa com " WHERE .... "
-    // então transformamos em: " WHERE (....) OR (id = ? AND deleted_at IS NULL) "
-    $where = " WHERE (" . preg_replace('/^\s*WHERE\s+/i', '', $where) . ") OR (id = ? AND deleted_at IS NULL) ";
-    $params[] = $openId;
-}
+// ✅ Segurança extra: garante array posicional certinha (evita HY093)
+$params = array_values($params);
 
 // ---------------------
 // Paginação + per_page (ÚNICO BLOCO)
@@ -150,12 +138,10 @@ if ($openId > 0) {
         $rowOpen = $stmtOpen->fetch(PDO::FETCH_ASSOC);
 
         if ($rowOpen) {
-            // coloca no começo para garantir que os modais renderizem
             array_unshift($retiradas, $rowOpen);
         }
     }
 }
-
 
 // ======================
 // Sugestões de solicitantes (para autocomplete)
@@ -188,7 +174,6 @@ foreach ($rawSolicitantes as $s) {
 
 // ======================
 // Sugestões de produtos (para autocomplete)
-// (com tabela nova: vem de produtos)
 // ======================
 $stmtProd = $pdo->query("
     SELECT nome

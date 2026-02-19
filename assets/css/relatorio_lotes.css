@@ -1,0 +1,88 @@
+:root {
+  --ysy-blue: #002855;
+  --ysy-pink: #f5dade;
+  --card-radius: 18px;
+  --card-border: rgba(0, 0, 0, 0.06);
+  --card-shadow: 0 10px 26px rgba(0, 0, 0, 0.06);
+  --text-muted: rgba(0, 0, 0, 0.62);
+}
+
+[data-bs-theme="dark"] {
+  --card-border: rgba(255, 255, 255, 0.1);
+  --card-shadow: 0 14px 34px rgba(0, 0, 0, 0.4);
+  --text-muted: rgba(240, 245, 255, 0.7);
+}
+
+body {
+  font-family:
+    system-ui,
+    -apple-system,
+    Segoe UI,
+    Roboto,
+    "Helvetica Neue",
+    Arial,
+    sans-serif;
+  background: transparent;
+}
+
+.page-title {
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -0.3px;
+}
+
+.page-sub {
+  font-size: 0.95rem;
+  color: var(--text-muted);
+}
+
+.card-soft {
+  border: 1px solid var(--card-border);
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
+  background: var(--bs-body-bg);
+}
+
+.kpi {
+  font-size: 2.2rem;
+  font-weight: 900;
+  line-height: 1.05;
+  margin-top: 0.35rem;
+  color: var(--ysy-blue);
+}
+[data-bs-theme="dark"] .kpi {
+  color: rgba(240, 245, 255, 0.92);
+}
+
+.chart-wrapper {
+  position: relative;
+  height: 220px;
+}
+
+.charts-row .card-soft {
+  min-height: 320px;
+}
+
+.table thead th {
+  white-space: nowrap;
+  font-weight: 700;
+}
+
+.table td,
+.table th {
+  padding-top: 0.6rem;
+  padding-bottom: 0.6rem;
+}
+
+#txtBusca {
+  min-width: 220px;
+}
+
+@media (max-width: 992px) {
+  .chart-wrapper {
+    height: 200px;
+  }
+  #txtBusca {
+    min-width: 160px;
+  }
+}

@@ -17,10 +17,10 @@ $cards = [
     ],
     [
         'title' => 'Lotes de recebimento',
-        'desc'  => 'Relatório do controle de lotes (em breve)',
+        'desc'  => 'Relatório do controle de lotes de recebimento, com status e detalhes',
         'icon'  => '🚚',
-        'href'  => '#',
-        'enabled' => false,
+        'href'  => '/InterYSY/pages/relatorio_lotes.php',
+        'enabled' => true,
     ],
 ];
 

@@ -30,16 +30,9 @@ function normaliza_filtros(array $get): array
     $tipoPermitidos = ['todos', 'prata', 'ouro'];
     if (!in_array($tipo, $tipoPermitidos, true)) $tipo = 'todos';
 
-    // ✅ Status dropdown (select Status) - agora com sem_estoque e estoque_preenchido
+    // ✅ Status do select (inclui os novos)
     $statusFiltro = (string)($get['status'] ?? 'todos');
-    $statusPermitidos = [
-        'todos',
-        'pendentes',
-        'finalizados',
-        'sem_estoque',
-        'estoque_preenchido',
-        'balanco_feito'
-    ];
+    $statusPermitidos = ['todos', 'pendentes', 'finalizados', 'sem_estoque', 'estoque_preenchido', 'balanco_feito'];
     if (!in_array($statusFiltro, $statusPermitidos, true)) $statusFiltro = 'todos';
 
     $soBalanco = (int)($get['balanco'] ?? 0);
@@ -78,10 +71,8 @@ function montar_where_retiradas(string $competencia, array $f): array
         // ✅ pendentes do card NÃO inclui sem_estoque
         $where .= " AND status <> 'finalizado' AND COALESCE(sem_estoque,0) = 0 ";
     } elseif ($dash === 'finalizados') {
-        // Card "Finalizados": mantém a lógica do sistema (status = finalizado)
         $where .= " AND status = 'finalizado' ";
     } elseif ($dash === 'balanco') {
-        // balanço pendente (não inclui sem_estoque)
         $where .= " AND precisa_balanco = 1 AND sem_estoque = 0 AND COALESCE(balanco_feito,0) = 0 ";
     } elseif ($dash === 'sem_estoque') {
         $where .= " AND sem_estoque = 1 ";
@@ -90,7 +81,7 @@ function montar_where_retiradas(string $competencia, array $f): array
     // Busca
     $busca = (string)($f['busca'] ?? '');
     if ($busca !== '') {
-        $where .= " AND (produto LIKE ? OR solicitante LIKE ? OR responsavel_estoque LIKE ? OR CAST(id AS CHAR) LIKE ?) ";
+        $where .= " AND (produto LIKE ? OR solicitante LIKE ? OR responsavel_estoque LIKE ?) ";
         $like = "%{$busca}%";
         $params[] = $like;
         $params[] = $like;
@@ -110,11 +101,9 @@ function montar_where_retiradas(string $competencia, array $f): array
     if ($statusFiltro === 'pendentes') {
         $where .= " AND status <> 'finalizado' AND COALESCE(sem_estoque,0) = 0 ";
     } elseif ($statusFiltro === 'finalizados') {
-        // ✅ aqui é a correção que você pediu:
-        // Finalizados = status finalizado, MAS não trazer os "marcados pra balanço pendente"
-        $where .= " AND status = 'finalizado' AND NOT (precisa_balanco = 1 AND COALESCE(balanco_feito,0) = 0) ";
+        $where .= " AND status = 'finalizado' ";
     } elseif ($statusFiltro === 'sem_estoque') {
-        $where .= " AND sem_estoque = 1 ";
+        $where .= " AND COALESCE(sem_estoque,0) = 1 ";
     } elseif ($statusFiltro === 'estoque_preenchido') {
         $where .= " AND COALESCE(estoque_preenchido,0) = 1 ";
     } elseif ($statusFiltro === 'balanco_feito') {
@@ -123,10 +112,8 @@ function montar_where_retiradas(string $competencia, array $f): array
 
     // Checkboxes
     if ((int)($f['soBalanco'] ?? 0) === 1) {
-        // Só balanço = pendente
         $where .= " AND precisa_balanco = 1 AND sem_estoque = 0 AND COALESCE(balanco_feito,0) = 0 ";
     }
-
     if ((int)($f['soSemEstoque'] ?? 0) === 1) {
         $where .= " AND sem_estoque = 1 ";
     }
@@ -146,6 +133,9 @@ function montar_where_retiradas(string $competencia, array $f): array
         $where .= " AND data_pedido < DATE_ADD(?, INTERVAL 1 DAY) ";
         $params[] = $dataFim . " 00:00:00";
     }
+
+    // ✅ garante array posicional certinha (evita HY093)
+    $params = array_values($params);
 
     return [$where, $params];
 }
