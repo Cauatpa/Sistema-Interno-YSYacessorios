@@ -107,11 +107,19 @@ $stmtSetDepoisDelta = $pdo->prepare("
   LIMIT 1
 ");
 
-$stmtUpdConfIfNull = $pdo->prepare("
+// $stmtUpdConfIfNull = $pdo->prepare("
+//   UPDATE lote_itens
+//   SET qtd_conferida = ?, atualizado_em = NOW()
+//   WHERE id = ? AND lote_id = ? AND recebimento_id = ?
+//     AND (qtd_conferida IS NULL OR qtd_conferida = 0)
+//   LIMIT 1
+// ");
+
+$stmtUpdConfIfNullOrZero = $pdo->prepare("
   UPDATE lote_itens
   SET qtd_conferida = ?, atualizado_em = NOW()
   WHERE id = ? AND lote_id = ? AND recebimento_id = ?
-    AND qtd_conferida IS NULL
+    AND (qtd_conferida IS NULL OR qtd_conferida = 0)
   LIMIT 1
 ");
 
@@ -239,11 +247,20 @@ try {
             continue;
         }
 
-        // salva depois + delta
         $stmtSetDepoisDelta->execute([$saldoAgora, $delta, $idItem, $loteId, $recebimentoId]);
 
-        // preenche qtd_conferida (só se NULL, para não atropelar conferência manual)
-        $stmtUpdConfIfNull->execute([$delta, $idItem, $loteId, $recebimentoId]);
+        // salva a diferença (o que entrou no recebimento)
+        $stmtUpdConfIfNullOrZero->execute([$delta, $idItem, $loteId, $recebimentoId]);
+
+        $updated++;
+
+        // delta zero ou positivo: atualiza saldo_depois + delta
+        // $stmtSetDepoisDelta->execute([$saldoAgora, $delta, $idItem, $loteId, $recebimentoId]);
+
+        // // Regra de conferência: só preenche qtd_conferida se estiver NULL ou zero, para não atropelar conferência manual
+        // // $stmtUpdConfIfNull->execute([$saldoAgora, $idItem, $loteId, $recebimentoId]);
+
+        // // Se quiser forçar sempre, use este (mas cuidado, pode atropelar conferência manual feita antes do sync)
 
         $updated++;
     }

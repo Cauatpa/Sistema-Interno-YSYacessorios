@@ -441,34 +441,71 @@ $openItem = ((int)($_GET['open_item'] ?? 0) === 1);
 
                             <td>
                                 <?php if ($editMode): ?>
-                                    <select name="situacao" class="form-select form-select-sm" style="max-width:190px;">
-                                        <?php
-                                        $opts = [
-                                            'ok' => 'OK',
-                                            'faltando' => 'Faltando',
-                                            'a_mais' => 'A mais',
-                                            'banho_trocado' => 'Banho trocado',
-                                            'quebra' => 'Quebra',
-                                            'outro' => 'Outro'
-                                        ];
-                                        foreach ($opts as $k => $label):
-                                        ?>
-                                            <option value="<?= htmlspecialchars($k) ?>" <?= $k === $curSitu ? 'selected' : '' ?>>
-                                                <?= htmlspecialchars($label) ?>
-                                            </option>
-                                        <?php endforeach; ?>
-                                    </select>
+                                    <div class="d-flex flex-column gap-2 align-items-center">
+
+                                        <?php if ($idPrata): ?>
+                                            <?php $sitP = (string)($prata['situacao'] ?? 'ok'); ?>
+                                            <select name="situacao_prata" class="form-select form-select-sm" style="max-width:190px;">
+                                                <option value="ok" <?= $sitP === 'ok' ? 'selected' : '' ?>>OK</option>
+                                                <option value="faltando" <?= $sitP === 'faltando' ? 'selected' : '' ?>>Faltando</option>
+                                                <option value="a_mais" <?= $sitP === 'a_mais' ? 'selected' : '' ?>>A mais</option>
+                                                <option value="banho_trocado" <?= $sitP === 'banho_trocado' ? 'selected' : '' ?>>Banho trocado</option>
+                                                <option value="quebra" <?= $sitP === 'quebra' ? 'selected' : '' ?>>Quebra</option>
+                                                <option value="outro" <?= $sitP === 'outro' ? 'selected' : '' ?>>Outro</option>
+                                            </select>
+                                        <?php endif; ?>
+
+                                        <?php if ($idOuro): ?>
+                                            <?php $sitO = (string)($ouro['situacao'] ?? 'ok'); ?>
+                                            <select name="situacao_ouro" class="form-select form-select-sm" style="max-width:190px;">
+                                                <option value="ok" <?= $sitO === 'ok' ? 'selected' : '' ?>>OK</option>
+                                                <option value="faltando" <?= $sitO === 'faltando' ? 'selected' : '' ?>>Faltando</option>
+                                                <option value="a_mais" <?= $sitO === 'a_mais' ? 'selected' : '' ?>>A mais</option>
+                                                <option value="banho_trocado" <?= $sitO === 'banho_trocado' ? 'selected' : '' ?>>Banho trocado</option>
+                                                <option value="quebra" <?= $sitO === 'quebra' ? 'selected' : '' ?>>Quebra</option>
+                                                <option value="outro" <?= $sitO === 'outro' ? 'selected' : '' ?>>Outro</option>
+                                            </select>
+                                        <?php endif; ?>
+
+                                    </div>
                                 <?php else: ?>
-                                    <?= htmlspecialchars($curSitu) ?>
+                                    <?php if ($idPrata): ?>
+                                        <div class="small"><strong>Prata:</strong> <?= htmlspecialchars((string)($prata['situacao'] ?? 'ok')) ?></div>
+                                    <?php endif; ?>
+                                    <?php if ($idOuro): ?>
+                                        <div class="small"><strong>Ouro:</strong> <?= htmlspecialchars((string)($ouro['situacao'] ?? 'ok')) ?></div>
+                                    <?php endif; ?>
                                 <?php endif; ?>
                             </td>
 
                             <td class="text-start">
                                 <?php if ($editMode): ?>
-                                    <input name="nota" class="form-control form-control-sm"
-                                        value="<?= htmlspecialchars($curNota) ?>" placeholder="(opcional)">
+                                    <div class="d-flex flex-column gap-2">
+
+                                        <?php if ($idPrata): ?>
+                                            <input
+                                                name="nota_prata"
+                                                class="form-control form-control-sm"
+                                                value="<?= htmlspecialchars((string)($prata['nota'] ?? '')) ?>"
+                                                placeholder="Nota Prata (opcional)">
+                                        <?php endif; ?>
+
+                                        <?php if ($idOuro): ?>
+                                            <input
+                                                name="nota_ouro"
+                                                class="form-control form-control-sm"
+                                                value="<?= htmlspecialchars((string)($ouro['nota'] ?? '')) ?>"
+                                                placeholder="Nota Ouro (opcional)">
+                                        <?php endif; ?>
+
+                                    </div>
                                 <?php else: ?>
-                                    <?= htmlspecialchars($curNota) ?>
+                                    <?php if ($idPrata): ?>
+                                        <div class="small"><strong>Prata:</strong> <?= htmlspecialchars((string)($prata['nota'] ?? '—')) ?></div>
+                                    <?php endif; ?>
+                                    <?php if ($idOuro): ?>
+                                        <div class="small"><strong>Ouro:</strong> <?= htmlspecialchars((string)($ouro['nota'] ?? '—')) ?></div>
+                                    <?php endif; ?>
                                 <?php endif; ?>
                             </td>
 

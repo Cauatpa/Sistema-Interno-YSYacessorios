@@ -1,5 +1,4 @@
 <?php
-// pages/lote_controller.php
 
 declare(strict_types=1);
 
@@ -23,11 +22,7 @@ $canOperate = auth_has_role('operador');
 $canAdmin   = auth_has_role('admin');
 
 $edit = ((int)($_GET['edit'] ?? 0) === 1);
-
-// operador pode editar (conferência) quando edit=1
 $canEdit = $canOperate && $edit;
-
-// admin tem “poder total” na edição
 $canEditFull = $canAdmin && $edit;
 
 // =============================
@@ -60,15 +55,12 @@ $stmtRec = $pdo->prepare("
 $stmtRec->execute([$id]);
 $recebimentos = $stmtRec->fetchAll(PDO::FETCH_ASSOC);
 
-// Recebimento atual vindo do GET
 $recebimentoAtualId = (int)($_GET['recebimento_id'] ?? 0);
 
-// Se não veio nada no GET, usa o mais recente (se existir)
 if ($recebimentoAtualId <= 0 && !empty($recebimentos)) {
     $recebimentoAtualId = (int)$recebimentos[0]['id'];
 }
 
-// Valida: recebimento precisa pertencer ao lote
 if ($recebimentoAtualId > 0) {
     $stmtChk = $pdo->prepare("
         SELECT COUNT(*)
@@ -81,7 +73,6 @@ if ($recebimentoAtualId > 0) {
     }
 }
 
-// ✅ Recebimento atual (array) — necessário pro modal Editar Lote
 $recebimentoAtual = [];
 if ($recebimentoAtualId > 0 && !empty($recebimentos)) {
     foreach ($recebimentos as $r) {
@@ -94,7 +85,7 @@ if ($recebimentoAtualId > 0 && !empty($recebimentos)) {
 }
 
 // =============================
-// Baseline (Tiny): existe baseline no recebimento atual?
+// Baseline (Tiny)
 // =============================
 $hasBaseline = false;
 
@@ -122,7 +113,7 @@ $perPage = max(10, min(200, (int)($_GET['per_page'] ?? 50)));
 $offset = ($page - 1) * $perPage;
 
 // =============================
-// Itens do lote (FILTRADOS pelo recebimento atual)
+// Itens do lote (recebimento atual)
 // =============================
 $itens = [];
 $totalItens = 0;
@@ -147,12 +138,10 @@ if ($recebimentoAtualId > 0) {
         $args[] = $qSituacao;
     }
 
-    // total
     $stmtCount = $pdo->prepare("SELECT COUNT(*) FROM lote_itens li WHERE $where");
     $stmtCount->execute($args);
     $totalItens = (int)$stmtCount->fetchColumn();
 
-    // página
     $stmtItens = $pdo->prepare("
         SELECT
             li.*,
@@ -168,7 +157,6 @@ if ($recebimentoAtualId > 0) {
     $itens = $stmtItens->fetchAll(PDO::FETCH_ASSOC);
 }
 
-// Paginação
 $totalPages = (int)ceil($totalItens / $perPage);
 if ($totalPages < 1) $totalPages = 1;
 
@@ -189,10 +177,8 @@ foreach ($itens as $li) {
         $itensGrouped[$key] = [
             'produto_id'   => $produtoId,
             'produto_nome' => $produtoNome,
-            'prata'   => null,
-            'ouro'    => null,
-            'situacao' => null,
-            'nota'    => null,
+            'prata' => null,
+            'ouro'  => null,
         ];
     }
 
@@ -202,16 +188,8 @@ foreach ($itens as $li) {
     } elseif ($variacao === 'ouro') {
         $itensGrouped[$key]['ouro'] = $li;
     } else {
-        // fallback antigo
         if ($itensGrouped[$key]['prata'] === null) $itensGrouped[$key]['prata'] = $li;
         else $itensGrouped[$key]['ouro'] = $li;
-    }
-
-    if ($itensGrouped[$key]['situacao'] === null || $itensGrouped[$key]['situacao'] === '') {
-        $itensGrouped[$key]['situacao'] = (string)($li['situacao'] ?? 'ok');
-    }
-    if ($itensGrouped[$key]['nota'] === null || $itensGrouped[$key]['nota'] === '') {
-        $itensGrouped[$key]['nota'] = (string)($li['nota'] ?? '');
     }
 }
 

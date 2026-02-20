@@ -88,6 +88,7 @@ $returnUrl = $_SERVER['REQUEST_URI'];
 
             <a href="/InterYSY/pages/relatorio_retiradas.php?competencia=<?= urlencode($competencia) ?>"
                 class="btn btn-outline-success btn-sm">Relatório</a>
+
             <button id="btnTheme" class="btn btn-outline-secondary btn-sm">
                 🌙 Tema escuro
             </button>

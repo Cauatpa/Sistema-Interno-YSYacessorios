@@ -68,6 +68,9 @@ $competencia = (string)($_GET['competencia'] ?? ($competencia ?? ''));
 
             <a href="index.php?page=portal" class="btn btn-outline-secondary btn-sm">← Voltar</a>
 
+            <a href="/InterYSY/pages/relatorio_lotes.php?competencia=<?= urlencode($competencia) ?>"
+                class="btn btn-outline-success btn-sm">Relatório</a>
+
             <button id="btnTheme" class="btn btn-outline-secondary btn-sm">
                 🌙 Tema escuro
             </button>
